@@ -1,8 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/about')({
+import { seo } from "#/lib/seo";
+
+export const Route = createFileRoute("/about")({
+  head: () =>
+    seo({
+      title: "About — mdvoy.org",
+      description:
+        "A TanStack Start playground demonstrating LLMO and a self-hosted MCP endpoint.",
+      canonicalPath: "/about",
+    }),
   component: About,
-})
+});
 
 function About() {
   return (
@@ -19,5 +28,5 @@ function About() {
         </p>
       </section>
     </main>
-  )
+  );
 }

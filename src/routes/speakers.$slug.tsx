@@ -1,27 +1,54 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { marked } from 'marked'
-import { MapPin, Award, ArrowLeft } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { allSpeakers, allTalks } from "content-collections";
+import { ArrowLeft, Award, MapPin } from "lucide-react";
+import { marked } from "marked";
 
-import { allSpeakers, allTalks } from 'content-collections'
+import RemyAssistant from "#/components/RemyAssistant";
+import TalkCard from "#/components/TalkCard";
+import { seo } from "#/lib/seo";
+import { breadcrumbSchema, profilePageSchema } from "#/lib/structured-data";
 
-import RemyAssistant from '#/components/RemyAssistant'
-import TalkCard from '#/components/TalkCard'
-
-export const Route = createFileRoute('/speakers/$slug')({
+export const Route = createFileRoute("/speakers/$slug")({
   loader: async ({ params }) => {
-    const speaker = allSpeakers.find((s) => s.slug === params.slug)
+    const speaker = allSpeakers.find((s) => s.slug === params.slug);
     if (!speaker) {
-      throw new Error('Speaker not found')
+      throw new Error("Speaker not found");
     }
-    const speakerTalks = allTalks.filter((t) => t.speaker === speaker.name)
-    return { speaker, speakerTalks }
+    const speakerTalks = allTalks.filter((t) => t.speaker === speaker.name);
+    return { speaker, speakerTalks };
+  },
+  head: ({ loaderData }) => {
+    const s = loaderData?.speaker;
+    if (!s) return seo({ title: "Speaker — Haute Pâtisserie 2026" });
+    const path = `/speakers/${s.slug}`;
+    return {
+      ...seo({
+        title: `${s.name} — ${s.title}`,
+        description: `${s.specialty} · ${s.restaurant}, ${s.location}`,
+        image: `/${s.headshot}`,
+        canonicalPath: path,
+      }),
+      scripts: [
+        profilePageSchema({
+          name: s.name,
+          jobTitle: s.title,
+          description: s.specialty,
+          image: `/${s.headshot}`,
+          path,
+        }),
+        breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Speakers", path: "/speakers" },
+          { name: s.name, path },
+        ]),
+      ],
+    };
   },
   component: SpeakerDetailPage,
-})
+});
 
 function SpeakerDetailPage() {
-  const { speaker, speakerTalks } = Route.useLoaderData()
+  const { speaker, speakerTalks } = Route.useLoaderData();
 
   return (
     <div className="min-h-screen">
@@ -102,6 +129,7 @@ function SpeakerDetailPage() {
       {/* Bio section */}
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="prose prose-lg max-w-none prose-invert prose-p:text-cream/80 prose-headings:text-cream prose-headings:font-display prose-strong:text-cream prose-a:text-gold font-body text-lg leading-relaxed">
+          {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted first-party markdown from content-collections */}
           <div dangerouslySetInnerHTML={{ __html: marked(speaker.content) }} />
         </div>
       </div>
@@ -120,5 +148,5 @@ function SpeakerDetailPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,25 +1,54 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { marked } from 'marked'
-import { Clock, User, ArrowLeft, Tag } from 'lucide-react'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { allSpeakers, allTalks } from "content-collections";
+import { ArrowLeft, Clock, Tag, User } from "lucide-react";
+import { marked } from "marked";
 
-import { allTalks, allSpeakers } from 'content-collections'
+import RemyAssistant from "#/components/RemyAssistant";
+import { seo } from "#/lib/seo";
+import { breadcrumbSchema, talkSchema } from "#/lib/structured-data";
 
-import RemyAssistant from '#/components/RemyAssistant'
-
-export const Route = createFileRoute('/talks/$slug')({
+export const Route = createFileRoute("/talks/$slug")({
   loader: async ({ params }) => {
-    const talk = allTalks.find((t) => t.slug === params.slug)
+    const talk = allTalks.find((t) => t.slug === params.slug);
     if (!talk) {
-      throw new Error('Talk not found')
+      throw new Error("Talk not found");
     }
-    const speaker = allSpeakers.find((s) => s.name === talk.speaker)
-    return { talk, speaker }
+    const speaker = allSpeakers.find((s) => s.name === talk.speaker);
+    return { talk, speaker };
+  },
+  head: ({ loaderData }) => {
+    const t = loaderData?.talk;
+    if (!t) return seo({ title: "Session — Haute Pâtisserie 2026" });
+    const path = `/talks/${t.slug}`;
+    return {
+      ...seo({
+        title: `${t.title} — Haute Pâtisserie 2026`,
+        description: `By ${t.speaker} · ${t.topics.join(", ")}`,
+        image: `/${t.image}`,
+        canonicalPath: path,
+      }),
+      scripts: [
+        talkSchema({
+          title: t.title,
+          description: t.topics.join(", "),
+          image: `/${t.image}`,
+          path,
+          author: t.speaker,
+          keywords: t.topics,
+        }),
+        breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Sessions", path: "/talks" },
+          { name: t.title, path },
+        ]),
+      ],
+    };
   },
   component: TalkDetailPage,
-})
+});
 
 function TalkDetailPage() {
-  const { talk, speaker } = Route.useLoaderData()
+  const { talk, speaker } = Route.useLoaderData();
 
   return (
     <div className="min-h-screen">
@@ -106,9 +135,10 @@ function TalkDetailPage() {
 
         {/* Description content */}
         <div className="prose prose-lg max-w-none prose-invert prose-p:text-cream/80 prose-headings:text-cream prose-headings:font-display prose-strong:text-cream prose-a:text-gold prose-li:text-cream/80 prose-ul:text-cream/80 font-body text-lg leading-relaxed pb-20">
+          {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted first-party markdown from content-collections */}
           <div dangerouslySetInnerHTML={{ __html: marked(talk.content) }} />
         </div>
       </div>
     </div>
-  )
+  );
 }

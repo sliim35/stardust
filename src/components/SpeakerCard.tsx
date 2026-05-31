@@ -1,13 +1,12 @@
-import { Link } from '@tanstack/react-router'
-import { MapPin } from 'lucide-react'
+import { Link } from "@tanstack/react-router";
+import type { Speaker } from "content-collections";
+import { MapPin } from "lucide-react";
 
-import { type Speaker } from 'content-collections'
-
-import { Card, CardContent } from '#/components/ui/card'
+import { Card, CardContent } from "#/components/ui/card";
 
 interface SpeakerCardProps {
-  speaker: Speaker
-  featured?: boolean
+  speaker: Speaker;
+  featured?: boolean;
 }
 
 export default function SpeakerCard({
@@ -18,7 +17,7 @@ export default function SpeakerCard({
     <Link to={`/speakers/${speaker.slug}`} className="group relative block">
       <Card
         className={`relative overflow-hidden bg-card border-border/50 card-hover
-          ${featured ? 'aspect-square' : 'aspect-square'}
+          ${featured ? "aspect-square" : "aspect-square"}
           hover:border-copper/50`}
       >
         {/* Headshot */}
@@ -63,5 +62,5 @@ export default function SpeakerCard({
         </div>
       </Card>
     </Link>
-  )
+  );
 }

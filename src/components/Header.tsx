@@ -1,6 +1,6 @@
-import { Link } from '@tanstack/react-router'
-import RemyButton from './RemyButton'
-import ThemeToggle from './ThemeToggle'
+import { Link } from "@tanstack/react-router";
+import RemyButton from "./RemyButton";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
   return (
@@ -20,35 +20,35 @@ export default function Header() {
           <Link
             to="/"
             className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
+            activeProps={{ className: "nav-link is-active" }}
           >
             Home
           </Link>
           <Link
             to="/about"
             className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
+            activeProps={{ className: "nav-link is-active" }}
           >
             About
           </Link>
           <Link
             to="/speakers"
             className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
+            activeProps={{ className: "nav-link is-active" }}
           >
             Speakers
           </Link>
           <Link
             to="/talks"
             className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
+            activeProps={{ className: "nav-link is-active" }}
           >
             Sessions
           </Link>
           <Link
             to="/schedule"
             className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
+            activeProps={{ className: "nav-link is-active" }}
           >
             Schedule
           </Link>
@@ -89,5 +89,5 @@ export default function Header() {
         </div>
       </nav>
     </header>
-  )
+  );
 }

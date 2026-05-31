@@ -1,34 +1,33 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { chat, maxIterations, toServerSentEventsResponse } from '@tanstack/ai'
-import { anthropicText } from '@tanstack/ai-anthropic'
-import { openaiText } from '@tanstack/ai-openai'
-import { geminiText } from '@tanstack/ai-gemini'
-import { ollamaText } from '@tanstack/ai-ollama'
+import { chat, maxIterations, toServerSentEventsResponse } from "@tanstack/ai";
+import { anthropicText } from "@tanstack/ai-anthropic";
+import { geminiText } from "@tanstack/ai-gemini";
+import { ollamaText } from "@tanstack/ai-ollama";
+import { openaiText } from "@tanstack/ai-openai";
+import { createFileRoute } from "@tanstack/react-router";
 
 import {
-  getSpeakerBySlug,
-  getTalkBySlug,
   getAllSpeakers,
   getAllTalks,
+  getSpeakerBySlug,
+  getTalkBySlug,
   searchConference,
-} from '#/lib/conference-tools'
+} from "#/lib/conference-tools";
 
-export const Route = createFileRoute('/api/remy-chat')({
+export const Route = createFileRoute("/api/remy-chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const requestSignal = request.signal
+        const requestSignal = request.signal;
 
         if (requestSignal.aborted) {
-          return new Response(null, { status: 499 })
+          return new Response(null, { status: 499 });
         }
 
-        const abortController = new AbortController()
+        const abortController = new AbortController();
 
         try {
-          const body = await request.json()
-          const { messages, speakerSlug, talkSlug } = body
-          const data = body.data || {}
+          const body = await request.json();
+          const { messages, speakerSlug, talkSlug } = body;
 
           const SYSTEM_PROMPT = `You are Remy, a charming and knowledgeable culinary assistant for the Haute Pâtisserie 2026 conference in Paris. You have a warm, enthusiastic personality and deep appreciation for the art of pastry and baking.
 
@@ -53,35 +52,41 @@ INSTRUCTIONS:
 - Keep responses conversational but informative
 - When recommending sessions, explain why they might be interesting based on the user's query
 
-${speakerSlug ? `CONTEXT: The user is viewing the profile of the speaker with slug "${speakerSlug}".` : ''}
-${talkSlug ? `CONTEXT: The user is viewing the session with slug "${talkSlug}".` : ''}
+${speakerSlug ? `CONTEXT: The user is viewing the profile of the speaker with slug "${speakerSlug}".` : ""}
+${talkSlug ? `CONTEXT: The user is viewing the session with slug "${talkSlug}".` : ""}
 
-Remember: You are the friendly face of Haute Pâtisserie 2026. Make every attendee feel welcome and excited about the culinary journey ahead!`
+Remember: You are the friendly face of Haute Pâtisserie 2026. Make every attendee feel welcome and excited about the culinary journey ahead!`;
 
           // Determine the best available provider
-          let provider: string = 'ollama'
-          let model: string = 'mistral:7b'
+          let provider: string = "ollama";
+          let model: string = "mistral:7b";
           if (process.env.ANTHROPIC_API_KEY) {
-            provider = 'anthropic'
-            model = 'claude-haiku-4-5'
+            provider = "anthropic";
+            model = "claude-haiku-4-5";
           } else if (process.env.OPENAI_API_KEY) {
-            provider = 'openai'
-            model = 'gpt-4o'
+            provider = "openai";
+            model = "gpt-4o";
           } else if (process.env.GEMINI_API_KEY) {
-            provider = 'gemini'
-            model = 'gemini-2.0-flash-exp'
+            provider = "gemini";
+            model = "gemini-2.0-flash-exp";
           }
 
-          // Adapter factory pattern for multi-vendor support
+          // Adapter factory pattern for multi-vendor support. Each adapter
+          // expects a provider-specific literal model union, but `model` is
+          // resolved at runtime from env, so we cast through `any`. `model`
+          // always has a value (defaulted above), so no fallback is needed.
           const adapterConfig = {
-            anthropic: () =>
-              anthropicText((model || 'claude-haiku-4-5') as any),
-            openai: () => openaiText((model || 'gpt-4o') as any),
-            gemini: () => geminiText((model || 'gemini-2.0-flash-exp') as any),
-            ollama: () => ollamaText((model || 'mistral:7b') as any),
-          }
+            // biome-ignore lint/suspicious/noExplicitAny: runtime model string vs SDK literal union
+            anthropic: () => anthropicText(model as any),
+            // biome-ignore lint/suspicious/noExplicitAny: runtime model string vs SDK literal union
+            openai: () => openaiText(model as any),
+            // biome-ignore lint/suspicious/noExplicitAny: runtime model string vs SDK literal union
+            gemini: () => geminiText(model as any),
+            // biome-ignore lint/suspicious/noExplicitAny: runtime model string vs SDK literal union
+            ollama: () => ollamaText(model as any),
+          };
 
-          const adapter = adapterConfig[provider]()
+          const adapter = adapterConfig[provider]();
 
           const stream = chat({
             adapter,
@@ -96,26 +101,27 @@ Remember: You are the friendly face of Haute Pâtisserie 2026. Make every attend
             agentLoopStrategy: maxIterations(5),
             messages,
             abortController,
-          })
+          });
 
-          return toServerSentEventsResponse(stream, { abortController })
+          return toServerSentEventsResponse(stream, { abortController });
+          // biome-ignore lint/suspicious/noExplicitAny: caught error is untyped
         } catch (error: any) {
-          console.error('Remy chat error:', error)
-          if (error.name === 'AbortError' || abortController.signal.aborted) {
-            return new Response(null, { status: 499 })
+          console.error("Remy chat error:", error);
+          if (error.name === "AbortError" || abortController.signal.aborted) {
+            return new Response(null, { status: 499 });
           }
           return new Response(
             JSON.stringify({
-              error: 'Failed to process chat request',
+              error: "Failed to process chat request",
               message: error.message,
             }),
             {
               status: 500,
-              headers: { 'Content-Type': 'application/json' },
+              headers: { "Content-Type": "application/json" },
             },
-          )
+          );
         }
       },
     },
   },
-})
+});

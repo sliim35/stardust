@@ -1,20 +1,40 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowRight, Calendar, MapPin, Users } from 'lucide-react'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { allSpeakers, allTalks } from "content-collections";
+import { ArrowRight, Calendar, MapPin, Users } from "lucide-react";
+import HeroCarousel from "#/components/HeroCarousel";
+import RemyAssistant from "#/components/RemyAssistant";
+import SpeakerCard from "#/components/SpeakerCard";
+import TalkCard from "#/components/TalkCard";
+import { seo } from "#/lib/seo";
+import { faqSchema } from "#/lib/structured-data";
 
-import { allSpeakers, allTalks } from 'content-collections'
-
-import SpeakerCard from '#/components/SpeakerCard'
-import TalkCard from '#/components/TalkCard'
-import RemyAssistant from '#/components/RemyAssistant'
-import HeroCarousel from '#/components/HeroCarousel'
-
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
+  head: () => ({
+    ...seo({
+      title: "Haute Pâtisserie 2026 — World Pastry Conference",
+      description:
+        "Three days of masterclasses with the world’s leading pastry chefs in Paris, March 15–17, 2026.",
+      canonicalPath: "/",
+    }),
+    scripts: [
+      faqSchema([
+        {
+          q: "When and where is Haute Pâtisserie 2026?",
+          a: "March 15–17, 2026 in Paris, France.",
+        },
+        {
+          q: "Who should attend?",
+          a: "Professional and aspiring pastry chefs, bakers, and culinary enthusiasts.",
+        },
+      ]),
+    ],
+  }),
   component: HomePage,
-})
+});
 
 function HomePage() {
-  const featuredSpeakers = allSpeakers.slice(0, 3)
-  const featuredTalks = allTalks.slice(0, 4)
+  const featuredSpeakers = allSpeakers.slice(0, 3);
+  const featuredTalks = allTalks.slice(0, 4);
 
   return (
     <>
@@ -201,5 +221,5 @@ function HomePage() {
         </div>
       </section>
     </>
-  )
+  );
 }

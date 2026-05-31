@@ -1,3 +1,31 @@
-# https://www.robotstxt.org/robotstxt.html
+# robots.txt — allow general + AI crawlers; pointers for AI tooling.
 User-agent: *
-Disallow:
+Allow: /
+
+# AI crawlers / fetchers (explicit allow)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://mdvoy.org/sitemap.xml
+# LLM-readable index: https://mdvoy.org/llms.txt

@@ -9,6 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TalksDotmdRouteImport } from './routes/talks[.]md'
+import { Route as SpeakersDotmdRouteImport } from './routes/speakers[.]md'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as IndexDotmdRouteImport } from './routes/index[.]md'
+import { Route as AboutDotmdRouteImport } from './routes/about[.]md'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TalksIndexRouteImport } from './routes/talks.index'
@@ -17,7 +23,39 @@ import { Route as ScheduleIndexRouteImport } from './routes/schedule.index'
 import { Route as TalksSlugRouteImport } from './routes/talks.$slug'
 import { Route as SpeakersSlugRouteImport } from './routes/speakers.$slug'
 import { Route as ApiRemyChatRouteImport } from './routes/api.remy-chat'
+import { Route as ApiMcpRouteImport } from './routes/api.mcp'
+import { Route as ApiMdSplatRouteImport } from './routes/api.md.$'
 
+const TalksDotmdRoute = TalksDotmdRouteImport.update({
+  id: '/talks.md',
+  path: '/talks.md',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpeakersDotmdRoute = SpeakersDotmdRouteImport.update({
+  id: '/speakers.md',
+  path: '/speakers.md',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexDotmdRoute = IndexDotmdRouteImport.update({
+  id: '/index.md',
+  path: '/index.md',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutDotmdRoute = AboutDotmdRouteImport.update({
+  id: '/about.md',
+  path: '/about.md',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -58,84 +96,192 @@ const ApiRemyChatRoute = ApiRemyChatRouteImport.update({
   path: '/api/remy-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMdSplatRoute = ApiMdSplatRouteImport.update({
+  id: '/api/md/$',
+  path: '/api/md/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/about.md': typeof AboutDotmdRoute
+  '/index.md': typeof IndexDotmdRoute
+  '/llms.txt': typeof LlmsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/speakers.md': typeof SpeakersDotmdRoute
+  '/talks.md': typeof TalksDotmdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/remy-chat': typeof ApiRemyChatRoute
   '/speakers/$slug': typeof SpeakersSlugRoute
   '/talks/$slug': typeof TalksSlugRoute
   '/schedule/': typeof ScheduleIndexRoute
   '/speakers/': typeof SpeakersIndexRoute
   '/talks/': typeof TalksIndexRoute
+  '/api/md/$': typeof ApiMdSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/about.md': typeof AboutDotmdRoute
+  '/index.md': typeof IndexDotmdRoute
+  '/llms.txt': typeof LlmsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/speakers.md': typeof SpeakersDotmdRoute
+  '/talks.md': typeof TalksDotmdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/remy-chat': typeof ApiRemyChatRoute
   '/speakers/$slug': typeof SpeakersSlugRoute
   '/talks/$slug': typeof TalksSlugRoute
   '/schedule': typeof ScheduleIndexRoute
   '/speakers': typeof SpeakersIndexRoute
   '/talks': typeof TalksIndexRoute
+  '/api/md/$': typeof ApiMdSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/about.md': typeof AboutDotmdRoute
+  '/index.md': typeof IndexDotmdRoute
+  '/llms.txt': typeof LlmsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/speakers.md': typeof SpeakersDotmdRoute
+  '/talks.md': typeof TalksDotmdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/remy-chat': typeof ApiRemyChatRoute
   '/speakers/$slug': typeof SpeakersSlugRoute
   '/talks/$slug': typeof TalksSlugRoute
   '/schedule/': typeof ScheduleIndexRoute
   '/speakers/': typeof SpeakersIndexRoute
   '/talks/': typeof TalksIndexRoute
+  '/api/md/$': typeof ApiMdSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/about'
+    | '/about.md'
+    | '/index.md'
+    | '/llms.txt'
+    | '/sitemap.xml'
+    | '/speakers.md'
+    | '/talks.md'
+    | '/api/mcp'
     | '/api/remy-chat'
     | '/speakers/$slug'
     | '/talks/$slug'
     | '/schedule/'
     | '/speakers/'
     | '/talks/'
+    | '/api/md/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
+    | '/about.md'
+    | '/index.md'
+    | '/llms.txt'
+    | '/sitemap.xml'
+    | '/speakers.md'
+    | '/talks.md'
+    | '/api/mcp'
     | '/api/remy-chat'
     | '/speakers/$slug'
     | '/talks/$slug'
     | '/schedule'
     | '/speakers'
     | '/talks'
+    | '/api/md/$'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/about.md'
+    | '/index.md'
+    | '/llms.txt'
+    | '/sitemap.xml'
+    | '/speakers.md'
+    | '/talks.md'
+    | '/api/mcp'
     | '/api/remy-chat'
     | '/speakers/$slug'
     | '/talks/$slug'
     | '/schedule/'
     | '/speakers/'
     | '/talks/'
+    | '/api/md/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AboutDotmdRoute: typeof AboutDotmdRoute
+  IndexDotmdRoute: typeof IndexDotmdRoute
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SpeakersDotmdRoute: typeof SpeakersDotmdRoute
+  TalksDotmdRoute: typeof TalksDotmdRoute
+  ApiMcpRoute: typeof ApiMcpRoute
   ApiRemyChatRoute: typeof ApiRemyChatRoute
   SpeakersSlugRoute: typeof SpeakersSlugRoute
   TalksSlugRoute: typeof TalksSlugRoute
   ScheduleIndexRoute: typeof ScheduleIndexRoute
   SpeakersIndexRoute: typeof SpeakersIndexRoute
   TalksIndexRoute: typeof TalksIndexRoute
+  ApiMdSplatRoute: typeof ApiMdSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/talks.md': {
+      id: '/talks.md'
+      path: '/talks.md'
+      fullPath: '/talks.md'
+      preLoaderRoute: typeof TalksDotmdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/speakers.md': {
+      id: '/speakers.md'
+      path: '/speakers.md'
+      fullPath: '/speakers.md'
+      preLoaderRoute: typeof SpeakersDotmdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/index.md': {
+      id: '/index.md'
+      path: '/index.md'
+      fullPath: '/index.md'
+      preLoaderRoute: typeof IndexDotmdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about.md': {
+      id: '/about.md'
+      path: '/about.md'
+      fullPath: '/about.md'
+      preLoaderRoute: typeof AboutDotmdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -192,18 +338,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRemyChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/md/$': {
+      id: '/api/md/$'
+      path: '/api/md/$'
+      fullPath: '/api/md/$'
+      preLoaderRoute: typeof ApiMdSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AboutDotmdRoute: AboutDotmdRoute,
+  IndexDotmdRoute: IndexDotmdRoute,
+  LlmsDottxtRoute: LlmsDottxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SpeakersDotmdRoute: SpeakersDotmdRoute,
+  TalksDotmdRoute: TalksDotmdRoute,
+  ApiMcpRoute: ApiMcpRoute,
   ApiRemyChatRoute: ApiRemyChatRoute,
   SpeakersSlugRoute: SpeakersSlugRoute,
   TalksSlugRoute: TalksSlugRoute,
   ScheduleIndexRoute: ScheduleIndexRoute,
   SpeakersIndexRoute: SpeakersIndexRoute,
   TalksIndexRoute: TalksIndexRoute,
+  ApiMdSplatRoute: ApiMdSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

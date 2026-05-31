@@ -1,5 +1,24 @@
 Welcome to your new TanStack Start app! 
 
+> **⚠️ This is a demo / playground.** This repository is a sandbox for exercising
+> [TanStack Start](https://tanstack.com/start) functionality — file-based routing,
+> server functions, SSR, the `@tanstack/ai` chat stack, LLMO, and a self-hosted
+> MCP endpoint. The pages you see (the "Haute Pâtisserie" conference site) are
+> **placeholder content** from the starter template, not the real product.
+
+## The actual project lives in `stardust/`
+
+The real idea for this site — a pixel-art **"Memory Galaxy"** with an AI agent
+panel — is a Claude Design handoff bundle under [`stardust/`](./stardust/):
+
+- `stardust/README.md` — handoff instructions for coding agents
+- `stardust/project/` — the HTML/CSS/JS design prototypes, components, and assets
+
+That bundle is the source of truth for what this site will become; the code in
+`src/` will eventually be rebuilt to match it. Until then, treat everything under
+`src/` as demo scaffolding. _(Note: `stardust/`, `docs/`, and `.mcp.json` are
+gitignored, so they stay local.)_
+
 # Getting Started
 
 To run this application:
@@ -368,6 +387,82 @@ Loaders simplify your data fetching logic dramatically. Check out more informati
 # Demo files
 
 Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
+
+# AI & LLM
+
+This playground demonstrates two AI/LLM techniques on TanStack Start. Background
+notes live in `docs/tanstack-ai.md` (gitignored, local).
+
+## 1. LLMO (LLM Optimization)
+
+Make the site legible to AI systems (ChatGPT, Claude, Perplexity) and search.
+
+**What's emitted (all server-rendered):**
+- JSON-LD via route `head().scripts`: `WebSite` + `Person` (root), `ProfilePage`
+  (speakers), `CreativeWork` (talks), `FAQPage` (home), `BreadcrumbList` (nested).
+- Per-route `<title>`, description, OpenGraph, Twitter, and canonical tags.
+
+**Plain surfaces for crawlers/agents:**
+
+| URL | What |
+|---|---|
+| `/robots.txt` | Allows general + AI crawlers; points to the sitemap |
+| `/sitemap.xml` | All pages, generated from content |
+| `/llms.txt` | LLM-readable index in the llms.txt format |
+| `/<page>.md` | Clean markdown for **static** pages: `/about.md`, `/speakers.md`, `/talks.md`, `/index.md` |
+| `/api/md/<path>` | Clean markdown for **any** page incl. dynamic ones, e.g. `/api/md/speakers/<slug>`, `/api/md/talks/<slug>` |
+
+> Note: TanStack file routing can't express a `$slug.md` segment (the param
+> would be the invalid name `slug.md`), so dynamic pages serve markdown via the
+> `/api/md/$` splat route instead of a literal `.md` suffix.
+
+**Add LLMO to a new route** — in the route options:
+
+```tsx
+import { seo } from '#/lib/seo'
+import { faqSchema } from '#/lib/structured-data'
+
+export const Route = createFileRoute('/pricing')({
+  head: () => ({
+    ...seo({ title: 'Pricing', description: '…', canonicalPath: '/pricing' }),
+    scripts: [faqSchema([{ q: '…', a: '…' }])],
+  }),
+  component: Pricing,
+})
+```
+
+Site identity (URL, owner, default OG image) lives in `src/lib/site-config.ts` —
+change it there once and every surface updates. The shared content layer is
+`src/lib/site-content.ts` (powers the sitemap, `llms.txt`, `.md` pages, and MCP).
+
+## 2. AI helper (tanstack CLI + self-hosted MCP)
+
+**For coding agents working in this repo:** see [`AGENTS.md`](./AGENTS.md).
+`tanstack mcp` was removed; use the CLI with `--json`, e.g.:
+
+```sh
+tanstack libraries --json
+tanstack search-docs "loaders" --library router --framework react --json
+tanstack create --list-add-ons --framework React --json
+```
+
+**Connect an agent to the running site over MCP:**
+
+```sh
+pnpm dev   # http://localhost:3000
+claude mcp add --transport http stardust http://localhost:3000/api/mcp
+```
+
+The endpoint (`src/routes/api.mcp.ts`, `POST /api/mcp`) is a minimal, read-only
+MCP server (hand-rolled JSON-RPC over Streamable HTTP) exposing: `search_site`,
+`list_speakers`, `list_talks`, `get_page_markdown`. Quick check:
+
+```sh
+curl -s -X POST http://localhost:3000/api/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+It's also pre-registered for this repo in `.mcp.json` (the `stardust` server).
 
 # Learn More
 
