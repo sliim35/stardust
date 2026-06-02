@@ -11,7 +11,7 @@
 import { buildSeedSky } from "#/lib/galaxy/seed";
 import type { GalaxySky, GalaxyStore, MemoryStar } from "#/lib/galaxy/types";
 
-export function createInMemoryStore(initial?: GalaxySky): GalaxyStore {
+export const createInMemoryStore = (initial?: GalaxySky): GalaxyStore => {
   // Own our copy so a caller-supplied `initial` is never mutated under them.
   const sky: GalaxySky = initial
     ? { backdrop: initial.backdrop, stars: [...initial.stars] }
@@ -43,4 +43,4 @@ export function createInMemoryStore(initial?: GalaxySky): GalaxyStore {
       };
     },
   };
-}
+};

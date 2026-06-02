@@ -23,16 +23,16 @@ export type Mood =
 export type Palette = "ember" | "ice" | "auroral";
 
 /** The dim, decorative procedural galaxy behind everything — reproducible from `seed`. */
-export interface GalaxyBackdrop {
+export type GalaxyBackdrop = {
   seed: number;
   branches: number; // spiral arms (2–5)
   spin: number;
   randomnessPower: number; // ~2.2 core bias
   palette: Palette;
-}
+};
 
 /** One real memory, placed as a star by the agent. */
-export interface MemoryStar {
+export type MemoryStar = {
   id: string; // stable, deep-linkable (the bot's reply links to this)
   text: string; // the memory, already moderated + trimmed by the agent
   mood: Mood;
@@ -45,13 +45,13 @@ export interface MemoryStar {
   who?: string | null; // opt-in attribution; null/absent = anonymous (brief §6)
   egg?: boolean; // the hidden dedication star (reveal on click)
   deep?: boolean; // the "fly-home" deep-story star (separate from the egg)
-}
+};
 
 /** What the frontend reads to draw the sky. */
-export interface GalaxySky {
+export type GalaxySky = {
   backdrop: GalaxyBackdrop;
   stars: MemoryStar[];
-}
+};
 
 /**
  * Transport-agnostic store seam. In-memory now; a KV / Durable-Object impl can be
@@ -59,8 +59,8 @@ export interface GalaxySky {
  * the in-memory impl; the interface is intentionally small so an async transport
  * can wrap it.
  */
-export interface GalaxyStore {
+export type GalaxyStore = {
   getSky(): GalaxySky;
   addStar(star: MemoryStar): void; // append-only; never moves existing stars
   subscribe?(fn: (sky: GalaxySky) => void): () => void; // optional; live-growth later
-}
+};
