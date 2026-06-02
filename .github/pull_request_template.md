@@ -28,6 +28,15 @@ paste command output here
 
 </details>
 
+## Screenshots / visual evidence
+<!-- For any UI-affecting change, attach screenshots (before / after, or the rendered
+     state) — drag images in here, or paste a deploy/preview URL. Write "N/A — no visual
+     change" for pure logic/tooling/data PRs. -->
+
+| Before | After |
+| --- | --- |
+|  |  |
+
 ## Reviewer / QA checklist
 - [ ] ACs met with evidence
 - [ ] Scoped to the story — no unrelated changes

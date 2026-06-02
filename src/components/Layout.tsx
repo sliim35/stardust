@@ -13,7 +13,7 @@ const BACKDROP_STARS = 220;
  * decorative backdrop only — bright, clickable memory stars arrive with the
  * canvas renderer story.
  */
-export function Layout({ children }: { children: React.ReactNode }) {
+export const Layout = ({ children }: { children: React.ReactNode }) => {
   const starfield = useMemo(
     () =>
       starfieldShadow(
@@ -33,4 +33,4 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main className="galaxy__content">{children}</main>
     </div>
   );
-}
+};

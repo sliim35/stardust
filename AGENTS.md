@@ -52,9 +52,12 @@ git history — reintroduce it for the galaxy only when an agent needs to read t
   content.
 - **Code style:** the living conventions guide is `docs/conventions/code-style.md`
   (gitignored — enforced + grown by the `reviewer` phase, `md-review-pr`). Core rules:
-  **DRY / KISS / YAGNI**; **arrow functions** over `function` declarations; **composition
+  **DRY / KISS / YAGNI**; **arrow functions** over `function` declarations; **`type`
+  aliases over `interface`**; **`as const`** for constant literal data; **composition
   over inheritance**; a **functional paradigm**
-  ([Functional-Light-JS](https://github.com/getify/Functional-Light-JS)).
+  ([Functional-Light-JS](https://github.com/getify/Functional-Light-JS)). The arrow-function
+  rule is enforced by Biome — `useArrowFunction` (expressions) + the GritQL plugin
+  `biome-plugins/use-arrow-functions.grit` (declarations).
 
 ## AI SDLC
 
