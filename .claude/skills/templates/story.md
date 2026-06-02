@@ -32,5 +32,8 @@ Pointers to the PRD / ADR / design above and the key constraints
 ## Implementation notes
 <!-- developer appends: approach, files touched, decisions -->
 
+## Code review
+<!-- reviewer (md-review-pr) appends: findings tied to rules, any learned rules, verdict -->
+
 ## QA verdict
 <!-- qa appends: commands run + output evidence, AC pass/fail, sign-off -->

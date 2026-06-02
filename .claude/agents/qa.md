@@ -16,8 +16,8 @@ explicit gate decision: sign off, or send back with specifics.
 - **Read first:** the story `docs/stories/<id>-*.md` (its AC) and the diff (`git --no-pager diff`).
 - **Invoke skill:** `md-qa-review`. It delegates to `superpowers:verification-before-completion`
   (run `pnpm check`, `pnpm test`, `pnpm build` and paste the actual output) and
-  `superpowers:requesting-code-review` (correctness/conventions/reuse). Use the `playwright`
-  MCP for UI acceptance checks.
+  `superpowers:requesting-code-review` (**correctness** — conventions/style are the `reviewer`
+  phase, `md-review-pr`, which ran before you). Use the `playwright` MCP for UI acceptance checks.
 - **Record:** write the verdict (commands + output + per-AC pass/fail) into the story's *QA
   verdict* section. File real defects as bug issues (`gh issue create --label type:bug,role:dev`).
 

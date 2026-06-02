@@ -50,6 +50,11 @@ git history — reintroduce it for the galaxy only when an agent needs to read t
   the clean-slate commit (ADR-0003). The patterns + a re-apply checklist live in
   `docs/tanstack-ai.md`; reintroduce `head()` structured data once the galaxy has crawlable
   content.
+- **Code style:** the living conventions guide is `docs/conventions/code-style.md`
+  (gitignored — enforced + grown by the `reviewer` phase, `md-review-pr`). Core rules:
+  **DRY / KISS / YAGNI**; **arrow functions** over `function` declarations; **composition
+  over inheritance**; a **functional paradigm**
+  ([Functional-Light-JS](https://github.com/getify/Functional-Light-JS)).
 
 ## AI SDLC
 
@@ -64,7 +69,8 @@ writing-plans, verification, code-review, worktrees) rather than re-implementing
 `orchestrator` routes → `researcher`/`md-research` → `architect`/`md-write-prd` +
 `md-plan-architecture` → `ui-designer`/`md-design-ui` (if visual) →
 `task-creator`/`md-create-story` (+ GitHub issue) → `backlog-analyzer`/`md-groom-backlog`
-→ `developer`/`md-implement` (TDD) → `qa`/`md-qa-review` (gate) → `devops`/`md-deploy`
+→ `developer`/`md-implement` (TDD) → `reviewer`/`md-review-pr` (conventions + learning) →
+`qa`/`md-qa-review` (gate) → `devops`/`md-deploy`
 (close issue). Full diagram + gates: `.claude/skills/references/sdlc-loop.md`.
 
 ### The docs/ contract — read before you act, write after you decide
@@ -88,6 +94,7 @@ issue bodies must duplicate goal + acceptance criteria. See
 | `task-creator` | slicing scope into stories+issues | `md-create-story` | `stories/` |
 | `backlog-analyzer` | grooming / "what's next?" | `md-groom-backlog` | story status, issues |
 | `developer` | a prioritized story is ready to build | `md-implement` | `src/`, story notes |
+| `reviewer` | a PR is open at `in-review` (before QA) | `md-review-pr` | `conventions/code-style.md`, story Code-review |
 | `qa` | a story is at `in-review` | `md-qa-review` | story QA verdict, bug issues |
 | `devops` | QA signed off; deploy/wrangler/CI | `md-deploy` | deploy config/notes |
 
