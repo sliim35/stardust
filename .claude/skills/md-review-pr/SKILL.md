@@ -44,8 +44,8 @@ the learning loop; correctness/AC verification is QA's gate, not this one.
 4. **Output.** **Default — post to the PR under the review bot's identity** so findings are
    attributable to the reviewer (`reviewer-stardust-project[bot]`), not the human:
    - **Mint the bot token** with the **`gh-token`** extension — key from **1Password at mint-time**
-     (ADR-0005 / F2; never a resident file):
-     `BOT_TOKEN="$(gh token generate --app-id 3942207 --installation-id 137501061 --base64-key "$(op read 'op://Integrations/<reviewer-app>/private key' | base64 | tr -d '\n')" --token-only)"`.
+     (ADR-0005 / F2; never a resident file; the `op` field holds the key base64-encoded):
+     `BOT_TOKEN="$(gh token generate --app-id 3942207 --installation-id 137501061 --base64-key "$(op read 'op://Integrations/github app/credential')" --token-only)"`.
      **Graceful fallback:** if minting fails (no `op` session / extension absent), drop `GH_TOKEN`
      and post with the default `gh` auth (as the human) — never block the review on the bot.
      Setup: `scripts/sdlc/README.md`.

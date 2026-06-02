@@ -12,12 +12,13 @@ resident file):
 ```bash
 BOT_TOKEN="$(gh token generate \
   --app-id 3942207 --installation-id 137501061 \
-  --base64-key "$(op read 'op://Integrations/<reviewer-app>/private key' | base64 | tr -d '\n')" \
+  --base64-key "$(op read 'op://Integrations/github app/credential')" \
   --token-only)"
 GH_TOKEN="$BOT_TOKEN" gh api repos/sliim35/stardust/pulls/<pr>/reviews ...   # posts as the bot
 ```
 
-- `--base64-key` takes the key as a **string** (no file); `op read … | base64` keeps it off disk.
+- The `op` field (`…/credential`) stores the key **base64-encoded**, so `--base64-key` reads it
+  directly — no file, nothing on disk, no inline re-encoding.
 - `--token-only` prints just the token (**no `jq`**).
 - `gh token generate` is a `gh` subcommand → runs under the `reviewer` agent's existing `Bash(gh:*)`.
 - App ids are non-secret (review app `reviewer-stardust-project`); `--installation-id` could be omitted
@@ -26,8 +27,10 @@ GH_TOKEN="$BOT_TOKEN" gh api repos/sliim35/stardust/pulls/<pr>/reviews ...   # p
 ### One-time owner setup (an agent can't self-apply the perms)
 1. **Install the extension** — `gh extension install Link-/gh-token`. Pin it to a reviewed
    release/commit for supply-chain hygiene.
-2. **Store the App `.pem` in 1Password** (vault `Integrations`, the ADR-0004 item) and **shred any
-   local copy** — `rm ~/Downloads/reviewer-stardust-project.*.private-key.pem`. No resident key.
+2. **Store the App key (base64) in 1Password** — item **`github app`** (vault `Integrations`), field
+   **`credential`** = `base64 -i key.pem | tr -d '\n'` (a one-liner; the concealed field is single-line,
+   so base64 sidesteps PEM newline-stripping). Then **shred the local copy** —
+   `rm ~/Downloads/reviewer-stardust-project.*.private-key.pem`. No resident key.
 3. **Allow the key-touch** in `.claude/settings.local.json` `permissions.allow`: **`Bash(op read:*)`**
    (and `Bash(gh token:*)` if your local auto-mode gates it). **No `Bash(node …)` grant and no
    `reviewer.md` `tools:` edit** — that's the simplification over the retired hand-rolled minter.
