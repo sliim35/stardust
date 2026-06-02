@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: SDLC knowledge base (local docs/)
+    url: https://github.com/sliim35/stardust
+    about: "Read docs/README.md and AGENTS.md § AI SDLC before opening an issue. Stories are 1:1 with issues."
