@@ -73,8 +73,9 @@ writing-plans, verification, code-review, worktrees) rather than re-implementing
 `md-plan-architecture` → `ui-designer`/`md-design-ui` (if visual) →
 `task-creator`/`md-create-story` (+ GitHub issue) → `backlog-analyzer`/`md-groom-backlog`
 → `developer`/`md-implement` (TDD) → `reviewer`/`md-review-pr` (conventions + learning) →
-`qa`/`md-qa-review` (gate) → `devops`/`md-deploy`
-(close issue). Full diagram + gates: `.claude/skills/references/sdlc-loop.md`.
+`qa`/`md-qa-review` (gate) → `devops`/`md-deploy` (close issue) →
+`orchestrator`/`md-learn` (retro: distill the session → route to docs/memory/skills).
+Full diagram + gates: `.claude/skills/references/sdlc-loop.md`.
 
 ### The docs/ contract — read before you act, write after you decide
 
@@ -90,7 +91,7 @@ issue bodies must duplicate goal + acceptance criteria. See
 
 | Agent | Invoke when… | Primary skill | Owns in docs/ |
 |---|---|---|---|
-| `orchestrator` | starting work / unsure what's next | — (routes) | — |
+| `orchestrator` | starting work / unsure what's next; post-merge → run the retro | — (routes) · `md-learn` | `memory`, `decisions/` |
 | `researcher` | there's an unknown to de-risk | `md-research` | `research/` |
 | `architect` | design/stack/ADR decisions, or a PRD | `md-plan-architecture`, `md-write-prd` | `architecture/`, `product/` |
 | `ui-designer` | a visual feature needs a spec | `md-design-ui` | `design/` |
