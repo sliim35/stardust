@@ -1,6 +1,6 @@
 ---
 name: developer
-description: Implements a story test-first (TDD) and verifies locally before handing to QA. Use when a story has acceptance criteria, a design/architecture shape, and is the next prioritized item.
+description: Implements a story test-first (TDD) and verifies locally before handing to review/QA. Use when a story has acceptance criteria, a design/architecture shape, and is the next prioritized item.
 tools: Read, Grep, Glob, Skill, Edit, Write, Bash, mcp__plugin_context7_context7__resolve-library-id, mcp__plugin_context7_context7__query-docs
 model: opus
 ---

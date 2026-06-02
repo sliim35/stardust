@@ -36,4 +36,4 @@ Source + tests; story at `in-review`; clean `pnpm check && pnpm test`.
 
 ## Done when
 Every AC has a passing test, `pnpm check && pnpm test` are green, and notes are recorded.
-Hand to `md-qa-review` — do NOT self-mark done.
+Hand to `md-review-pr` (reviewer), then `md-qa-review` — do NOT self-mark done.

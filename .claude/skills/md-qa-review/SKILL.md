@@ -20,8 +20,9 @@ After the developer reports a story at `in-review`.
    `playwright` MCP for UI acceptance checks where relevant.
 2. **Check each AC** explicitly — tick the boxes that genuinely pass; for any that fail,
    say so with the failing output.
-3. **Review the diff** using the superpowers `requesting-code-review` skill for
-   correctness, conventions, and reuse.
+3. **Review the diff** for **correctness** using the superpowers `requesting-code-review`
+   skill. (Conventions/style + the learning loop are the `reviewer` phase — `md-review-pr`
+   runs before you; don't re-litigate them here.)
 4. **Record** the verdict (commands + output + per-AC pass/fail) in the story's *QA verdict*
    section. For real defects, open a bug issue:
    `gh issue create --label "type:bug,role:dev" …`.
