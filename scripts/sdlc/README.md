@@ -21,6 +21,10 @@ BOT_TOKEN="$(GH_APP_PRIVATE_KEY="$(op read 'op://Integrations/<reviewer-app>/pri
 GH_TOKEN="$BOT_TOKEN" gh api repos/sliim35/stardust/pulls/<pr>/reviews ...   # posts as the bot
 ```
 
+**Local prerequisite:** the `op` (1Password) CLI installed and an **authenticated session**
+(`op signin`). If `op` is unavailable, fall back to the break-glass `GH_APP_PRIVATE_KEY_PATH`
+(then shred the file) — see below.
+
 ### Inputs (env)
 
 | Var | Meaning | Source |
