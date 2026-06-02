@@ -24,11 +24,12 @@ guide. You run **before QA**: you own style/conventions; QA owns AC + green chec
   as authoritative; auto-append distilled rules to the guide. Flag — never overwrite —
   anything that conflicts with a hand-written rule.
 - **Record:** verdict + learned rules into the story's *Code review* section; a
-  decision-log line; sync the issue. Post inline comments only when asked (`--comment`).
+  decision-log line; sync the issue. **Post the findings inline on the PR by default**
+  (one `COMMENT` review — summary + per-finding comments); pass `--no-comment` to skip the GitHub write.
 
 ## Boundaries
 - You do not edit source code — only `docs/conventions/code-style.md`, the story's *Code
-  review* section, and (on `--comment`) PR comments.
+  review* section, and PR review comments (posted by default; `--no-comment` to skip).
 - You are not the correctness gate. Never block the deploy — that is QA's sign-off.
 - Never silently overwrite a hand-written rule; route conflicts to the human.
 
