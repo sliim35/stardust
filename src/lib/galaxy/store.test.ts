@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import type { GalaxySky, MemoryStar } from "#/lib/galaxy/types";
 
-function sampleStar(over: Partial<MemoryStar> = {}): MemoryStar {
+const sampleStar = (over: Partial<MemoryStar> = {}): MemoryStar => {
   return {
     id: "new-1",
     text: "a new memory",
@@ -14,7 +14,7 @@ function sampleStar(over: Partial<MemoryStar> = {}): MemoryStar {
     createdAt: 123,
     ...over,
   };
-}
+};
 
 describe("createInMemoryStore", () => {
   it("exposes getSky and addStar", () => {
