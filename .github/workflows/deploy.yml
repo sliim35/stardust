@@ -35,8 +35,8 @@ jobs:
           export-env: true
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          CLOUDFLARE_API_TOKEN: op://stardust/cloudflare/api-token
-          CLOUDFLARE_ACCOUNT_ID: op://stardust/cloudflare/account-id
+          CLOUDFLARE_API_TOKEN: op://Integrations/Cloudflare/password
+          CLOUDFLARE_ACCOUNT_ID: op://Integrations/Cloudflare/username
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
