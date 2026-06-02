@@ -41,19 +41,27 @@ the learning loop; correctness/AC verification is QA's gate, not this one.
      existing rules. If a signal **contradicts a hand-written rule**, put it under
      `## Conflicts to resolve (human)` — never overwrite. Advance `last_learned` and
      bump `updated`.
-4. **Output.** **Default — post to the PR:** inline comments anchored to each finding's
-   `file:line` (severity · cited rule · suggested fix) + a summary review, as a single
-   `COMMENT` review (`gh api repos/{owner}/{repo}/pulls/<pr>/reviews` with a `comments[]`
-   array — own-PRs can't `APPROVE`/`REQUEST_CHANGES`, so use `event: COMMENT`). Always also
-   emit the markdown verdict in chat. Pass **`--no-comment`** to skip writing to GitHub
-   (dry run, or a PR you don't own).
+4. **Output.** **Default — post to the PR under the review bot's identity** so findings are
+   attributable to the reviewer (`reviewer-stardust-project[bot]`), not the human:
+   - **Mint the bot token:** `BOT_TOKEN="$(node scripts/sdlc/gh-app-token.mjs)"` — it reads the
+     App key from `GH_APP_PRIVATE_KEY_B64` (agent secrets / env). **Graceful fallback:** if it
+     can't mint (no key in this run context), drop `GH_TOKEN` and post with the default `gh`
+     auth (as the human) — never block the review on the bot.
+   - **Post** one `COMMENT` review: `GH_TOKEN="$BOT_TOKEN" gh api
+     repos/{owner}/{repo}/pulls/<pr>/reviews` with a `comments[]` array — a summary + per-finding
+     inline comments anchored to `file:line` (severity · cited rule · suggested fix). The bot
+     isn't the PR author, so `REQUEST_CHANGES` is available too; still default to `COMMENT`
+     (don't gate merges — that's QA).
+   Always also emit the markdown verdict in chat. Pass **`--no-comment`** to skip the GitHub
+   write (dry run, or a PR you don't own). Bot setup: `scripts/sdlc/README.md`.
 5. **Record.** Write the verdict + any new learned rules into the story's *Code review*
    section; append a line to `docs/decisions/decision-log.md`; sync the issue (label/comment).
 
 ## Output
-Inline PR comments + a summary review **posted to the PR by default** (`--no-comment` to
-skip); a markdown code-review verdict (findings cited against rules); an updated
-`docs/conventions/code-style.md`.
+Inline PR comments + a summary review **posted to the PR by default** as
+`reviewer-stardust-project[bot]` (`--no-comment` to skip; falls back to your `gh` auth if the
+App key isn't available); a markdown code-review verdict (findings cited against rules); an
+updated `docs/conventions/code-style.md`.
 
 ## Delegates to
 `code-review` (built-in) / `superpowers:requesting-code-review`; `gh` CLI.
