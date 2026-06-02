@@ -41,20 +41,24 @@ the learning loop; correctness/AC verification is QA's gate, not this one.
      existing rules. If a signal **contradicts a hand-written rule**, put it under
      `## Conflicts to resolve (human)` — never overwrite. Advance `last_learned` and
      bump `updated`.
-4. **Output.** Default: a markdown review verdict — findings grouped by severity, each
-   tied to a rule. With **`--comment`**: also post inline comments + a summary review
-   (`gh pr review <pr> --comment`, inline via `gh api …/pulls/<pr>/comments`).
+4. **Output.** **Default — post to the PR:** inline comments anchored to each finding's
+   `file:line` (severity · cited rule · suggested fix) + a summary review, as a single
+   `COMMENT` review (`gh api repos/{owner}/{repo}/pulls/<pr>/reviews` with a `comments[]`
+   array — own-PRs can't `APPROVE`/`REQUEST_CHANGES`, so use `event: COMMENT`). Always also
+   emit the markdown verdict in chat. Pass **`--no-comment`** to skip writing to GitHub
+   (dry run, or a PR you don't own).
 5. **Record.** Write the verdict + any new learned rules into the story's *Code review*
    section; append a line to `docs/decisions/decision-log.md`; sync the issue (label/comment).
 
 ## Output
-A code-review verdict (findings cited against rules); an updated
-`docs/conventions/code-style.md`; inline PR comments when `--comment` is passed.
+Inline PR comments + a summary review **posted to the PR by default** (`--no-comment` to
+skip); a markdown code-review verdict (findings cited against rules); an updated
+`docs/conventions/code-style.md`.
 
 ## Delegates to
 `code-review` (built-in) / `superpowers:requesting-code-review`; `gh` CLI.
 
 ## Done when
 Findings are cited against rules, the learning step ran (this PR's comments read,
-watermark advanced), the verdict is recorded, and — if `--comment` — posted to the PR.
+watermark advanced), the verdict is recorded, and posted to the PR (unless `--no-comment`).
 Hand to `md-qa-review`. Conventions/style is your job, not QA's.
