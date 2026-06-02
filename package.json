@@ -1,6 +1,7 @@
 {
     "name": "stardust-mdvoy-org",
     "private": true,
+    "packageManager": "pnpm@10.26.0",
     "type": "module",
     "imports": {
         "#/*": "./src/*"
