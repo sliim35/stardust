@@ -43,10 +43,12 @@ the learning loop; correctness/AC verification is QA's gate, not this one.
      bump `updated`.
 4. **Output.** **Default — post to the PR under the review bot's identity** so findings are
    attributable to the reviewer (`reviewer-stardust-project[bot]`), not the human:
-   - **Mint the bot token:** `BOT_TOKEN="$(node scripts/sdlc/gh-app-token.mjs)"` — it reads the
-     App key from `GH_APP_PRIVATE_KEY_B64` (agent secrets / env). **Graceful fallback:** if it
-     can't mint (no key in this run context), drop `GH_TOKEN` and post with the default `gh`
-     auth (as the human) — never block the review on the bot.
+   - **Mint the bot token** — source the App key from **1Password at mint-time** (ADR-0005; never a
+     resident file) and feed the minter's raw env input:
+     `BOT_TOKEN="$(GH_APP_PRIVATE_KEY="$(op read 'op://Integrations/<reviewer-app>/private key')" node scripts/sdlc/gh-app-token.mjs)"`.
+     (Cloud-agent runs instead inject `GH_APP_PRIVATE_KEY_B64` and skip `op`.) **Graceful
+     fallback:** if minting fails (no `op` session / no key), drop `GH_TOKEN` and post with the
+     default `gh` auth (as the human) — never block the review on the bot.
    - **Post** one `COMMENT` review: `GH_TOKEN="$BOT_TOKEN" gh api
      repos/{owner}/{repo}/pulls/<pr>/reviews` with a `comments[]` array — a summary + per-finding
      inline comments anchored to `file:line` (severity · cited rule · suggested fix). The bot
