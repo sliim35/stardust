@@ -1,0 +1,131 @@
+name: Preview
+
+# Deploy every PR branch to a Cloudflare Workers *preview version* (never production
+# traffic) and post its URL on the PR, so QA can verify visually before merge to `main`.
+# Production deploys stay in `deploy.yml` (push to `main`). See ./README.md.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+# Supersede in-flight preview runs for the same PR. Distinct group from the production
+# `deploy-production` group (which is never cancelled).
+concurrency:
+  group: preview-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read # checkout
+  pull-requests: write # post / update the sticky preview comment
+
+jobs:
+  preview:
+    name: upload preview version (Cloudflare Workers)
+    runs-on: ubuntu-latest
+    # Fork PRs can't read secrets — we use `pull_request` (NOT `pull_request_target`), so
+    # untrusted code never sees them. Skip forks: preview is best-effort and must never
+    # block a PR. Same-repo branches only.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    environment:
+      name: preview
+      url: ${{ steps.upload.outputs.preview_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Is the preview env wired up? `OP_SERVICE_ACCOUNT_TOKEN` lives on the `preview`
+      # GitHub Environment (see README). If it's missing (e.g. before one-time setup),
+      # degrade gracefully: post a hint and finish green. Secrets can't be read in `if:`
+      # directly, so surface presence as a step output first.
+      - id: guard
+        env:
+          OP_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          if [ -n "$OP_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install deps
+        if: success() && steps.guard.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: success() && steps.guard.outputs.configured == 'true'
+        run: pnpm build
+
+      # The ONLY GitHub secret is OP_SERVICE_ACCOUNT_TOKEN; every real secret is pulled
+      # from 1Password at runtime via op:// references (ADR-0004) — identical to deploy.yml.
+      - name: Load secrets from 1Password
+        if: success() && steps.guard.outputs.configured == 'true'
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CLOUDFLARE_API_TOKEN: op://Integrations/Cloudflare/password
+          CLOUDFLARE_ACCOUNT_ID: op://Integrations/Cloudflare/username
+
+      # Upload a new *version* only — no production promotion. wrangler reads
+      # CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID from the env exported above. Capture
+      # stdout to parse the "Version Preview URL" line it prints (workers.dev).
+      - name: Upload preview version
+        id: upload
+        if: success() && steps.guard.outputs.configured == 'true'
+        run: |
+          set -o pipefail
+          pnpm exec wrangler versions upload 2>&1 | tee /tmp/wrangler-versions.txt
+          url="$(grep -oiE 'https://[a-z0-9.-]+\.workers\.dev' /tmp/wrangler-versions.txt | head -n1 || true)"
+          echo "preview_url=$url" >> "$GITHUB_OUTPUT"
+
+      # One sticky comment per PR, updated in place (matched by the hidden marker).
+      # Runs even on failure so QA always sees current status; never runs for forks.
+      - name: Sticky preview comment
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        env:
+          CONFIGURED: ${{ steps.guard.outputs.configured }}
+          UPLOAD_OUTCOME: ${{ steps.upload.outcome }}
+          PREVIEW_URL: ${{ steps.upload.outputs.preview_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const marker = '<!-- preview-deploy -->';
+            const sha = (process.env.HEAD_SHA || '').slice(0, 7);
+            const configured = process.env.CONFIGURED === 'true';
+            const ok = process.env.UPLOAD_OUTCOME === 'success';
+            const url = process.env.PREVIEW_URL;
+            let body;
+            if (!configured) {
+              body = `${marker}\n### 🛰️ Preview deploy — not configured\n\n` +
+                'Add `OP_SERVICE_ACCOUNT_TOKEN` to the **`preview`** GitHub Environment ' +
+                '(Settings → Environments) to enable per-PR preview deploys. ' +
+                'See `.github/workflows/README.md`.';
+            } else if (ok && url) {
+              body = `${marker}\n### 🛰️ Preview deploy\n\n` +
+                `**[Open preview ↗](${url})**\n\n\`${url}\`\n\n` +
+                `Cloudflare Workers preview version for \`${sha}\` — updates on every push, not production.`;
+            } else {
+              body = `${marker}\n### 🛰️ Preview deploy — failed\n\n` +
+                `The preview version for \`${sha}\` ${ok
+                  ? 'uploaded but no URL was found (are Preview URLs enabled on the Worker?)'
+                  : 'failed to upload'}. See the workflow run logs.`;
+            }
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body,
+              });
+            }
