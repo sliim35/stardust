@@ -1,8 +1,11 @@
 # AGENTS.md — guidance for coding agents in this repo
 
 This is a **TanStack Start playground** (Cloudflare Workers target). The real
-product idea lives in `stardust/` (gitignored). Treat `src/` as demo scaffolding
-— currently the "Haute Pâtisserie 2026" sample content.
+product idea lives in `stardust/` (gitignored). As of the clean-slate first commit
+(**ADR-0003**), `src/` is the **Memory Galaxy shell** — a root `/` route + a `Layout`
+(`src/components/Layout.tsx`) rendering a deterministic, seeded pixel-art starfield
+backdrop (`src/lib/starfield.ts`). The earlier "Haute Pâtisserie 2026" demo was deleted
+wholesale; recover any pattern from git history (e.g. `git show cb17529:src/lib/seo.ts`).
 
 ## TanStack introspection: use the CLI, not the old MCP server
 
@@ -10,29 +13,30 @@ product idea lives in `stardust/` (gitignored). Treat `src/` as demo scaffolding
 have a stale MCP client config pointing at `@tanstack/cli mcp`, remove it. Call
 the CLI directly with `--json` for deterministic parsing.
 
-| Need | Command |
+**The CLI is not installed in this repo — run it on demand via `pnpm dlx tanstack …`**
+(equivalently `pnx tanstack` / `npx tanstack`). The binary is `tanstack`.
+
+| Need | Command (prefix with `pnpm dlx`) |
 |---|---|
 | List add-ons | `tanstack create --list-add-ons --framework React --json` |
 | Add-on details | `tanstack create --addon-details <name> --framework React --json` |
 | Scaffold an app | `tanstack create my-app --framework React --add-ons <a,b>` |
 | List libraries | `tanstack libraries --json` |
-| Read a doc | `tanstack doc query framework/react/overview --json` |
+| Read a doc | `tanstack doc <library> <path> --json` (e.g. `tanstack doc react-start framework/react/overview --json`) |
 | Search docs | `tanstack search-docs "server functions" --library start --json` |
 | Ecosystem | `tanstack ecosystem --category database --json` |
 
-Recommended workflow: always pass `--json`, parse the structured output.
+Recommended workflow: always pass `--json`, parse the structured output. Full reference:
+<https://tanstack.com/cli/latest/docs/cli-reference>. (The doc subcommand is
+`tanstack doc <library> <path>` — *not* `tanstack doc query …`.)
 
-## This app's own MCP endpoint (connect an agent to the running site)
+## This app's own MCP endpoint (retired — ADR-0003)
 
-This repo hosts a minimal, read-only MCP server at `POST /api/mcp`
-(see `src/routes/api.mcp.ts`). Connect Claude Code to the running dev server:
-
-```sh
-pnpm dev   # serves http://localhost:3000
-claude mcp add --transport http stardust http://localhost:3000/api/mcp
-```
-
-Tools exposed: `search_site`, `list_speakers`, `list_talks`, `get_page_markdown`.
+The demo hosted a read-only MCP server at `POST /api/mcp` (conference tools:
+`search_site`, `list_speakers`, …). It was **deleted in the clean-slate commit** along
+with the rest of the demo. The *pattern* (a zero-dependency Streamable-HTTP MCP route,
+Workers-friendly and stateless) is documented in `docs/tanstack-ai.md` and recoverable from
+git history — reintroduce it for the galaxy only when an agent needs to read the live sky.
 
 ## Conventions
 
@@ -42,9 +46,10 @@ Tools exposed: `search_site`, `list_speakers`, `list_talks`, `get_page_markdown`
   incompatible with Vitest's SSR environment.
 - Deploy: Cloudflare Workers via `pnpm deploy` (wrangler).
 - Content: markdown in `content/` via `@content-collections`.
-- LLMO: structured data/meta live in route `head()`s; helpers in `src/lib/`
-  (`site-config.ts`, `structured-data.ts`, `seo.ts`, `site-content.ts`). See the
-  README "AI & LLM" section.
+- LLMO: the conference LLMO helpers (`seo.ts`, `structured-data.ts`, …) were retired in
+  the clean-slate commit (ADR-0003). The patterns + a re-apply checklist live in
+  `docs/tanstack-ai.md`; reintroduce `head()` structured data once the galaxy has crawlable
+  content.
 
 ## AI SDLC
 

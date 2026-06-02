@@ -11,13 +11,7 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 
 export default defineConfig({
   resolve: {
-    alias: [
-      {
-        find: 'content-collections',
-        replacement: r('./.content-collections/generated'),
-      },
-      { find: /^#\/(.*)$/, replacement: `${r('./src')}/$1` },
-    ],
+    alias: [{ find: /^#\/(.*)$/, replacement: `${r('./src')}/$1` }],
   },
   test: {
     environment: 'node',

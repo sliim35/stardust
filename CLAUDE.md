@@ -1,12 +1,14 @@
 # CLAUDE.md
 
-This is a TanStack Start playground. **For agent guidance, tooling, and the
-self-hosted MCP endpoint, read [AGENTS.md](./AGENTS.md).**
+This is a TanStack Start playground. **For agent guidance and tooling, read
+[AGENTS.md](./AGENTS.md).**
 
 Quick commands: `pnpm dev` · `pnpm test` · `pnpm check` · `pnpm build`.
 
 The real product idea (a pixel-art "Memory Galaxy") is a Claude Design handoff
-bundle in `stardust/` (gitignored); `src/` is demo scaffolding for now.
+bundle in `stardust/` (gitignored). As of the clean-slate first commit (ADR-0003),
+`src/` is the Memory Galaxy **shell** — a `/` route + a `Layout` rendering a seeded
+pixel-art starfield backdrop.
 
 ## AI SDLC
 
