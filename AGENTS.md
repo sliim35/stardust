@@ -91,7 +91,7 @@ issue bodies must duplicate goal + acceptance criteria. See
 
 | Agent | Invoke when… | Primary skill | Owns in docs/ |
 |---|---|---|---|
-| `orchestrator` | starting work / unsure what's next | — (routes) | — |
+| `orchestrator` | starting work / unsure what's next; post-merge → run the retro | — (routes) · `md-learn` | `memory`, `decisions/` |
 | `researcher` | there's an unknown to de-risk | `md-research` | `research/` |
 | `architect` | design/stack/ADR decisions, or a PRD | `md-plan-architecture`, `md-write-prd` | `architecture/`, `product/` |
 | `ui-designer` | a visual feature needs a spec | `md-design-ui` | `design/` |
@@ -101,7 +101,6 @@ issue bodies must duplicate goal + acceptance criteria. See
 | `reviewer` | a PR is open at `in-review` (before QA) | `md-review-pr` | `conventions/code-style.md`, story Code-review |
 | `qa` | a story is at `in-review` | `md-qa-review` | story QA verdict, bug issues |
 | `devops` | QA signed off; deploy/wrangler/CI | `md-deploy` | deploy config/notes |
-| `orchestrator` | a story merged — run the retro | `md-learn` | `decisions/`, `memory` |
 
 ### Backlog conventions (GitHub Issues)
 

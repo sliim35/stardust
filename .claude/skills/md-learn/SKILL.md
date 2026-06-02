@@ -49,8 +49,8 @@ Ratified `docs/` + `memory/` updates, issues for any skill gaps, and a one-line 
 Nothing is written without approval (step 4).
 
 ## Delegates to
-`dream` (memory-file format/write); `md-review-pr` (owns conventions — **flag, don't write**);
-`consolidate-memory` (periodic memory hygiene); `gh` (skill-gap issues).
+`dream` (memory-file format/write + prune/index hygiene); `md-review-pr` (owns conventions —
+**flag, don't write**); `gh` (skill-gap issues).
 
 ## Done when
 Every actionable learning is routed + recorded (or consciously dropped), nothing is duplicated, and
