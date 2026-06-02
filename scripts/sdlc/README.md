@@ -2,57 +2,46 @@
 
 Glue scripts for the AI SDLC.
 
-## `gh-app-token.mjs` — review-bot installation token
+## Review-bot installation token — via the `gh-token` extension (ADR-0005, F2 resolved)
 
-Mints a GitHub App **installation access token** (valid **~1 hour**) so `md-review-pr` can post PR
-reviews as the App's own bot identity — **`reviewer-stardust-project[bot]`** — instead of as the
-repo owner (`@sliim35`). It signs a short-lived (**~5 min**) App JWT, exchanges it for the
-installation token, and prints **only** the token to stdout. Zero dependencies (Node 24 built-ins);
-no third-party code touches the private key.
-
-### Sourcing the key — 1Password at mint-time (ADR-0005)
-
-The happy path **never leaves the key on disk** (ADR-0004 / ADR-0005). Source it from 1Password and
-pipe it through the minter's raw env input:
+`md-review-pr` posts its review as the App's own bot identity — **`reviewer-stardust-project[bot]`** —
+instead of as the repo owner (`@sliim35`). The installation token (valid **~1 h**) is minted with the
+**`gh-token`** gh extension, with the App private key sourced from **1Password at mint-time** (never a
+resident file):
 
 ```bash
-BOT_TOKEN="$(GH_APP_PRIVATE_KEY="$(op read 'op://Integrations/<reviewer-app>/private key')" \
-  node scripts/sdlc/gh-app-token.mjs)"
+BOT_TOKEN="$(gh token generate \
+  --app-id 3942207 --installation-id 137501061 \
+  --base64-key "$(op read 'op://Integrations/<reviewer-app>/private key' | base64 | tr -d '\n')" \
+  --token-only)"
 GH_TOKEN="$BOT_TOKEN" gh api repos/sliim35/stardust/pulls/<pr>/reviews ...   # posts as the bot
 ```
 
-**Local prerequisite:** the `op` (1Password) CLI installed and an **authenticated session**
-(`op signin`). If `op` is unavailable, fall back to the break-glass `GH_APP_PRIVATE_KEY_PATH`
-(then shred the file) — see below.
+- `--base64-key` takes the key as a **string** (no file); `op read … | base64` keeps it off disk.
+- `--token-only` prints just the token (**no `jq`**).
+- `gh token generate` is a `gh` subcommand → runs under the `reviewer` agent's existing `Bash(gh:*)`.
+- App ids are non-secret (review app `reviewer-stardust-project`); `--installation-id` could be omitted
+  (gh-token defaults to the first install) but is pinned here for determinism.
 
-### Inputs (env)
+### One-time owner setup (an agent can't self-apply the perms)
+1. **Install the extension** — `gh extension install Link-/gh-token`. Pin it to a reviewed
+   release/commit for supply-chain hygiene.
+2. **Store the App `.pem` in 1Password** (vault `Integrations`, the ADR-0004 item) and **shred any
+   local copy** — `rm ~/Downloads/reviewer-stardust-project.*.private-key.pem`. No resident key.
+3. **Allow the key-touch** in `.claude/settings.local.json` `permissions.allow`: **`Bash(op read:*)`**
+   (and `Bash(gh token:*)` if your local auto-mode gates it). **No `Bash(node …)` grant and no
+   `reviewer.md` `tools:` edit** — that's the simplification over the retired hand-rolled minter.
 
-| Var | Meaning | Source |
-|---|---|---|
-| `GH_APP_PRIVATE_KEY` | raw PEM (**secret**) — the happy path | `op read …` (1Password) |
-| `GH_APP_PRIVATE_KEY_B64` | base64 PEM (**secret**) | cloud-agent **Agents secrets** env |
-| `GH_APP_PRIVATE_KEY_PATH` | path to a `.pem` | **break-glass only** (1Password unavailable) — shred after use |
-| `GH_APP_ID` | App id (default `3942207`) | non-secret |
-| `GH_APP_INSTALLATION_ID` | installation id (default `137501061`) | non-secret |
+**Local prerequisite:** `op` (1Password CLI) installed and an **authenticated session** (`op signin`),
+plus the `gh-token` extension. With no key, `md-review-pr` falls back to your own `gh` auth (posts as
+you) — the bot never blocks a review.
 
-### One-time owner setup (ADR-0005 — the agent can't self-apply these)
+The App grants only **Pull requests: write** (no Contents) — the bot can comment/review but **cannot
+push code**; tokens last ~1 h and the key is revocable from App settings. **Supply-chain note:**
+`gh-token` is a third-party Go extension that receives the App private key — pin it to a reviewed
+version; the residual risk is bounded by the least-privilege App + short-lived tokens.
 
-So the `reviewer` agent mints **unattended** locally, the **owner** applies these (an agent can't
-widen its own permissions; the auto-mode classifier blocks self-modification):
-
-1. Store the App `.pem` in **1Password** (vault `Integrations`, the ADR-0004 item) and **shred any
-   local copy** — `rm ~/Downloads/reviewer-stardust-project.*.private-key.pem`. The resident `.pem`
-   is **not** part of the happy path anymore (this shred is now mandatory cleanup, not optional).
-2. Add to `.claude/settings.local.json` `permissions.allow`: `Bash(op read:*)` and
-   `Bash(node scripts/sdlc/gh-app-token.mjs:*)` (the classifier's own denial says a matching allow
-   rule overrides it).
-3. Add `Bash(node scripts/sdlc/gh-app-token.mjs:*)` to `.claude/agents/reviewer.md` `tools:`.
-
-The App grants only **Pull requests: write** (no Contents) — the bot can comment/review but
-**cannot push code**; the installation token lasts ~1 h and the key is revocable from App settings.
-
-Decision + alternatives: **ADR-0005**
-(`docs/architecture/adr/0005-local-bot-token-1password-allowlist.md`); research note
-`docs/research/2026-06-02-claude-review-bot-identity.md`. Swapping the hand-rolled JWT for the
-local **`gh-token`** extension is tracked as an **open follow-up** (F2) — `actions/create-github-app-token`
-is excluded (CI-only ⇒ a paid cloud run; reviews are local-only).
+Decision + alternatives: **ADR-0005** (F2 resolved) ·
+`docs/research/2026-06-02-gh-token-vs-handrolled-minter.md` · spike #43. The zero-dependency minter
+(`gh-app-token.mjs`) it replaces is recoverable from git history if a no-extension fallback is ever
+needed.
