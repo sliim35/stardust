@@ -1,19 +1,39 @@
 <!-- AI SDLC pull request -->
 
-Closes #<issue>
+Closes #<issue>   <!-- or "Refs #<issue>" if the issue isn't fully done on merge -->
 
-## Story
-`docs/stories/<id>-<slug>.md` — summarize the goal here (the doc is local/gitignored).
+## Summary
+What this change does and why, in 1–3 sentences.
+
+## Story / context
+- Story: `docs/stories/<id>-<slug>.md` (local/gitignored — summarize the goal here so the PR stands alone)
+- Epic: #<epic> · Role: `role:<research|architecture|design|dev|qa|devops>`
+- Design / ADR: `docs/architecture/adr/NNNN-*.md` · `docs/design/*` (if any)
 
 ## Acceptance criteria
 - [ ] AC1
 - [ ] AC2
 
-## Verification
-- [ ] `pnpm check` passes
-- [ ] `pnpm test` passes
-- [ ] `pnpm build` passes
-<!-- paste evidence / output -->
+## Verification (evidence required)
+- [ ] `pnpm check` (Biome)
+- [ ] `pnpm test` (Vitest)
+- [ ] `pnpm build` (Vite)
+- [ ] Behavior verified where relevant (smoke test / screenshot / deploy URL)
+
+<details><summary>output</summary>
+
+```
+paste command output here
+```
+
+</details>
+
+## Reviewer / QA checklist
+- [ ] ACs met with evidence
+- [ ] Scoped to the story — no unrelated changes
+- [ ] SSR-safe on Workers — no module-scope `Math.random()` / `Date.now()`, no Node-only runtime APIs
+- [ ] Secrets via 1Password — none committed or added as plaintext GitHub secrets (ADR-0004)
+- [ ] Docs updated if structure changed (`docs/architecture/overview.md`, decision-log)
 
 ## Notes
-Design/ADR references, follow-ups, anything a reviewer should know.
+Follow-ups, decisions, anything a reviewer should know.
