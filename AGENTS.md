@@ -73,8 +73,9 @@ writing-plans, verification, code-review, worktrees) rather than re-implementing
 `md-plan-architecture` → `ui-designer`/`md-design-ui` (if visual) →
 `task-creator`/`md-create-story` (+ GitHub issue) → `backlog-analyzer`/`md-groom-backlog`
 → `developer`/`md-implement` (TDD) → `reviewer`/`md-review-pr` (conventions + learning) →
-`qa`/`md-qa-review` (gate) → `devops`/`md-deploy`
-(close issue). Full diagram + gates: `.claude/skills/references/sdlc-loop.md`.
+`qa`/`md-qa-review` (gate) → `devops`/`md-deploy` (close issue) →
+`orchestrator`/`md-learn` (retro: distill the session → route to docs/memory/skills).
+Full diagram + gates: `.claude/skills/references/sdlc-loop.md`.
 
 ### The docs/ contract — read before you act, write after you decide
 
@@ -100,6 +101,7 @@ issue bodies must duplicate goal + acceptance criteria. See
 | `reviewer` | a PR is open at `in-review` (before QA) | `md-review-pr` | `conventions/code-style.md`, story Code-review |
 | `qa` | a story is at `in-review` | `md-qa-review` | story QA verdict, bug issues |
 | `devops` | QA signed off; deploy/wrangler/CI | `md-deploy` | deploy config/notes |
+| `orchestrator` | a story merged — run the retro | `md-learn` | `decisions/`, `memory` |
 
 ### Backlog conventions (GitHub Issues)
 

@@ -19,7 +19,8 @@ entry point and skips phases that aren't needed (a typo fix may jump straight to
   8. reviewer     · md-review-pr       → code-review verdict + learned rules → docs/conventions/code-style.md
   9. qa           · md-qa-review       → QA verdict + bug issues     (gate)
  10. devops       · md-deploy          → pnpm deploy + close issue
- 11. orchestrator → next prioritized story
+ 11. orchestrator · md-learn           → retro: distill the session → docs/ · memory · skill gaps  (after merge)
+ 12. orchestrator → next prioritized story
 ```
 
 ## Gates (don't skip)
@@ -37,3 +38,8 @@ engineering process is the installed **superpowers** skills — `md-implement` d
 `test-driven-development`, `md-qa-review` to `verification-before-completion` and
 `requesting-code-review`, `md-review-pr` to the built-in `code-review` skill,
 `md-research` to `deep-research`, etc. Don't reimplement them.
+
+`md-learn` (step 11) is the **ratified, routed** counterpart to the automatic `dream` memory
+hook: it distills the session and routes each finding to `docs/`, memory, or a new-skill gap —
+**proposing before writing** — and **flags** conventions to `md-review-pr` rather than writing
+`code-style.md` itself.
