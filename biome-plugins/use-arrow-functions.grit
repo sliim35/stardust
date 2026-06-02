@@ -1,0 +1,13 @@
+// Project convention: arrow functions over `function` declarations.
+// Biome's `useArrowFunction` only rewrites function *expressions*; this plugin
+// covers top-level `function` *declarations* (there is no native func-style rule).
+// Generators (`function*`) can't be arrows — exempt them; see docs/conventions/code-style.md.
+engine biome(1.0)
+language js(typescript,jsx)
+
+JsFunctionDeclaration() as $fn where {
+  register_diagnostic(
+    span = $fn,
+    message = "Use an arrow function assigned to a `const` (e.g. `const f = () => …`) instead of a `function` declaration — project convention (docs/conventions/code-style.md)."
+  )
+}

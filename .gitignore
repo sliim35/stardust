@@ -19,3 +19,9 @@ todos.json
 stardust
 .mcp.json
 docs/
+
+# Local git worktrees created by the agent harness (never committed)
+.claude/worktrees/
+
+# Playwright MCP scratch (screenshots, snapshots, console logs)
+.playwright-mcp/

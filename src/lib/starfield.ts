@@ -20,7 +20,7 @@ export interface Star {
 }
 
 /** mulberry32 — tiny deterministic PRNG. Same seed → same sequence. */
-function mulberry32(seed: number): () => number {
+const mulberry32 = (seed: number): (() => number) => {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -28,14 +28,14 @@ function mulberry32(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
+};
 
 /** Scatter `count` stars across a `spread`×`spread` px square, deterministically. */
-export function generateStars(
+export const generateStars = (
   seed: number,
   count: number,
   spread: number,
-): Star[] {
+): Star[] => {
   const rand = mulberry32(seed);
   const stars: Star[] = [];
   for (let i = 0; i < count; i++) {
@@ -47,20 +47,20 @@ export function generateStars(
     });
   }
   return stars;
-}
+};
 
 /**
  * Build a CSS `box-shadow` value that paints every star as a crisp (blur 0)
  * pixel square. Applied to a single 1px element — one node, hundreds of stars.
  */
-export function starfieldShadow(
+export const starfieldShadow = (
   stars: Star[],
   color = "255, 255, 255",
-): string {
+): string => {
   return stars
     .map((s) => {
       const spread = s.size === 2 ? " 0.5px" : "";
       return `${s.x}px ${s.y}px 0${spread} rgba(${color}, ${s.alpha})`;
     })
     .join(", ");
-}
+};
