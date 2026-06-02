@@ -1,6 +1,6 @@
 # Label taxonomy for the AI SDLC backlog (source of truth).
 # Applied by scripts/sdlc/seed-backlog.sh via `gh label create`.
-# Four namespaces: type / priority / status / role. Keep it to these ~20 labels.
+# Five namespaces: type / priority / status / role / area.
 
 # --- type ---
 - name: "type:epic"
@@ -63,3 +63,20 @@
 - name: "role:devops"
   color: "c2e0c6"
   description: "devops"
+
+# --- area (product/ops area; ~maps to an epic) ---
+- name: "area:galaxy"
+  color: "1d76db"
+  description: "Epic · Explorable Galaxy (frontend)"
+- name: "area:ingestion"
+  color: "0e8a16"
+  description: "Epic · Memory Ingestion"
+- name: "area:agent"
+  color: "5319e7"
+  description: "Epic · AI Placement Agent"
+- name: "area:live"
+  color: "fbca04"
+  description: "Epic · Shared Live Sky"
+- name: "area:ops"
+  color: "8a63d2"
+  description: "Epic · Platform & Delivery (CI/CD, infra, ops)"
