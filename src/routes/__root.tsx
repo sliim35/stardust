@@ -8,6 +8,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Layout } from "#/components/Layout";
 import TanStackQueryDevtools from "#/integrations/tanstack-query/devtools";
+import { FAVICON_LINKS } from "#/lib/favicon";
 import appCss from "../styles.css?url";
 
 interface MyRouterContext {
@@ -50,7 +51,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
           "A growing galaxy of memories — each star is a memory someone shared.",
       },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [{ rel: "stylesheet", href: appCss }, ...FAVICON_LINKS],
   }),
   shellComponent: RootDocument,
 });
