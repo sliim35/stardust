@@ -1,9 +1,5 @@
 import { useEffect, useRef } from "react";
-import {
-  buildDeepMeteors,
-  meteorHeadX,
-  STREAK_WINDOW,
-} from "#/lib/galaxy/meteors";
+import { buildDeepMeteors, stepMeteor } from "#/lib/galaxy/meteors";
 import { mulberry32 } from "#/lib/galaxy/rng";
 import { kindFor, twinkleAlpha } from "#/lib/galaxy/twinkle";
 
@@ -104,29 +100,23 @@ export const DeepStarfield = () => {
         ctx.fillRect(Math.round(s.x * w), Math.round(s.y * h), s.size, s.size);
       }
 
-      // Faint, slow far-meteors for depth — never under reduced motion.
+      // Faint, slow far-meteors for depth — never under reduced motion. All the
+      // per-frame stepping (window gate, head, fade, per-pixel taper, slope) is the
+      // pure `stepMeteor`; this loop only fills the pixels it returns. The frame is
+      // HEAD-relative + y0 normalized × h (L2 is STAGE-absolute, y0 as-is) — the
+      // asymmetry is deliberate and lives in `StepOpts`, not here (#55).
       if (!reduce) {
         const sec = t * 0.001;
+        ctx.fillStyle = "#dfe7f5";
         for (const m of meteors) {
-          const prog = ((sec + m.offset) / m.period) % 1;
-          if (prog > STREAK_WINDOW) continue; // brief streak, long pause
-          const head = meteorHeadX(m, prog / STREAK_WINDOW, w);
-          const y0 = m.y0 * h;
-          const fade = 1 - prog / STREAK_WINDOW;
-          for (let k = 0; k < m.len; k++) {
-            const x = head - m.dir * k;
-            ctx.globalAlpha = (1 - k / m.len) * fade * m.alpha;
-            ctx.fillStyle = "#dfe7f5";
-            // Slope is HEAD-relative here ((x - head) → tail pivots on the head),
-            // whereas L2's `GalaxyBackdrop` applies it STAGE-absolute (x * slope).
-            // Deliberate: different coordinate spaces — don't "align" the two or
-            // the meteors' angle/anchoring shifts. (story #55)
-            ctx.fillRect(
-              Math.round(x),
-              Math.round(y0 + (x - head) * m.slope),
-              1,
-              1,
-            );
+          for (const px of stepMeteor(m, sec, {
+            width: w,
+            y0Scale: h,
+            slopeFrame: "head-relative",
+            alphaCap: m.alpha,
+          })) {
+            ctx.globalAlpha = px.alpha;
+            ctx.fillRect(px.x, px.y, 1, 1);
           }
         }
       }

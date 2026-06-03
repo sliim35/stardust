@@ -124,3 +124,71 @@ export const meteorHeadX = (
     ? -SPAWN_MARGIN + prog * span
     : stageW + SPAWN_MARGIN - prog * span;
 };
+
+/** The minimal per-meteor shape `stepMeteor` reads (shared by `Shooter`/`DeepMeteor`). */
+type Steppable = Pick<
+  Shooter,
+  "y0" | "slope" | "dir" | "speed" | "len" | "period" | "offset"
+>;
+
+/** One tail pixel to draw: integer canvas coords + the alpha to fill it with. */
+export type TailPixel = { x: number; y: number; alpha: number };
+
+/**
+ * How a layer maps a meteor's normalized model onto its canvas. The two galaxy
+ * overlays share the *stepping* math (`stepMeteor`) but differ only in these four
+ * knobs — kept explicit so the deliberate L1↔L2 asymmetry stays visible and tested:
+ *
+ * - `width`     — head-sweep field width: L1 the live canvas `w`, L2 the fixed `STAGE_W`.
+ * - `y0Scale`   — vertical-origin scale: L2 `1` (y0 already stage-px), L1 the canvas
+ *                 height (y0 is 0..1 normalized → `m.y0 * h`).
+ * - `slopeFrame`— where the slope pivots: L2 `"absolute"` (`x * slope`, relative to the
+ *                 stage origin), L1 `"head-relative"` (`(x - head) * slope`, tail pivots
+ *                 on the head). These are NOT the same — do not "align" them.
+ * - `alphaCap`  — peak alpha of the head pixel: L2 `SHOOTER_ALPHA_CAP`, L1 the meteor's
+ *                 own (dimmer) `alpha`.
+ */
+export type StepOpts = {
+  width: number;
+  y0Scale: number;
+  slopeFrame: "absolute" | "head-relative";
+  alphaCap: number;
+};
+
+/**
+ * Per-frame stepping for ONE meteor at time `sec` (seconds): the list of tail pixels
+ * to draw, or `[]` during the long pause. This is the math both `GalaxyBackdrop` (L2)
+ * and `DeepStarfield` (L1) used to inline in their `draw()` loops — extracted verbatim
+ * so it is unit-testable in node, with the four layer differences threaded through
+ * `opts` (see `StepOpts`). The components now only iterate the result and issue
+ * `fillRect`s; the rendered output is byte-identical.
+ *
+ * Behavior preserved exactly, including the deliberate per-layer slope-frame asymmetry
+ * and the `Math.round` on the final x/y (y is computed from the *raw* float x, then
+ * rounded — matching the old inline code).
+ */
+export const stepMeteor = (
+  m: Steppable,
+  sec: number,
+  opts: StepOpts,
+): TailPixel[] => {
+  const prog = ((sec + m.offset) / m.period) % 1;
+  if (prog > STREAK_WINDOW) return []; // brief streak, long pause
+  const head = meteorHeadX(m, prog / STREAK_WINDOW, opts.width);
+  const fade = 1 - prog / STREAK_WINDOW;
+  const y0 = m.y0 * opts.y0Scale;
+  const pixels: TailPixel[] = [];
+  for (let k = 0; k < m.len; k++) {
+    const x = head - m.dir * k; // raw float; tail trails BEHIND the head
+    const yRaw =
+      opts.slopeFrame === "absolute"
+        ? y0 + x * m.slope // stage-absolute (L2)
+        : y0 + (x - head) * m.slope; // head-relative (L1)
+    pixels.push({
+      x: Math.round(x),
+      y: Math.round(yRaw),
+      alpha: (1 - k / m.len) * fade * opts.alphaCap,
+    });
+  }
+  return pixels;
+};

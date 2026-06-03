@@ -5,9 +5,8 @@ import {
 } from "#/lib/galaxy/backdrop";
 import {
   buildShooters,
-  meteorHeadX,
   SHOOTER_ALPHA_CAP,
-  STREAK_WINDOW,
+  stepMeteor,
 } from "#/lib/galaxy/meteors";
 import { type PaletteTokens, paletteFor } from "#/lib/galaxy/palette";
 import { GALAXY_CENTER, GALAXY_R, STAGE_H, STAGE_W } from "#/lib/galaxy/place";
@@ -177,17 +176,20 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
         lctx.drawImage(hot, s.x - d / 2, s.y - d / 2, d, d);
       }
 
+      // The streak stepping (window gate, head, fade, per-pixel taper, slope) is the
+      // pure `stepMeteor`; this loop only fills the pixels it returns. STAGE-absolute
+      // frame + y0 as-is + the SHOOTER_ALPHA_CAP peak (L1 is HEAD-relative + dimmer) —
+      // the asymmetry lives in `StepOpts`, not here (#55).
+      lctx.fillStyle = p.starHot;
       for (const sh of shooters) {
-        const prog = ((t + sh.offset) / sh.period) % 1;
-        if (prog > STREAK_WINDOW) continue; // brief streak, long pause
-        const head = meteorHeadX(sh, prog / STREAK_WINDOW);
-        for (let k = 0; k < sh.len; k++) {
-          // tail trails BEHIND the head — opposite the travel direction.
-          const x = head - sh.dir * k;
-          lctx.globalAlpha =
-            (1 - k / sh.len) * (1 - prog / STREAK_WINDOW) * SHOOTER_ALPHA_CAP;
-          lctx.fillStyle = p.starHot;
-          lctx.fillRect(Math.round(x), Math.round(sh.y0 + x * sh.slope), 1, 1);
+        for (const px of stepMeteor(sh, t, {
+          width: STAGE_W,
+          y0Scale: 1,
+          slopeFrame: "absolute",
+          alphaCap: SHOOTER_ALPHA_CAP,
+        })) {
+          lctx.globalAlpha = px.alpha;
+          lctx.fillRect(px.x, px.y, 1, 1);
         }
       }
 
