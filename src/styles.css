@@ -217,10 +217,11 @@ body {
   bottom: 90px; /* offset from the bottom — clears the scale bar */
   z-index: 4; /* above stars/captions, below the palette switcher (6) + panels */
   pointer-events: none; /* decorative; never captures mouse/touch */
-  animation: astro-bob 4s ease-in-out infinite;
+  animation: astro-bob 4s ease-in-out infinite; /* = BOB_CYCLE_MS (lib/galaxy/astro.ts), pinned by astro.test.ts */
 }
 .galaxy-astro__drift {
-  animation: astro-drift 9s ease-in-out infinite; /* secondary weightless wander */
+  /* = DRIFT_CYCLE_MS (lib/galaxy/astro.ts), pinned by astro.test.ts — secondary weightless wander */
+  animation: astro-drift 9s ease-in-out infinite;
 }
 .galaxy-astro__sprite {
   display: grid;

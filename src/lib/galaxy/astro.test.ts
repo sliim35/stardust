@@ -6,10 +6,12 @@ import {
   ASTRO_TRANSPARENT,
   ASTRO_TRIM_KEY,
   ASTRO_VISOR_GLOW_KEY,
+  BOB_CYCLE_MS,
   BOB_PEAK_ROTATE_DEG,
   BOB_PEAK_TRANSLATE_PX,
   bobTransform,
   DEFAULT_CELL_PX,
+  DRIFT_CYCLE_MS,
   parseSprite,
 } from "#/lib/galaxy/astro";
 
@@ -113,5 +115,14 @@ describe("layout constants", () => {
   it("renders 16 cells at 4 logical px = a 64px box", () => {
     expect(DEFAULT_CELL_PX).toBe(4);
     expect(ASTRO_GRID_SIZE * DEFAULT_CELL_PX).toBe(64);
+  });
+
+  // The lib timing constants and the CSS animation durations are one number split
+  // across two files: `astro-bob 4s` / `astro-drift 9s` in src/styles.css must equal
+  // these (ms → s). This pins the pairing so a change to one side fails here until the
+  // other is updated — the silent-drift class of bug flagged on #49 (IGNITE_MS vs CSS).
+  it("keeps the bob/drift timings paired with the CSS @keyframes durations", () => {
+    expect(BOB_CYCLE_MS).toBe(4000); // ↔ `animation: astro-bob 4s` (styles.css)
+    expect(DRIFT_CYCLE_MS).toBe(9000); // ↔ `animation: astro-drift 9s` (styles.css)
   });
 });
