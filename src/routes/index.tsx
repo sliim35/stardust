@@ -1,13 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GalaxyStage } from "#/components/galaxy/GalaxyStage";
 
-const Home = () => {
-  return (
-    <section className="galaxy__hero">
-      <h1 className="galaxy__title">Memory Galaxy</h1>
-      <p className="galaxy__tagline">A sky of stars, each one a memory.</p>
-    </section>
-  );
-};
+const Home = () => <GalaxyStage />;
 
 export const Route = createFileRoute("/")({
   head: () => ({
