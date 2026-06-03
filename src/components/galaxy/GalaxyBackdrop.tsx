@@ -57,28 +57,31 @@ const drawBase = (
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, STAGE_W, STAGE_H);
   };
-  haze(p.hazeFar, GALAXY_R * 1.7, "22");
-  haze(p.hazeNear, GALAXY_R * 1.05, "2e");
+  // Faint haze underlay — kept low so the arms read as pixels, not glow (#50).
+  haze(p.hazeFar, GALAXY_R * 1.5, "16");
+  haze(p.hazeNear, GALAXY_R * 0.85, "1e");
 
   paintPoints(ctx, geom.bgStars, p);
   paintPoints(ctx, geom.arms, p);
-  paintPoints(ctx, geom.bar, p);
-  paintPoints(ctx, geom.bulge, p);
 
-  // Bright, compact core bulge.
+  // Compact, dim core glow drawn BEHIND the bright bar/bulge pixels, so the
+  // center reads as crisp blocky pixel-art rather than a dominating bloom (#50).
   const core = ctx.createRadialGradient(
     GALAXY_CENTER.x,
     GALAXY_CENTER.y,
     0,
     GALAXY_CENTER.x,
     GALAXY_CENTER.y,
-    GALAXY_R * 0.32,
+    GALAXY_R * 0.2,
   );
-  core.addColorStop(0, `${p.coreHot}cc`);
-  core.addColorStop(0.4, `${p.coreWarm}55`);
+  core.addColorStop(0, `${p.coreHot}99`);
+  core.addColorStop(0.5, `${p.coreWarm}33`);
   core.addColorStop(1, `${p.coreWarm}00`);
   ctx.fillStyle = core;
   ctx.fillRect(0, 0, STAGE_W, STAGE_H);
+
+  paintPoints(ctx, geom.bar, p);
+  paintPoints(ctx, geom.bulge, p);
 };
 
 type Shooter = {

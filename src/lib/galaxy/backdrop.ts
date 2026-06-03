@@ -6,8 +6,12 @@
  * secondary ones (`docs/design/2026-06-02-explorable-galaxy.md` §"GalaxyBackdrop
  * rework").
  *
+ * Tuned per the 2026-06-03 visual-language critique (#50): high pixel density +
+ * brighter arms + a coarse grid snap on the bar/bulge so the disk reads as crisp
+ * pixel-art, not a soft glow.
+ *
  * Everything is a deterministic function of `backdrop.seed` (mulberry32), so the
- * same seed yields byte-identical pixels (#4 AC) and SSR/client never disagree.
+ * same seed yields byte-identical pixels (#4 AC1) and SSR/client never disagree.
  * `palette` is intentionally NOT read here — it only tints color downstream; the
  * geometry it produces is identical across palettes.
  */
@@ -48,6 +52,9 @@ const START_R = 0.12; // inner radius where the arms begin
 const clamp = (v: number, lo: number, hi: number): number =>
   v < lo ? lo : v > hi ? hi : v;
 
+/** Snap to a coarse pixel grid so dense clusters read as blocky pixel-art. */
+const snap = (v: number, grid: number): number => Math.round(v / grid) * grid;
+
 /** Disk-polar (rNorm 0..1, theta rad) → stage pixels, foreshortened by the tilt. */
 const toStage = (rNorm: number, theta: number): { x: number; y: number } => {
   const rr = rNorm * GALAXY_R;
@@ -64,11 +71,12 @@ const pointAt = (
   alpha: number,
   warm: number,
   bigChance: number,
+  grid = 1,
 ): BackdropPoint => {
   const p = toStage(rNorm, theta);
   return {
-    x: clamp(Math.round(p.x), 0, STAGE_W),
-    y: clamp(Math.round(p.y), 0, STAGE_H),
+    x: clamp(snap(Math.round(p.x), grid), 0, STAGE_W),
+    y: clamp(snap(Math.round(p.y), grid), 0, STAGE_H),
     size: rng() < bigChance ? 2 : 1,
     alpha,
     phase: rng(),
@@ -89,12 +97,12 @@ export const buildBackdropGeometry = (
   const bulgeRng = mulberry32(seed ^ 0xc2b2ae35);
 
   const bgStars: BackdropPoint[] = [];
-  for (let i = 0; i < 220; i++) {
+  for (let i = 0; i < 560; i++) {
     bgStars.push({
       x: Math.round(bgRng() * STAGE_W),
       y: Math.round(bgRng() * STAGE_H),
-      size: bgRng() < 0.12 ? 2 : 1,
-      alpha: 0.12 + bgRng() * 0.3,
+      size: bgRng() < 0.1 ? 2 : 1,
+      alpha: 0.1 + bgRng() * 0.32,
       phase: bgRng(),
       warm: bgRng(),
     });
@@ -104,11 +112,11 @@ export const buildBackdropGeometry = (
   for (let arm = 0; arm < branches; arm++) {
     const primary = arm % 2 === 0; // alternate bright / faded arms
     const armBase = (arm / branches) * TAU;
-    const count = primary ? 260 : 110;
-    const spread = primary ? 0.16 : 0.3; // tighter primaries read more clearly
-    const fade = primary ? 1 : 0.55;
+    const count = primary ? 560 : 260;
+    const spread = primary ? 0.14 : 0.26; // tighter primaries read more clearly
+    const fade = primary ? 1 : 0.62;
     for (let i = 0; i < count; i++) {
-      const rNorm = START_R + (1 - START_R) * armRng() ** 0.9;
+      const rNorm = START_R + (1 - START_R) * armRng() ** 0.85;
       const theta =
         armBase +
         Math.log(rNorm / START_R) * ARM_WIND * spin +
@@ -118,16 +126,17 @@ export const buildBackdropGeometry = (
           rNorm,
           theta,
           armRng,
-          (0.3 + armRng() * 0.5) * fade,
-          0.4 + armRng() * 0.6,
-          0.1,
+          (0.42 + armRng() * 0.48) * fade,
+          0.35 + armRng() * 0.6,
+          0.12,
         ),
       );
     }
   }
 
+  // Bar + bulge snap to a 2px grid so the dense core reads as blocky pixel-art.
   const bar: BackdropPoint[] = [];
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 320; i++) {
     const t = barRng() * 2 - 1; // -1..1 along the bar axis
     const rNorm = Math.abs(t) * 0.42;
     const theta = BAR_ANGLE + (t < 0 ? Math.PI : 0) + (barRng() - 0.5) * 0.12;
@@ -136,25 +145,27 @@ export const buildBackdropGeometry = (
         rNorm,
         theta,
         barRng,
-        0.35 + barRng() * 0.45,
-        0.5 + barRng() * 0.5,
-        0.15,
+        0.45 + barRng() * 0.42,
+        0.55 + barRng() * 0.45,
+        0.3,
+        2,
       ),
     );
   }
 
   const bulge: BackdropPoint[] = [];
-  for (let i = 0; i < 160; i++) {
-    const rNorm = bulgeRng() ** randomnessPower * 0.22; // power-biased toward the core
+  for (let i = 0; i < 440; i++) {
+    const rNorm = bulgeRng() ** randomnessPower * 0.2; // power-biased toward the core
     const theta = bulgeRng() * TAU;
     bulge.push(
       pointAt(
         rNorm,
         theta,
         bulgeRng,
-        0.4 + bulgeRng() * 0.55,
+        0.5 + bulgeRng() * 0.45,
         0.6 + bulgeRng() * 0.4,
-        0.2,
+        0.4,
+        2,
       ),
     );
   }
