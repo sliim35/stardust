@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { mulberry32 } from "#/lib/galaxy/rng";
+import { kindFor, twinkleAlpha } from "#/lib/galaxy/twinkle";
 
 /**
  * L1 — the farthest depth plane: a full-viewport seeded twinkling starfield with
@@ -10,11 +11,18 @@ import { mulberry32 } from "#/lib/galaxy/rng";
  * seeded CSS starfield in `Layout` remains the server/no-JS placeholder until
  * hydration (ADR-0003). Honors `prefers-reduced-motion` by drawing one static
  * frame and stopping.
+ *
+ * Twinkle curves live in the pure `twinkle` module (#56): a seeded **dim subset**
+ * of the faint stars truly blinks 0 → 1 (rectified pow sine), the bright blinkers
+ * keep their crisp legacy shimmer, and the rest gently breathe — phase-staggered
+ * so only a few are ever dark at once (no whole-field strobe).
  */
 
 const DEEP_SEED = 9999;
 const STAR_COUNT = 200;
 const BLINKER_COUNT = 35;
+/** Fraction of the faint (non-blinker) stars that truly blink out to 0. */
+const DIM_BLINK_RATE = 0.3;
 
 type Field = {
   x: number; // 0..1 of width
@@ -24,6 +32,7 @@ type Field = {
   phase: number;
   speed: number;
   blinker: boolean;
+  blink: boolean; // a faint star in the true-0 blink subset (#56)
 };
 
 const buildField = (): Field[] => {
@@ -31,14 +40,18 @@ const buildField = (): Field[] => {
   const field: Field[] = [];
   for (let i = 0; i < STAR_COUNT + BLINKER_COUNT; i++) {
     const blinker = i >= STAR_COUNT;
+    const blink = !blinker && rng() < DIM_BLINK_RATE;
     field.push({
       x: rng(),
       y: rng(),
       size: rng() < (blinker ? 0.5 : 0.12) ? 2 : 1,
       alpha: blinker ? 0.5 + rng() * 0.5 : 0.18 + rng() * 0.4,
       phase: rng() * Math.PI * 2,
-      speed: (blinker ? 1.6 : 0.5) + rng() * 1.2,
+      // Blink stars are deliberately slow (a multi-second appear/disappear so the
+      // long true-0 trough never reads as a flicker); blinkers stay fast + crisp.
+      speed: (blinker ? 1.6 : blink ? 0.22 : 0.5) + rng() * (blink ? 0.3 : 1.2),
       blinker,
+      blink,
     });
   }
   return field;
@@ -73,7 +86,10 @@ export const DeepStarfield = () => {
       for (const s of field) {
         const tw = reduce
           ? 1
-          : 0.55 + 0.45 * Math.sin(t * 0.001 * s.speed + s.phase);
+          : twinkleAlpha(
+              t * 0.001 * s.speed + s.phase,
+              kindFor(s.blinker, s.blink),
+            );
         ctx.globalAlpha = Math.max(0, s.alpha * tw);
         ctx.fillStyle = s.blinker ? "#eaf2ff" : "#cdd6ea";
         ctx.fillRect(Math.round(s.x * w), Math.round(s.y * h), s.size, s.size);
