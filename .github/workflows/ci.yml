@@ -15,7 +15,10 @@ permissions:
 
 jobs:
   check:
-    name: check · typecheck · test · build
+    # This job's name is the required status-check context in the "Protected main"
+    # ruleset — keep it stable even when adding steps (typecheck, etc.), or PRs that
+    # rename it can never satisfy the rule and merges silently block. (#66)
+    name: check · test · build
     runs-on: ubuntu-latest
     env:
       HUSKY: 0
