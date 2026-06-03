@@ -15,6 +15,9 @@ permissions:
 
 jobs:
   check:
+    # This job's name is the required status-check context in the "Protected main"
+    # ruleset — keep it stable even when adding steps (typecheck, etc.), or PRs that
+    # rename it can never satisfy the rule and merges silently block. (#66)
     name: check · test · build
     runs-on: ubuntu-latest
     env:
@@ -28,5 +31,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

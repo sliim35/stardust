@@ -4,5 +4,5 @@
 export default {
     '*': ['pnpm run check'],
     // Type check (runs once, not per file)
-    '*.{ts,tsx}': () => 'pnpx tsc --noEmit',
+    '*.{ts,tsx}': () => 'pnpm exec tsc --noEmit',
 }
