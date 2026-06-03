@@ -1,4 +1,9 @@
 import { useEffect, useRef } from "react";
+import {
+  buildDeepMeteors,
+  meteorHeadX,
+  STREAK_WINDOW,
+} from "#/lib/galaxy/meteors";
 import { mulberry32 } from "#/lib/galaxy/rng";
 import { kindFor, twinkleAlpha } from "#/lib/galaxy/twinkle";
 
@@ -67,6 +72,10 @@ export const DeepStarfield = () => {
     if (!ctx) return;
 
     const field = buildField();
+    // L1 parallax depth (#55): 2–3 fainter, slower far-meteors. Geometry is the
+    // pure, unit-tested `meteors` module; normalized y0/coords scale to the
+    // viewport here. Skipped entirely under reduced motion (no streaks).
+    const meteors = buildDeepMeteors(DEEP_SEED);
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -94,6 +103,30 @@ export const DeepStarfield = () => {
         ctx.fillStyle = s.blinker ? "#eaf2ff" : "#cdd6ea";
         ctx.fillRect(Math.round(s.x * w), Math.round(s.y * h), s.size, s.size);
       }
+
+      // Faint, slow far-meteors for depth — never under reduced motion.
+      if (!reduce) {
+        const sec = t * 0.001;
+        for (const m of meteors) {
+          const prog = ((sec + m.offset) / m.period) % 1;
+          if (prog > STREAK_WINDOW) continue; // brief streak, long pause
+          const head = meteorHeadX(m, prog / STREAK_WINDOW, w);
+          const y0 = m.y0 * h;
+          const fade = 1 - prog / STREAK_WINDOW;
+          for (let k = 0; k < m.len; k++) {
+            const x = head - m.dir * k;
+            ctx.globalAlpha = (1 - k / m.len) * fade * m.alpha;
+            ctx.fillStyle = "#dfe7f5";
+            ctx.fillRect(
+              Math.round(x),
+              Math.round(y0 + (x - head) * m.slope),
+              1,
+              1,
+            );
+          }
+        }
+      }
+
       ctx.globalAlpha = 1;
       if (!reduce) raf = requestAnimationFrame(draw);
     };

@@ -3,9 +3,13 @@ import {
   type BackdropPoint,
   buildBackdropGeometry,
 } from "#/lib/galaxy/backdrop";
+import {
+  buildShooters,
+  meteorHeadX,
+  STREAK_WINDOW,
+} from "#/lib/galaxy/meteors";
 import { type PaletteTokens, paletteFor } from "#/lib/galaxy/palette";
 import { GALAXY_CENTER, GALAXY_R, STAGE_H, STAGE_W } from "#/lib/galaxy/place";
-import { mulberry32 } from "#/lib/galaxy/rng";
 import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
 
 /**
@@ -115,15 +119,6 @@ const drawBase = (
   paintGlow(ctx, geom.bulge, sprites);
 };
 
-type Shooter = {
-  y0: number;
-  slope: number;
-  speed: number;
-  len: number;
-  period: number;
-  offset: number;
-};
-
 export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const liveRef = useRef<HTMLCanvasElement | null>(null);
@@ -162,17 +157,10 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
       .filter((s) => s.alpha > 0.5)
       .map((s) => ({ ...s, speed: 0.6 + s.phase * 1.6 }));
 
-    const shooters: Shooter[] = Array.from({ length: 4 }, (_, i) => {
-      const r = mulberry32(backdrop.seed ^ (0x51ed + i * 0x9e37));
-      return {
-        y0: r() * STAGE_H * 0.7,
-        slope: -0.3 + r() * 0.2,
-        speed: 220 + r() * 200,
-        len: 60 + r() * 70,
-        period: 4 + r() * 5,
-        offset: r() * 6,
-      };
-    });
+    // Multi-directional, full-field streaks (story #55, spike #54): origin edge,
+    // slope sign, and y0 all varied per shooter; geometry lives in the pure,
+    // unit-tested `meteors` module so this loop only draws.
+    const shooters = buildShooters(backdrop.seed);
 
     const hot = sprites[2];
     let raf = 0;
@@ -190,17 +178,15 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
 
       for (const sh of shooters) {
         const prog = ((t + sh.offset) / sh.period) % 1;
-        if (prog > 0.18) continue; // brief streak, long pause
-        const head = -120 + prog * (STAGE_W + 240) * (sh.speed / 300);
+        if (prog > STREAK_WINDOW) continue; // brief streak, long pause
+        const head = meteorHeadX(sh, prog / STREAK_WINDOW);
         for (let k = 0; k < sh.len; k++) {
-          lctx.globalAlpha = (1 - k / sh.len) * (1 - prog / 0.18) * 0.9;
+          // tail trails BEHIND the head — opposite the travel direction.
+          const x = head - sh.dir * k;
+          lctx.globalAlpha =
+            (1 - k / sh.len) * (1 - prog / STREAK_WINDOW) * 0.9;
           lctx.fillStyle = p.starHot;
-          lctx.fillRect(
-            Math.round(head - k),
-            Math.round(sh.y0 + (head - k) * sh.slope),
-            1,
-            1,
-          );
+          lctx.fillRect(Math.round(x), Math.round(sh.y0 + x * sh.slope), 1, 1);
         }
       }
 
