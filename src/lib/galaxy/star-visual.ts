@@ -28,7 +28,6 @@ export const MOOD_LABELS = {
 export type BloomSizing = {
   bloom: number; // soft radial halo diameter (px)
   flareW: number; // horizontal lens-flare width
-  flareH: number; // horizontal lens-flare height
   vFlareH: number; // vertical lens-flare height
   hot: number; // white-hot center diameter
   core: number; // crisp core pixel size
@@ -42,7 +41,6 @@ export const bloomSizing = (star: MemoryStar, active = false): BloomSizing => {
   return {
     bloom,
     flareW,
-    flareH: 2,
     vFlareH: flareW * 0.46,
     hot: bloom * 0.5,
     core: Math.max(2, 2 + b * 2),

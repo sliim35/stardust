@@ -28,3 +28,7 @@ export const hashStr = (s: string): number => {
   }
   return h >>> 0;
 };
+
+/** Clamp `v` to `[lo, hi]`. Shared numeric helper (was duplicated per #45). */
+export const clamp = (v: number, lo: number, hi: number): number =>
+  v < lo ? lo : v > hi ? hi : v;

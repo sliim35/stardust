@@ -30,6 +30,9 @@ export const useGalaxyCamera = (): CameraRefs => {
   const pointer = useRef({ x: 0, y: 0, active: false });
 
   useEffect(() => {
+    // Read once at mount. A *mid-session* OS toggle of reduced-motion is not
+    // honored here (nor in DeepStarfield / GalaxyBackdrop) — a known #4
+    // limitation (review F2); initial load is correct. Revisit if needed.
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;

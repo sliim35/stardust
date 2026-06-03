@@ -15,8 +15,8 @@ import { useGalaxyCamera } from "./useGalaxyCamera";
 import { usePalette } from "./usePalette";
 import { useStageFit } from "./useStageFit";
 
-/** How long the `memIgnite` fade-in runs before a new star settles to twinkle. */
-const IGNITE_MS = 1600;
+/** Mirrors the `memIgnite` CSS animation duration (1.5s) — one ignite number. */
+const IGNITE_MS = 1500;
 
 /**
  * The top-level galaxy scene (#4): composes L1 (deep starfield) · L2 (the disk)
@@ -40,22 +40,32 @@ export const GalaxyStage = () => {
   skyRef.current = sky;
 
   useEffect(() => {
-    return store.subscribe?.((next) => {
+    // Track the per-star ignite timers so they're cleared on unmount / re-run —
+    // otherwise an in-flight timer fires `setIgnitingIds` on an unmounted
+    // component and leaks (latent until a live producer in epic #8).
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const unsubscribe = store.subscribe?.((next) => {
       const known = new Set(skyRef.current.stars.map((s) => s.id));
       const fresh = next.stars.filter((s) => !known.has(s.id)).map((s) => s.id);
       setSky(next);
       if (fresh.length === 0) return;
       setIgnitingIds((cur) => new Set([...cur, ...fresh]));
       for (const id of fresh) {
-        setTimeout(() => {
-          setIgnitingIds((cur) => {
-            const n = new Set(cur);
-            n.delete(id);
-            return n;
-          });
-        }, IGNITE_MS);
+        timers.push(
+          setTimeout(() => {
+            setIgnitingIds((cur) => {
+              const n = new Set(cur);
+              n.delete(id);
+              return n;
+            });
+          }, IGNITE_MS),
+        );
       }
     });
+    return () => {
+      unsubscribe?.();
+      for (const t of timers) clearTimeout(t);
+    };
   }, [store]);
 
   const [palette, setPalette] = usePalette();

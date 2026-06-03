@@ -10,6 +10,7 @@
  */
 
 import type { Point } from "#/lib/galaxy/place";
+import { clamp } from "#/lib/galaxy/rng";
 
 export type Vec = { x: number; y: number };
 export type Camera = { cx: number; cy: number; zoom: number };
@@ -22,9 +23,6 @@ export const PARALLAX_MAX = { l1: 6, l2: 14, l3: 22 } as const;
 export const ZOOM_MIN = 0.8;
 export const ZOOM_MAX = 4;
 
-const clamp = (v: number, lo: number, hi: number): number =>
-  v < lo ? lo : v > hi ? hi : v;
-
 /** Scalar ease. `t=0` → `a`, `t=1` → `b`, in between → strictly between. */
 export const lerp = (a: number, b: number, t: number): number =>
   a + (b - a) * t;
@@ -36,6 +34,9 @@ export const lerpCamera = (cur: Camera, target: Camera, t: number): Camera => ({
   zoom: lerp(cur.zoom, target.zoom, t),
 });
 
+// NOTE: focusOn + zoomToCursor (and ZOOM_MIN/MAX) have no caller in #4 yet —
+// they're pure, tested, and intentionally pre-landed for #5's selection / `?star=`
+// zoom (review F4). Strip if strict YAGNI is preferred over staging for #5.
 /** Target camera centered on a stage position (selection / `?star=` deep-link). */
 export const focusOn = (pos: Point, zoom = 1.8): Camera => ({
   cx: pos.x,

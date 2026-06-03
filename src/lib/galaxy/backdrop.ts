@@ -24,7 +24,7 @@ import {
   STAGE_H,
   STAGE_W,
 } from "#/lib/galaxy/place";
-import { mulberry32 } from "#/lib/galaxy/rng";
+import { clamp, mulberry32 } from "#/lib/galaxy/rng";
 import type { GalaxyBackdrop } from "#/lib/galaxy/types";
 
 /** One drawn pixel: position, crisp size, base brightness, and animation seeds. */
@@ -49,9 +49,6 @@ const TAU = Math.PI * 2;
 const BAR_ANGLE = (25 * Math.PI) / 180;
 const ARM_WIND = 1.8; // log-spiral winding: theta = base + ln(r/startR) * ARM_WIND
 const START_R = 0.12; // inner radius where the arms begin
-
-const clamp = (v: number, lo: number, hi: number): number =>
-  v < lo ? lo : v > hi ? hi : v;
 
 /** Disk-polar (rNorm 0..1, theta rad) → stage pixels, foreshortened by the tilt. */
 const toStage = (rNorm: number, theta: number): { x: number; y: number } => {
