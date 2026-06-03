@@ -117,6 +117,10 @@ export const DeepStarfield = () => {
             const x = head - m.dir * k;
             ctx.globalAlpha = (1 - k / m.len) * fade * m.alpha;
             ctx.fillStyle = "#dfe7f5";
+            // Slope is HEAD-relative here ((x - head) → tail pivots on the head),
+            // whereas L2's `GalaxyBackdrop` applies it STAGE-absolute (x * slope).
+            // Deliberate: different coordinate spaces — don't "align" the two or
+            // the meteors' angle/anchoring shifts. (story #55)
             ctx.fillRect(
               Math.round(x),
               Math.round(y0 + (x - head) * m.slope),

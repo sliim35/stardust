@@ -6,6 +6,7 @@ import {
 import {
   buildShooters,
   meteorHeadX,
+  SHOOTER_ALPHA_CAP,
   STREAK_WINDOW,
 } from "#/lib/galaxy/meteors";
 import { type PaletteTokens, paletteFor } from "#/lib/galaxy/palette";
@@ -184,7 +185,7 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
           // tail trails BEHIND the head — opposite the travel direction.
           const x = head - sh.dir * k;
           lctx.globalAlpha =
-            (1 - k / sh.len) * (1 - prog / STREAK_WINDOW) * 0.9;
+            (1 - k / sh.len) * (1 - prog / STREAK_WINDOW) * SHOOTER_ALPHA_CAP;
           lctx.fillStyle = p.starHot;
           lctx.fillRect(Math.round(x), Math.round(sh.y0 + x * sh.slope), 1, 1);
         }

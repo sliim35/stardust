@@ -5,6 +5,7 @@ import {
   DEEP_METEOR_COUNT,
   type DeepMeteor,
   meteorHeadX,
+  SHOOTER_ALPHA_CAP,
   SHOOTER_COUNT,
   type Shooter,
 } from "#/lib/galaxy/meteors";
@@ -133,7 +134,7 @@ describe("buildDeepMeteors (L1 parallax depth — fainter + slower than L2)", ()
 
   it("is dimmer than the brightest L2 streak (parallax: far = faint)", () => {
     const deepMax = Math.max(...buildDeepMeteors(SEED).map((m) => m.alpha));
-    expect(deepMax).toBeLessThan(0.9); // L2 streaks peak near ~0.9
+    expect(deepMax).toBeLessThan(SHOOTER_ALPHA_CAP); // L2 streaks peak at this cap
   });
 
   it("is slower than the slowest L2 shooter (far = drifts)", () => {

@@ -59,6 +59,14 @@ const SPAWN_MARGIN = 120;
 /** Fraction of the period a streak is visible — the rest is the long pause. */
 export const STREAK_WINDOW = 0.18;
 
+/**
+ * Peak alpha of an L2 streak's brightest pixel (head, fully faded-in). The single
+ * source of truth for that cap: `GalaxyBackdrop`'s draw loop multiplies by it, and
+ * the L1 far-meteors stay dimmer than it (see `buildDeepMeteors`'s `alpha`, asserted
+ * in `meteors.test.ts`) for parallax. Bump here to retune both at once.
+ */
+export const SHOOTER_ALPHA_CAP = 0.9;
+
 /** A signed slope: a small magnitude with an independently-chosen sign (#54 variety). */
 const signedSlope = (rng: () => number): number =>
   (rng() < 0.5 ? -1 : 1) * (0.1 + rng() * 0.25);
@@ -94,7 +102,7 @@ export const buildDeepMeteors = (seed: number): DeepMeteor[] =>
       dir: r() < 0.5 ? -1 : 1,
       speed: 60 + r() * 90, // 60..150 — below L2's 180 floor (far = drifts)
       len: 26 + r() * 30,
-      alpha: 0.3 + r() * 0.25, // 0.30..0.55 — dimmer than L2's ~0.9 streaks
+      alpha: 0.3 + r() * 0.25, // 0.30..0.55 — dimmer than L2's SHOOTER_ALPHA_CAP
       period: 9 + r() * 9, // rarer than L2 (deep field is quiet)
       offset: r() * (9 + 9),
     };
