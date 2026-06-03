@@ -6,10 +6,58 @@
  * docs/architecture/adr/0003-clean-slate-galaxy-shell.md.)
  */
 
+/*
+ * Design-token source of truth (story #75 · spec docs/design/2026-06-03-design-tokens.md).
+ * Tailwind utilities for DOM chrome; this file (+ src/lib/galaxy/palette.ts) for the
+ * canvas stage. Color/space/radius tokens live once in this @theme block — never
+ * hardcode a hex in a chrome component. Tailwind emits these to :root, so the
+ * hand-written stage rules below read the identical var(--color-…) — one
+ * declaration, two consumers, zero drift. The active palette re-tints
+ * --color-accent / --color-accent-soft at runtime (see palette.ts paletteAccentVars).
+ */
+@theme {
+  /* colors → bg-*, text-*, border-* utilities */
+  --color-space-deep: #04050d; /* bg-space-deep  (page void / letterbox) */
+  --color-space-mid: #0a0e24; /* bg-space-mid   (core-glow inner stop)  */
+  --color-surface: rgb(9 9 15 / 0.86); /* bg-surface (panels/HUD) */
+  --color-accent: #9cd8c0; /* text-accent / border-accent (re-tinted per palette) */
+  --color-accent-soft: #9cd8c030; /* focus wash, halos */
+  --color-text: #f8f6f0; /* text-text     (primary)              */
+  --color-text-bright: #fffdf6; /* text-text-bright (rare emphasis)  */
+  --color-dim: #d0d0d8; /* text-dim      (captions)             */
+  --color-dim-2: #8a8c96; /* text-dim-2 (attribution; AA-safe ~5.2:1, not #7a7c86) */
+  --color-dim-3: #4a4c58; /* text-dim-3    (scaffolding)         */
+
+  /* type → font-serif / font-mono utilities */
+  --font-serif: "Newsreader", "Cormorant Garamond", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* font sizes → text-eyebrow / text-count / text-title (only what chrome uses today) */
+  --text-eyebrow: 10px; /* mono sub/breadcrumb */
+  --text-eyebrow--letter-spacing: 0.2em;
+  --text-count: 11px; /* live-count line */
+  --text-title: 28px; /* "for mom" serif italic */
+
+  /* spacing → p-*, gap-*, m-* utilities (handoff scale) */
+  --spacing-gutter: 60px;
+  --spacing-panel: 28px;
+  --spacing-row: 8px;
+  --spacing-stack-sm: 14px;
+  --spacing-stack: 22px;
+  --spacing-stack-lg: 40px;
+
+  /* radii → rounded-* utilities */
+  --radius-snug: 2px;
+  --radius: 4px;
+  --radius-pill: 99px;
+}
+
 :root {
   color-scheme: dark;
-  --space-deep: #04050d;
-  --space-mid: #0a0e24;
+  /* Stable short-name aliases of the @theme tokens — kept so JS that writes
+     these names never breaks; the value lives once in @theme above. */
+  --space-deep: var(--color-space-deep);
+  --space-mid: var(--color-space-mid);
   --star: #ffffff;
 
   /* ASTRO mascot materials (#70) — neutral, theme-agnostic sprite parts. They do
@@ -287,7 +335,7 @@ body {
   width: var(--core);
   height: var(--core);
   border-radius: 1px;
-  background: #fffdf6;
+  background: var(--color-text-bright);
   box-shadow: 0 0 6px 2px var(--star-color);
   image-rendering: pixelated;
 }
@@ -328,7 +376,7 @@ body {
   font-family: Newsreader, Georgia, serif;
   font-style: italic;
   font-size: 15px;
-  color: #f8f6f0;
+  color: var(--color-text);
 }
 .mem-star__mood {
   font-family: "JetBrains Mono", ui-monospace, monospace;
@@ -358,15 +406,17 @@ body {
   font-family: Newsreader, Georgia, serif;
   font-style: italic;
   font-size: 28px;
-  color: #f5d6a0;
-  text-shadow: 0 0 18px rgba(245, 214, 160, 0.35);
+  /* The dedication rides the single accent thread (spec §3 conflict table +
+     §4: title #f5d6a0 → var(--color-accent)); it re-tints with the active sky. */
+  color: var(--color-accent);
+  text-shadow: 0 0 18px var(--color-accent-soft);
 }
 .galaxy-chrome__sub {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #8a8c96;
+  color: var(--color-dim-2);
 }
 .galaxy-chrome__breadcrumb {
   position: absolute;
@@ -375,10 +425,10 @@ body {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 2px;
-  color: #9cd8c0;
+  color: var(--color-accent);
 }
 .galaxy-chrome__breadcrumb .is-dim {
-  color: #4a4c58;
+  color: var(--color-dim-3);
 }
 .galaxy-chrome__count {
   position: absolute;
@@ -388,51 +438,12 @@ body {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
   letter-spacing: 1px;
-  color: #8a8c96;
+  color: var(--color-dim-2);
 }
 
-/* Backdrop theme picker (#44 — sea glass · amber · moonlit). */
-.galaxy-themes {
-  position: absolute;
-  right: 28px;
-  top: 50px;
-  display: flex;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-inline-size: 0;
-  pointer-events: auto;
-  z-index: 6;
-}
-.galaxy-themes__swatch {
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: var(--swatch);
-  cursor: pointer;
-  opacity: 0.55;
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-.galaxy-themes__swatch:hover {
-  opacity: 0.85;
-}
-.galaxy-themes__swatch[data-active] {
-  opacity: 1;
-  transform: scale(1.15);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 0 10px 1px var(--swatch);
-}
-.galaxy-themes__swatch:focus-visible {
-  outline: 2px solid var(--swatch);
-  outline-offset: 2px;
-}
+/* Backdrop theme picker (#44 — sea glass · amber · moonlit) is DOM chrome:
+   it lives in src/components/galaxy/PaletteSwitcher.tsx as Tailwind utilities
+   (the #75 proof-of-pattern), reading the @theme tokens above. No CSS here. */
 
 @keyframes memTwinkle {
   0%,
@@ -507,8 +518,7 @@ body {
   }
   .mem-star__halo,
   .mem-star__flare-h,
-  .mem-star__flare-v,
-  .galaxy-themes__swatch {
+  .mem-star__flare-v {
     transition: none;
   }
   /* ASTRO holds a single static idle frame at rest — bob + drift disabled. */

@@ -46,6 +46,9 @@ git history — reintroduce it for the galaxy only when an agent needs to read t
   incompatible with Vitest's SSR environment.
 - Deploy: Cloudflare Workers via `pnpm deploy` (wrangler).
 - Content: markdown in `content/` via `@content-collections`.
+- **Styling boundary (#75):** Tailwind utilities for DOM chrome; `src/styles.css`
+  (+ `src/lib/galaxy/palette.ts`) for the canvas stage. Color/space/radius tokens live
+  once in the `@theme` block in `styles.css` — never hardcode a hex in a chrome component.
 - LLMO: the conference LLMO helpers (`seo.ts`, `structured-data.ts`, …) were retired in
   the clean-slate commit (ADR-0003). The patterns + a re-apply checklist live in
   `docs/tanstack-ai.md`; reintroduce `head()` structured data once the galaxy has crawlable

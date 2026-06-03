@@ -77,6 +77,20 @@ export const PALETTES = {
 export const paletteFor = (palette: Palette = DEFAULT_PALETTE): PaletteTokens =>
   PALETTES[palette];
 
+/**
+ * The active palette's accent family, shaped as the `@theme` CSS vars the DOM
+ * chrome reads (`text-accent`, `border-accent`, focus rings). Published onto the
+ * stage root so a palette switch re-tints every chrome utility in one write —
+ * `palette.ts` stays the canonical sky source; chrome borrows only its accent.
+ */
+export const paletteAccentVars = (palette: Palette = DEFAULT_PALETTE) => {
+  const { accent, accentSoft } = paletteFor(palette);
+  return {
+    "--color-accent": accent,
+    "--color-accent-soft": accentSoft,
+  } as const;
+};
+
 /** Display order for the theme picker (auroral default first). */
 export const PALETTE_ORDER = ["auroral", "ember", "ice"] as const;
 
