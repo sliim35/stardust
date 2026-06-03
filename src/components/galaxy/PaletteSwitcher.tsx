@@ -20,7 +20,7 @@ import type { Palette } from "#/lib/galaxy/types";
 type Props = { value: Palette; onChange: (p: Palette) => void };
 
 export const PaletteSwitcher = ({ value, onChange }: Props) => (
-  <fieldset className="pointer-events-auto absolute top-[50px] right-panel z-[6] m-0 flex min-inline-size:0 gap-row border-0 p-0">
+  <fieldset className="pointer-events-auto absolute top-[50px] right-panel z-[6] m-0 flex [min-inline-size:0] gap-row border-0 p-0">
     <legend className="sr-only">Backdrop theme</legend>
     {PALETTE_ORDER.map((p) => (
       <button
