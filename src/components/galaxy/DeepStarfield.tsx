@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { buildDeepMeteors, stepMeteor } from "#/lib/galaxy/meteors";
 import { mulberry32 } from "#/lib/galaxy/rng";
 import { kindFor, twinkleAlpha } from "#/lib/galaxy/twinkle";
 
@@ -67,6 +68,10 @@ export const DeepStarfield = () => {
     if (!ctx) return;
 
     const field = buildField();
+    // L1 parallax depth (#55): 2–3 fainter, slower far-meteors. Geometry is the
+    // pure, unit-tested `meteors` module; normalized y0/coords scale to the
+    // viewport here. Skipped entirely under reduced motion (no streaks).
+    const meteors = buildDeepMeteors(DEEP_SEED);
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -94,6 +99,28 @@ export const DeepStarfield = () => {
         ctx.fillStyle = s.blinker ? "#eaf2ff" : "#cdd6ea";
         ctx.fillRect(Math.round(s.x * w), Math.round(s.y * h), s.size, s.size);
       }
+
+      // Faint, slow far-meteors for depth — never under reduced motion. All the
+      // per-frame stepping (window gate, head, fade, per-pixel taper, slope) is the
+      // pure `stepMeteor`; this loop only fills the pixels it returns. The frame is
+      // HEAD-relative + y0 normalized × h (L2 is STAGE-absolute, y0 as-is) — the
+      // asymmetry is deliberate and lives in `StepOpts`, not here (#55).
+      if (!reduce) {
+        const sec = t * 0.001;
+        ctx.fillStyle = "#dfe7f5";
+        for (const m of meteors) {
+          for (const px of stepMeteor(m, sec, {
+            width: w,
+            y0Scale: h,
+            slopeFrame: "head-relative",
+            alphaCap: m.alpha,
+          })) {
+            ctx.globalAlpha = px.alpha;
+            ctx.fillRect(px.x, px.y, 1, 1);
+          }
+        }
+      }
+
       ctx.globalAlpha = 1;
       if (!reduce) raf = requestAnimationFrame(draw);
     };
