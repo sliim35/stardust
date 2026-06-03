@@ -6,9 +6,10 @@
  * secondary ones (`docs/design/2026-06-02-explorable-galaxy.md` §"GalaxyBackdrop
  * rework").
  *
- * Tuned per the 2026-06-03 visual-language critique (#50): high pixel density +
- * brighter arms + a coarse grid snap on the bar/bulge so the disk reads as crisp
- * pixel-art, not a soft glow.
+ * Density tuned per the 2026-06-03 visual-language pass (#50): enough points for
+ * defined arms. The canvas renders these as soft additive glows (the owner-chosen
+ * "soft-glow" direction — see the soft-glow direction design doc), so this module
+ * only owns the seeded *positions*, never the texture.
  *
  * Everything is a deterministic function of `backdrop.seed` (mulberry32), so the
  * same seed yields byte-identical pixels (#4 AC1) and SSR/client never disagree.
@@ -52,9 +53,6 @@ const START_R = 0.12; // inner radius where the arms begin
 const clamp = (v: number, lo: number, hi: number): number =>
   v < lo ? lo : v > hi ? hi : v;
 
-/** Snap to a coarse pixel grid so dense clusters read as blocky pixel-art. */
-const snap = (v: number, grid: number): number => Math.round(v / grid) * grid;
-
 /** Disk-polar (rNorm 0..1, theta rad) → stage pixels, foreshortened by the tilt. */
 const toStage = (rNorm: number, theta: number): { x: number; y: number } => {
   const rr = rNorm * GALAXY_R;
@@ -71,12 +69,11 @@ const pointAt = (
   alpha: number,
   warm: number,
   bigChance: number,
-  grid = 1,
 ): BackdropPoint => {
   const p = toStage(rNorm, theta);
   return {
-    x: clamp(snap(Math.round(p.x), grid), 0, STAGE_W),
-    y: clamp(snap(Math.round(p.y), grid), 0, STAGE_H),
+    x: clamp(Math.round(p.x), 0, STAGE_W),
+    y: clamp(Math.round(p.y), 0, STAGE_H),
     size: rng() < bigChance ? 2 : 1,
     alpha,
     phase: rng(),
@@ -148,7 +145,6 @@ export const buildBackdropGeometry = (
         0.45 + barRng() * 0.42,
         0.55 + barRng() * 0.45,
         0.3,
-        2,
       ),
     );
   }
@@ -165,7 +161,6 @@ export const buildBackdropGeometry = (
         0.5 + bulgeRng() * 0.45,
         0.6 + bulgeRng() * 0.4,
         0.4,
-        2,
       ),
     );
   }

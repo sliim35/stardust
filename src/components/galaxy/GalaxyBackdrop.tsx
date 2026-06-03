@@ -9,40 +9,73 @@ import { mulberry32 } from "#/lib/galaxy/rng";
 import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
 
 /**
- * L2 — the reworked barred-spiral disk (`docs/design/2026-06-02-explorable-galaxy.md`
- * §"GalaxyBackdrop rework"). Two stacked canvases at the fixed 1280×800 internal
- * resolution (the parent scales them, `image-rendering: pixelated` keeps them
- * crisp): a static `base` (haze + arms + bar + bulge + core, drawn once per
- * backdrop) and a `live` overlay (RAF twinkle + a few shooting stars).
+ * L2 — the barred-spiral disk. **Soft-glow direction** (owner-chosen 2026-06-03,
+ * `docs/superpowers/specs/2026-06-03-galaxy-soft-glow-direction-design.md`): the
+ * seeded points render as soft additive glows (pre-rendered sprites + `lighter`
+ * blending), so the arms read as smooth luminous bands rather than crisp
+ * pixel-art grit. Geometry + density are unchanged; only the surface is soft.
  *
- * Deterministic from `backdrop.seed` — same seed, identical pixels (#4 AC1).
- * Client-only (draws in effects); reduced motion paints the base and stops.
+ * Two stacked canvases at the fixed 1280×800 internal resolution: a static
+ * `base` (haze + arms + core + bar + bulge, drawn once per backdrop) and a
+ * `live` overlay (RAF twinkle + a few thin shooting stars). Deterministic from
+ * `backdrop.seed`. Client-only (draws in effects); reduced motion paints the
+ * base and stops.
  */
 
-const tintOf = (warm: number, p: PaletteTokens): string =>
-  warm > 0.7 ? p.starHot : warm > 0.4 ? p.starWarm : p.starCool;
+const SPRITE_PX = 16; // offscreen glow-sprite resolution
+type Sprites = readonly [
+  HTMLCanvasElement,
+  HTMLCanvasElement,
+  HTMLCanvasElement,
+];
 
-const paintPoints = (
+/** cool / warm / hot bucket for a point's warmth (matches the palette star tones). */
+const bucketOf = (warm: number): 0 | 1 | 2 =>
+  warm > 0.7 ? 2 : warm > 0.4 ? 1 : 0;
+
+/** A soft round glow (color centre → transparent), pre-rendered once per palette. */
+const makeGlowSprite = (color: string): HTMLCanvasElement => {
+  const c = document.createElement("canvas");
+  c.width = SPRITE_PX;
+  c.height = SPRITE_PX;
+  const cx = c.getContext("2d");
+  if (cx) {
+    const r = SPRITE_PX / 2;
+    const g = cx.createRadialGradient(r, r, 0, r, r, r);
+    g.addColorStop(0, color);
+    g.addColorStop(0.35, `${color}80`);
+    g.addColorStop(1, `${color}00`);
+    cx.fillStyle = g;
+    cx.fillRect(0, 0, SPRITE_PX, SPRITE_PX);
+  }
+  return c;
+};
+
+/** Paint a point cloud as soft additive glows — no hard pixels (#50 → soft direction). */
+const paintGlow = (
   ctx: CanvasRenderingContext2D,
   points: readonly BackdropPoint[],
-  p: PaletteTokens,
+  sprites: Sprites,
 ): void => {
+  ctx.globalCompositeOperation = "lighter";
   for (const s of points) {
+    const d = s.size === 2 ? 5.6 : 3.6;
     ctx.globalAlpha = s.alpha;
-    ctx.fillStyle = tintOf(s.warm, p);
-    ctx.fillRect(s.x, s.y, s.size, s.size);
+    ctx.drawImage(sprites[bucketOf(s.warm)], s.x - d / 2, s.y - d / 2, d, d);
   }
   ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
 };
 
 const drawBase = (
   ctx: CanvasRenderingContext2D,
   geom: ReturnType<typeof buildBackdropGeometry>,
   p: PaletteTokens,
+  sprites: Sprites,
 ): void => {
   ctx.clearRect(0, 0, STAGE_W, STAGE_H);
 
-  // Two soft haze passes (reduced from the prototype's three so the arms read).
+  // Faint haze underlay — kept low so the arms read as soft light, not fog.
   const haze = (color: string, radius: number, alphaHex: string): void => {
     const g = ctx.createRadialGradient(
       GALAXY_CENTER.x,
@@ -57,15 +90,14 @@ const drawBase = (
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, STAGE_W, STAGE_H);
   };
-  // Faint haze underlay — kept low so the arms read as pixels, not glow (#50).
   haze(p.hazeFar, GALAXY_R * 1.5, "16");
   haze(p.hazeNear, GALAXY_R * 0.85, "1e");
 
-  paintPoints(ctx, geom.bgStars, p);
-  paintPoints(ctx, geom.arms, p);
+  paintGlow(ctx, geom.bgStars, sprites);
+  paintGlow(ctx, geom.arms, sprites);
 
-  // Compact, dim core glow drawn BEHIND the bright bar/bulge pixels, so the
-  // center reads as crisp blocky pixel-art rather than a dominating bloom (#50).
+  // Compact, dim core glow drawn BEHIND the bright bar/bulge so the centre
+  // reads as concentrated light, not a dominating bloom.
   const core = ctx.createRadialGradient(
     GALAXY_CENTER.x,
     GALAXY_CENTER.y,
@@ -80,8 +112,8 @@ const drawBase = (
   ctx.fillStyle = core;
   ctx.fillRect(0, 0, STAGE_W, STAGE_H);
 
-  paintPoints(ctx, geom.bar, p);
-  paintPoints(ctx, geom.bulge, p);
+  paintGlow(ctx, geom.bar, sprites);
+  paintGlow(ctx, geom.bulge, sprites);
 };
 
 type Shooter = {
@@ -109,12 +141,17 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
       c.width = STAGE_W;
       c.height = STAGE_H;
     }
-    bctx.imageSmoothingEnabled = false;
-    lctx.imageSmoothingEnabled = false;
+    bctx.imageSmoothingEnabled = true;
+    lctx.imageSmoothingEnabled = true;
 
     const p = paletteFor(backdrop.palette);
+    const sprites: Sprites = [
+      makeGlowSprite(p.starCool),
+      makeGlowSprite(p.starWarm),
+      makeGlowSprite(p.starHot),
+    ];
     const geom = buildBackdropGeometry(backdrop);
-    drawBase(bctx, geom, p);
+    drawBase(bctx, geom, p, sprites);
 
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -138,6 +175,7 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
       };
     });
 
+    const hot = sprites[2];
     let raf = 0;
     const draw = (ms: number): void => {
       const t = ms * 0.001;
@@ -146,23 +184,21 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
 
       for (const s of twinklers) {
         const tw = 0.5 + 0.5 * Math.sin(t * s.speed + s.phase * 6.283);
-        lctx.globalAlpha = s.alpha * tw * 0.7;
-        lctx.fillStyle = p.starHot;
-        lctx.fillRect(s.x, s.y, s.size, s.size);
+        const d = s.size === 2 ? 6.5 : 4.5;
+        lctx.globalAlpha = s.alpha * tw * 0.6;
+        lctx.drawImage(hot, s.x - d / 2, s.y - d / 2, d, d);
       }
 
       for (const sh of shooters) {
         const prog = ((t + sh.offset) / sh.period) % 1;
         if (prog > 0.18) continue; // brief streak, long pause
         const head = -120 + prog * (STAGE_W + 240) * (sh.speed / 300);
-        const hx = head;
-        const hy = sh.y0 + head * sh.slope;
         for (let k = 0; k < sh.len; k++) {
           lctx.globalAlpha = (1 - k / sh.len) * (1 - prog / 0.18) * 0.9;
           lctx.fillStyle = p.starHot;
           lctx.fillRect(
-            Math.round(hx - k),
-            Math.round(hy - k * sh.slope),
+            Math.round(head - k),
+            Math.round(sh.y0 + (head - k) * sh.slope),
             1,
             1,
           );

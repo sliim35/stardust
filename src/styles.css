@@ -160,7 +160,8 @@ body {
   inset: 0;
   width: 1280px;
   height: 800px;
-  image-rendering: pixelated;
+  /* Smooth upscaling — the disk is soft glow, not pixel-art (2026-06-03). */
+  image-rendering: auto;
 }
 
 /* L3 — memory stars (nearest plane). */
