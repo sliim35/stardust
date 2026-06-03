@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
@@ -82,6 +83,9 @@ export const GalaxyStage = () => {
   return (
     <div
       className="galaxy-stage"
+      // Publish the active accent onto the shared @theme vars so chrome utilities
+      // (text-accent, border-accent, focus rings) re-tint with the picked sky.
+      style={paletteAccentVars(palette) as CSSProperties}
       onPointerMove={cam.onPointerMove}
       onPointerLeave={cam.onPointerLeave}
     >
