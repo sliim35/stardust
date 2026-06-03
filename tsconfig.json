@@ -28,5 +28,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
-  }
+  },
+  "exclude": ["node_modules", "dist", ".wrangler", ".claude"]
 }

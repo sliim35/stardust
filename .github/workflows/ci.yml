@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   check:
-    name: check · test · build
+    name: check · typecheck · test · build
     runs-on: ubuntu-latest
     env:
       HUSKY: 0
@@ -28,5 +28,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
