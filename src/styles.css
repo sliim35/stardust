@@ -359,6 +359,49 @@ body {
   color: #8a8c96;
 }
 
+/* Backdrop theme picker (#44 — sea glass · amber · moonlit). */
+.galaxy-themes {
+  position: absolute;
+  right: 28px;
+  top: 50px;
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+  pointer-events: auto;
+  z-index: 6;
+}
+.galaxy-themes__swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: var(--swatch);
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.galaxy-themes__swatch:hover {
+  opacity: 0.85;
+}
+.galaxy-themes__swatch[data-active] {
+  opacity: 1;
+  transform: scale(1.15);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 10px 1px var(--swatch);
+}
+.galaxy-themes__swatch:focus-visible {
+  outline: 2px solid var(--swatch);
+  outline-offset: 2px;
+}
+
 @keyframes memTwinkle {
   0%,
   100% {
@@ -403,7 +446,8 @@ body {
   }
   .mem-star__halo,
   .mem-star__flare-h,
-  .mem-star__flare-v {
+  .mem-star__flare-v,
+  .galaxy-themes__swatch {
     transition: none;
   }
 }

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PALETTE, PALETTES, paletteFor } from "#/lib/galaxy/palette";
+import {
+  DEFAULT_PALETTE,
+  isPalette,
+  PALETTE_LABELS,
+  PALETTE_ORDER,
+  PALETTES,
+  paletteFor,
+} from "#/lib/galaxy/palette";
 
 const keysOf = (p: Record<string, string>): string[] => Object.keys(p).sort();
 
@@ -28,5 +35,33 @@ describe("paletteFor", () => {
 
   it("covers exactly the three named palettes", () => {
     expect(Object.keys(PALETTES).sort()).toEqual(["auroral", "ember", "ice"]);
+  });
+});
+
+describe("palette options (theme picker)", () => {
+  it("orders the options auroral → ember → ice, every palette present", () => {
+    expect(PALETTE_ORDER).toEqual(["auroral", "ember", "ice"]);
+    expect([...PALETTE_ORDER].sort()).toEqual(Object.keys(PALETTES).sort());
+  });
+
+  it("labels each palette for the swatch", () => {
+    expect(PALETTE_LABELS.auroral).toBe("sea glass");
+    expect(PALETTE_LABELS.ember).toBe("amber");
+    expect(PALETTE_LABELS.ice).toBe("moonlit");
+  });
+});
+
+describe("isPalette (guard for persisted/user input)", () => {
+  it("accepts the three known palettes", () => {
+    expect(isPalette("auroral")).toBe(true);
+    expect(isPalette("ember")).toBe(true);
+    expect(isPalette("ice")).toBe(true);
+  });
+
+  it("rejects anything else", () => {
+    expect(isPalette("amber")).toBe(false);
+    expect(isPalette("")).toBe(false);
+    expect(isPalette(null)).toBe(false);
+    expect(isPalette(42)).toBe(false);
   });
 });

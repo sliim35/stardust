@@ -76,3 +76,17 @@ export const PALETTES = {
 /** The hex token set for a palette (defaults to the approved auroral sky). */
 export const paletteFor = (palette: Palette = DEFAULT_PALETTE): PaletteTokens =>
   PALETTES[palette];
+
+/** Display order for the theme picker (auroral default first). */
+export const PALETTE_ORDER = ["auroral", "ember", "ice"] as const;
+
+/** Human swatch labels — resolves the #44 amber-vs-green call as a user choice. */
+export const PALETTE_LABELS = {
+  auroral: "sea glass",
+  ember: "amber",
+  ice: "moonlit",
+} as const satisfies Record<Palette, string>;
+
+/** Guard for persisted / user-supplied palette values (e.g. from localStorage). */
+export const isPalette = (v: unknown): v is Palette =>
+  typeof v === "string" && (PALETTE_ORDER as readonly string[]).includes(v);

@@ -1,10 +1,18 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { GalaxyChrome } from "./GalaxyChrome";
 import { MemoryStarLayer } from "./MemoryStarLayer";
+import { PaletteSwitcher } from "./PaletteSwitcher";
 import { useGalaxyCamera } from "./useGalaxyCamera";
+import { usePalette } from "./usePalette";
 import { useStageFit } from "./useStageFit";
 
 /** How long the `memIgnite` fade-in runs before a new star settles to twinkle. */
@@ -50,6 +58,14 @@ export const GalaxyStage = () => {
     });
   }, [store]);
 
+  const [palette, setPalette] = usePalette();
+  // Override only the backdrop tint with the picked theme (#44); memoized so the
+  // disk redraws on theme/seed change, not on every ignite re-render.
+  const backdrop = useMemo(
+    () => ({ ...sky.backdrop, palette }),
+    [sky.backdrop, palette],
+  );
+
   const scale = useStageFit();
   const cam = useGalaxyCamera();
 
@@ -68,13 +84,14 @@ export const GalaxyStage = () => {
       >
         <div className="galaxy-stage__camera" ref={cam.cam}>
           <div className="galaxy-l2-wrap" ref={cam.l2}>
-            <GalaxyBackdrop backdrop={sky.backdrop} />
+            <GalaxyBackdrop backdrop={backdrop} />
           </div>
           <div className="galaxy-l3-wrap" ref={cam.l3}>
             <MemoryStarLayer stars={sky.stars} ignitingIds={ignitingIds} />
           </div>
         </div>
         <GalaxyChrome count={sky.stars.length} />
+        <PaletteSwitcher value={palette} onChange={setPalette} />
       </div>
     </div>
   );
