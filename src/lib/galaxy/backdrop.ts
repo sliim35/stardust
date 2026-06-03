@@ -2,7 +2,7 @@
  * Pure, seeded point geometry for the procedural backdrop disk (#4) — the
  * headless half of the canvas `GalaxyBackdrop` component. Recreates the
  * prototype's *output* (`galaxy.jsx` `PixelGalaxy`), reworked per the design
- * spec: a cleaner barred log-spiral with two bright primary arms and two faded
+ * spec: a clean log-spiral (no central bar) with two bright primary arms and two faded
  * secondary ones (`docs/design/2026-06-02-explorable-galaxy.md` §"GalaxyBackdrop
  * rework").
  *
@@ -37,16 +37,14 @@ export type BackdropPoint = {
   warm: number; // 0..1 cool→warm tint mix, resolved against the palette by the canvas
 };
 
-/** The four structural point clouds the canvas paints back-to-front. */
+/** The three structural point clouds the canvas paints back-to-front. */
 export type BackdropGeometry = {
   bgStars: BackdropPoint[]; // faint full-stage field
   arms: BackdropPoint[]; // log-spiral arms
-  bar: BackdropPoint[]; // central bar @ 25°
-  bulge: BackdropPoint[]; // bright core cloud
+  bulge: BackdropPoint[]; // bright rounded core cloud
 };
 
 const TAU = Math.PI * 2;
-const BAR_ANGLE = (25 * Math.PI) / 180;
 const ARM_WIND = 1.8; // log-spiral winding: theta = base + ln(r/startR) * ARM_WIND
 const START_R = 0.12; // inner radius where the arms begin
 
@@ -87,7 +85,6 @@ export const buildBackdropGeometry = (
   // never reshuffles another.
   const bgRng = mulberry32(seed ^ 0x9e3779b9);
   const armRng = mulberry32(seed);
-  const barRng = mulberry32(seed ^ 0x85ebca6b);
   const bulgeRng = mulberry32(seed ^ 0xc2b2ae35);
 
   const bgStars: BackdropPoint[] = [];
@@ -128,27 +125,11 @@ export const buildBackdropGeometry = (
     }
   }
 
-  // Bar + bulge snap to a 2px grid so the dense core reads as blocky pixel-art.
-  const bar: BackdropPoint[] = [];
-  for (let i = 0; i < 320; i++) {
-    const t = barRng() * 2 - 1; // -1..1 along the bar axis
-    const rNorm = Math.abs(t) * 0.42;
-    const theta = BAR_ANGLE + (t < 0 ? Math.PI : 0) + (barRng() - 0.5) * 0.12;
-    bar.push(
-      pointAt(
-        rNorm,
-        theta,
-        barRng,
-        0.45 + barRng() * 0.42,
-        0.55 + barRng() * 0.45,
-        0.3,
-      ),
-    );
-  }
-
+  // Rounded core cloud — no central bar (the owner disliked the horizontal
+  // streak); the bulge alone carries the bright centre.
   const bulge: BackdropPoint[] = [];
-  for (let i = 0; i < 440; i++) {
-    const rNorm = bulgeRng() ** randomnessPower * 0.2; // power-biased toward the core
+  for (let i = 0; i < 560; i++) {
+    const rNorm = bulgeRng() ** randomnessPower * 0.24; // power-biased toward the core
     const theta = bulgeRng() * TAU;
     bulge.push(
       pointAt(
@@ -162,5 +143,5 @@ export const buildBackdropGeometry = (
     );
   }
 
-  return { bgStars, arms, bar, bulge };
+  return { bgStars, arms, bulge };
 };

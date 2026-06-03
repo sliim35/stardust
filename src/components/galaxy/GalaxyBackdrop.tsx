@@ -9,7 +9,7 @@ import { mulberry32 } from "#/lib/galaxy/rng";
 import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
 
 /**
- * L2 — the barred-spiral disk. **Soft-glow direction** (owner-chosen 2026-06-03,
+ * L2 — the spiral disk (no central bar). **Soft-glow direction** (owner-chosen 2026-06-03,
  * `docs/superpowers/specs/2026-06-03-galaxy-soft-glow-direction-design.md`): the
  * seeded points render as soft additive glows (pre-rendered sprites + `lighter`
  * blending), so the arms read as smooth luminous bands rather than crisp
@@ -112,7 +112,6 @@ const drawBase = (
   ctx.fillStyle = core;
   ctx.fillRect(0, 0, STAGE_W, STAGE_H);
 
-  paintGlow(ctx, geom.bar, sprites);
   paintGlow(ctx, geom.bulge, sprites);
 };
 
@@ -159,7 +158,7 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
     if (reduce) return;
 
     // Twinkle the brighter arm/bulge points; speed reuses the seeded phase.
-    const twinklers = [...geom.arms, ...geom.bulge, ...geom.bar]
+    const twinklers = [...geom.arms, ...geom.bulge]
       .filter((s) => s.alpha > 0.5)
       .map((s) => ({ ...s, speed: 0.6 + s.phase * 1.6 }));
 

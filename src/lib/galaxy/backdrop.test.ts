@@ -15,7 +15,6 @@ const B = (over: Partial<GalaxyBackdrop> = {}): GalaxyBackdrop => ({
 const allPoints = (g: ReturnType<typeof buildBackdropGeometry>) => [
   ...g.bgStars,
   ...g.arms,
-  ...g.bar,
   ...g.bulge,
 ];
 
@@ -46,7 +45,6 @@ describe("buildBackdropGeometry", () => {
     const g = buildBackdropGeometry(B());
     expect(g.bgStars.length).toBeGreaterThan(0);
     expect(g.arms.length).toBeGreaterThan(0);
-    expect(g.bar.length).toBeGreaterThan(0);
     expect(g.bulge.length).toBeGreaterThan(0);
   });
 
