@@ -17,7 +17,14 @@ After the developer reports a story at `in-review`.
 ## Procedure
 1. **Verify with evidence** using the superpowers `verification-before-completion` skill:
    run `pnpm check`, `pnpm test`, and `pnpm build`; paste the actual output. Use the
-   `playwright` MCP for UI acceptance checks where relevant.
+   `playwright` MCP for UI acceptance checks where relevant — drive it against the PR's
+   **preview-deploy URL** (the sticky comment from `preview.yml`), not just localhost.
+   - **Visual evidence on the PR = that preview URL + a short list of the states you
+     verified** (route, `prefers-reduced-motion`, etc.). Playwright screenshots stay
+     local: **GitHub has no API to attach inline images** (drag-drop is browser-UI-only),
+     so never paste a local file path — it renders broken. Fill the PR's *Screenshots /
+     visual evidence* section with the preview URL + verified-states checklist (or
+     "N/A — no visual change" for non-visual PRs).
 2. **Check each AC** explicitly — tick the boxes that genuinely pass; for any that fail,
    say so with the failing output.
 3. **Review the diff** for **correctness** using the superpowers `requesting-code-review`

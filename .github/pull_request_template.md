@@ -29,10 +29,17 @@ paste command output here
 </details>
 
 ## Screenshots / visual evidence
-<!-- For any UI-affecting change, attach screenshots (before / after, or the rendered
-     state) — drag images in here, or paste a deploy/preview URL. Write "N/A — no visual
+<!-- For any UI-affecting change, evidence = the per-PR **preview deploy URL** (auto-posted
+     by the Preview workflow as a sticky comment) + a short list of the states verified
+     there. Drag-drop screenshots are browser-UI-only — automation/agents can't attach them
+     via the API, so the live preview URL is the canonical evidence. Write "N/A — no visual
      change" for pure logic/tooling/data PRs. -->
 
+**Verified at the preview deploy:** <paste the preview URL>
+- [ ] <route / state verified>
+- [ ] <route / state verified>
+
+<!-- Optional: static before/after images, only if you dragged them in by hand. -->
 | Before | After |
 | --- | --- |
 |  |  |
