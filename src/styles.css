@@ -95,22 +95,315 @@ body {
   text-align: center;
 }
 
-.galaxy__title {
-  margin: 0;
-  font-size: clamp(2rem, 6vw, 4rem);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-shadow: 0 0 24px rgba(140, 160, 255, 0.45);
+/* --- Galaxy renderer (#4): L1 deep field · L2 disk · L3 memory stars ------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.galaxy__tagline {
-  margin: 0.75rem 0 0;
-  color: rgba(220, 228, 255, 0.6);
-  font-size: clamp(0.95rem, 2vw, 1.15rem);
+.galaxy-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* L1 — full-viewport deep starfield (farthest plane). */
+.galaxy-l1-wrap {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.galaxy-l1 {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* The fixed 1280×800 stage, contain-scaled + centered into the viewport. */
+.galaxy-stage__fit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1280px;
+  height: 800px;
+  transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+  transform-origin: center center;
+}
+.galaxy-stage__camera {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+/* L2 — the disk (static base + live overlay canvases). */
+.galaxy-l2,
+.galaxy-l2-wrap {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.galaxy-l2__canvas {
+  position: absolute;
+  inset: 0;
+  width: 1280px;
+  height: 800px;
+  image-rendering: pixelated;
+}
+
+/* L3 — memory stars (nearest plane). */
+.galaxy-l3-wrap {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.galaxy-l3 {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mem-star {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+}
+/* 34×34 invisible, touch-friendly hit area centered on the point. */
+.mem-star::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+}
+.mem-star__body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  animation: memTwinkle var(--twk-period, 3s) ease-in-out var(--twk-delay, 0s)
+    infinite;
+}
+.mem-star[data-kind="egg"] .mem-star__body {
+  animation: memEgg 5.5s ease-in-out infinite;
+}
+.mem-star[data-igniting] .mem-star__body {
+  animation: memIgnite 1.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.mem-star__halo,
+.mem-star__flare-h,
+.mem-star__flare-v,
+.mem-star__hot,
+.mem-star__core {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+.mem-star__halo {
+  width: var(--bloom);
+  height: var(--bloom);
+  background: var(--halo);
+  transition:
+    width 0.25s ease,
+    height 0.25s ease;
+}
+.mem-star__flare-h {
+  width: var(--flare-w);
+  height: 2px;
+  border-radius: 0;
+  background: linear-gradient(90deg, transparent, var(--star-color), transparent);
+  opacity: 0.5;
+  transition: opacity 0.25s ease;
+}
+.mem-star__flare-v {
+  width: 2px;
+  height: var(--vflare-h);
+  border-radius: 0;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--star-color),
+    transparent
+  );
+  opacity: 0.28;
+  transition: opacity 0.25s ease;
+}
+.mem-star__hot {
+  width: var(--hot);
+  height: var(--hot);
+  background: radial-gradient(circle, #fff 0%, var(--star-color) 45%, transparent 72%);
+}
+.mem-star__core {
+  width: var(--core);
+  height: var(--core);
+  border-radius: 1px;
+  background: #fffdf6;
+  box-shadow: 0 0 6px 2px var(--star-color);
+  image-rendering: pixelated;
+}
+
+/* Hover bloom + flare brighten. Selection rings + the read panel are #5. */
+.mem-star:hover {
+  z-index: 5;
+}
+.mem-star:hover .mem-star__halo {
+  width: calc(var(--bloom) * 1.3);
+  height: calc(var(--bloom) * 1.3);
+}
+.mem-star:hover .mem-star__flare-h {
+  opacity: 0.9;
+}
+.mem-star:hover .mem-star__flare-v {
+  opacity: 0.6;
+}
+
+.mem-star__label {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 14px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.mem-star:hover .mem-star__label {
+  opacity: 1;
+}
+.mem-star__name {
+  font-family: Newsreader, Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  color: #f8f6f0;
+}
+.mem-star__mood {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--star-color);
+}
+
+/* Chrome (title · breadcrumb · live count). */
+.galaxy-chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.galaxy-chrome__title {
+  position: absolute;
+  left: 28px;
+  top: 22px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 400;
+}
+.galaxy-chrome__for {
+  font-family: Newsreader, Georgia, serif;
+  font-style: italic;
+  font-size: 28px;
+  color: #f5d6a0;
+  text-shadow: 0 0 18px rgba(245, 214, 160, 0.35);
+}
+.galaxy-chrome__sub {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #8a8c96;
+}
+.galaxy-chrome__breadcrumb {
+  position: absolute;
+  right: 28px;
+  top: 24px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #9cd8c0;
+}
+.galaxy-chrome__breadcrumb .is-dim {
+  color: #4a4c58;
+}
+.galaxy-chrome__count {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #8a8c96;
+}
+
+@keyframes memTwinkle {
+  0%,
+  100% {
+    opacity: 0.82;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes memEgg {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+@keyframes memIgnite {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .galaxy__core {
     animation: none;
+  }
+  .mem-star__body,
+  .mem-star[data-kind="egg"] .mem-star__body,
+  .mem-star[data-igniting] .mem-star__body {
+    animation: none;
+  }
+  .mem-star__halo,
+  .mem-star__flare-h,
+  .mem-star__flare-v {
+    transition: none;
   }
 }
