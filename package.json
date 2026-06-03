@@ -16,7 +16,7 @@
     "check": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
     "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "prepare": "husky"
+    "prepare": "node .husky/install.js"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.26.0",
@@ -66,6 +66,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "dotenv": "^17.3.1",
+    "husky": "^9.1.7",
     "jsdom": "^28.1.0",
     "lint-staged": "^17.0.7",
     "tsx": "^4.21.0",
