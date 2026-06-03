@@ -14,7 +14,12 @@ A story is at `status:in-review` with an open PR. This phase owns conventions/st
 the learning loop; correctness/AC verification is QA's gate, not this one.
 
 ## Inputs (read first)
-- The PR: `gh pr diff <pr>` and `gh pr view <pr> --json title,body,files,reviews,comments`.
+- The PR diff + metadata: `gh pr diff <pr>` and `gh pr view <pr> --json title,body,files`.
+- **The human's inline review comments are NOT in `gh pr view`.** `--json comments`
+  returns only issue-timeline comments, and `reviews[].body` is empty when the human
+  left just a line comment (the text lives in that review's `comments[]`, which
+  `gh pr view` never expands) — so diff-anchored feedback is invisible to both. Always
+  read it via the GraphQL `reviewThreads` query in step 3.
 - The living guide `docs/conventions/code-style.md`. **Bootstrap it from
   `.claude/skills/templates/code-style.md` if it doesn't exist yet** (seed the
   hand-written section from `AGENTS.md` § Conventions).
@@ -28,15 +33,28 @@ the learning loop; correctness/AC verification is QA's gate, not this one.
    layer on guide-rule + best-practice enforcement. Every finding carries `file:line`,
    a severity (`blocker | major | minor | nit`), and the **rule it cites**.
 3. **Learn from inline comments** (the feedback edge):
-   - **This PR first — highest priority.** Read the inline comments left on *this* PR,
-     especially the human's: `gh api repos/{owner}/{repo}/pulls/<pr>/comments`. These
-     are direct corrections — treat them as authoritative.
+   - **This PR first — highest priority.** Read the inline review *threads* on *this* PR
+     via GraphQL, so you get `isOutdated`/`isResolved` (the REST `…/pulls/<pr>/comments`
+     endpoint lacks both and re-learns dead anchors):
+     ```
+     gh api graphql -f query='
+       query($owner:String!,$repo:String!,$pr:Int!){ repository(owner:$owner,name:$repo){
+         pullRequest(number:$pr){ reviewThreads(first:100){ nodes{
+           isResolved isOutdated
+           comments(first:50){ nodes{ author{login} path line body createdAt }}
+         }}}}}' -F owner={owner} -F repo={repo} -F pr=<pr>
+     ```
+     **Drop `isOutdated` threads** (the anchored code no longer exists). **Keep
+     `isResolved` ones** — "use X not Y" is still a convention even after the dev fixed
+     it this time. Human comments (`author.login` ≠ the review bot) are direct
+     corrections — treat them as authoritative.
    - **Then mine history.** Inline comments newer than the guide's `last_learned`
      watermark across recent merged/closed PRs:
      `gh api repos/{owner}/{repo}/pulls/comments --paginate`.
-   - **Distill.** Drop praise / questions / outdated / deleted-code comments; keep
-     actionable corrections. Cluster by theme; a theme stated normatively or seen ≥2×
-     becomes a rule (statement · rationale · example · source PR links).
+   - **Distill.** Drop praise / questions / `isOutdated` (dead-anchor) comments; keep
+     actionable corrections (`isResolved` ones included). Cluster by theme; a theme
+     stated normatively or seen ≥2× becomes a rule (statement · rationale · example ·
+     source PR links).
    - **Auto-append** distilled rules under `## Learned conventions`, deduped against
      existing rules. If a signal **contradicts a hand-written rule**, put it under
      `## Conflicts to resolve (human)` — never overwrite. Advance `last_learned` and
