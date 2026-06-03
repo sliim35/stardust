@@ -5,6 +5,7 @@ import {
   PALETTE_LABELS,
   PALETTE_ORDER,
   PALETTES,
+  paletteAccentVars,
   paletteFor,
 } from "#/lib/galaxy/palette";
 
@@ -48,6 +49,32 @@ describe("palette options (theme picker)", () => {
     expect(PALETTE_LABELS.auroral).toBe("sea glass");
     expect(PALETTE_LABELS.ember).toBe("amber");
     expect(PALETTE_LABELS.ice).toBe("moonlit");
+  });
+});
+
+describe("paletteAccentVars (publishes the active accent onto shared CSS vars)", () => {
+  it("maps the auroral accent family onto --color-accent / --color-accent-soft", () => {
+    expect(paletteAccentVars("auroral")).toEqual({
+      "--color-accent": "#9cd8c0",
+      "--color-accent-soft": "#9cd8c030",
+    });
+  });
+
+  it("flips --color-accent from auroral to ember (amber) on a palette switch", () => {
+    expect(paletteAccentVars("auroral")["--color-accent"]).toBe("#9cd8c0");
+    expect(paletteAccentVars("ember")["--color-accent"]).toBe("#f5d6a0");
+    expect(paletteAccentVars("ice")["--color-accent"]).toBe("#c8d4e8");
+  });
+
+  it("publishes only the accent family — never canvas-only sky keys", () => {
+    expect(Object.keys(paletteAccentVars("ice")).sort()).toEqual([
+      "--color-accent",
+      "--color-accent-soft",
+    ]);
+  });
+
+  it("defaults to the auroral sky when no palette is given", () => {
+    expect(paletteAccentVars()).toEqual(paletteAccentVars(DEFAULT_PALETTE));
   });
 });
 
