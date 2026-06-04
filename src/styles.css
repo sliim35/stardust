@@ -130,7 +130,7 @@ body {
   /* Deep-space nebula: a faint core glow fading into black. */
   background:
     radial-gradient(
-      120% 80% at 50% 38%,
+      120% 80% at 50% 50%,
       rgba(60, 80, 180, 0.18),
       transparent 60%
     ),
@@ -161,7 +161,7 @@ body {
   inset: 0;
   pointer-events: none;
   background: radial-gradient(
-    36% 28% at 50% 40%,
+    36% 28% at 50% 50%,
     rgba(150, 170, 255, 0.1),
     transparent 70%
   );
@@ -218,10 +218,18 @@ body {
   will-change: transform;
 }
 /* The nebula tint lifted out of the L2 canvas (#76): full-viewport radial
-   washes anchored on the disk center (50% 38%, matching the .galaxy gradient),
-   each fading to transparent — so the field is seamless to all four edges with
-   no confined-rect border. Colors come from the active palette via BackdropTint
-   (--tint-*), so a theme switch re-tints it together with the disk glow. */
+   washes anchored on the disk center, each fading to transparent — so the field
+   is seamless to all four edges with no confined-rect border.
+
+   Anchor = 50% 50% (NOT 38%). The bulge cluster is drawn at GALAXY_CENTER
+   (640,400) = stage center, and .galaxy-stage__fit centers the stage in the
+   viewport — so the bright core lands at viewport 50% 50%. These washes are
+   full-viewport, so they MUST anchor there to sit on the bulge; the earlier
+   38% (a viewport fraction mistaken for "disk center") split the core into two
+   offset glows ("two suns"). Keep this aligned with .galaxy / .galaxy__core.
+
+   Colors come from the active palette via BackdropTint (--tint-*), so a theme
+   switch re-tints it together with the disk glow. */
 .galaxy-backdrop-tint {
   position: absolute;
   inset: 0;
@@ -230,18 +238,18 @@ body {
   pointer-events: none;
   background:
     radial-gradient(
-      9% 11% at 50% 38%,
+      9% 11% at 50% 50%,
       color-mix(in srgb, var(--tint-core-hot) 55%, transparent) 0%,
       color-mix(in srgb, var(--tint-core-warm) 18%, transparent) 48%,
       transparent 100%
     ),
     radial-gradient(
-      28% 32% at 50% 38%,
+      28% 32% at 50% 50%,
       color-mix(in srgb, var(--tint-haze-near) 14%, transparent) 0%,
       transparent 70%
     ),
     radial-gradient(
-      62% 72% at 50% 38%,
+      62% 72% at 50% 50%,
       color-mix(in srgb, var(--tint-haze-far) 10%, transparent) 0%,
       transparent 78%
     );

@@ -8,8 +8,9 @@
  * read straight from the active palette's `hazeNear/hazeFar/coreWarm/coreHot`
  * tokens (the same matrix the L2 disk glow uses), so a theme switch re-tints the
  * full-bleed tint and the disk together (AC9). The gradient geometry, anchor
- * (`50% 38%`, the disk center), and alpha curve are CSS — verified by screenshot,
- * not unit-tested.
+ * (`50% 50%` — the viewport-center the contain-fit stage maps the bulge core to;
+ * NOT 38%, which offset the wash above the bulge into a second "sun"), and alpha
+ * curve are CSS in `.galaxy-backdrop-tint` — verified by screenshot, not unit-tested.
  */
 
 import { paletteFor } from "#/lib/galaxy/palette";
