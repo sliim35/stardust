@@ -25,7 +25,26 @@
 	"observability": {
 		"enabled": true
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
+	/**
+	 * Re-enable Version Preview URLs for per-PR QA deploys (#118).
+	 *
+	 * Background: Cloudflare's 2025-09-17 one-time update disabled Preview URLs for
+	 * any Worker that had workers.dev turned off. This Worker is custom-domain-only
+	 * (stardust.mdvoy.org), so workers.dev is off — and wrangler ≥ v4.44.0 defaults
+	 * `preview_urls` to match the `workers_dev` setting (also off).
+	 *
+	 * Setting `preview_urls: true` here re-enables Version Preview URLs (hosted on
+	 * the account's *.workers.dev subdomain) WITHOUT exposing production on workers.dev.
+	 * Production traffic stays exclusively on the custom domain.
+	 *
+	 * Apply path: this setting is applied by `wrangler deploy` (deploy.yml, merge to main),
+	 * NOT by `wrangler versions upload` (preview.yml). Preview URLs will work on the *next*
+	 * PR opened after this merges and a production deploy runs.
+	 *
+	 * https://developers.cloudflare.com/workers/configuration/previews/
+	 */
+	"preview_urls": true
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
