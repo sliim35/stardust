@@ -39,6 +39,9 @@ file is the *source*; the dated spec is the durable handoff (and issues duplicat
      (MANDATORY before `use_figma`)**, then `use_figma`; use `/figma-generate-design` to turn an
      app page/layout into a Figma design, or `create_new_file` for a fresh file. **Confirm with the
      owner before writing into a shared Figma workspace** — it is outward-facing.
+   - **Save any preview/variant screenshots (`get_screenshot`, `browser_take_screenshot`) under
+     `docs/img/preview/` — never the repo root** (AGENTS.md § Conventions). When you show the
+     owner 2–3 real variants to pick from, that's where the captures live.
 2. **Design the production version** with `superpowers:frontend-design` (distinctive, non-generic,
    accessible). Recreate in React/TS — never copy prototype/Figma code verbatim (recreate the
    *output*, per the handoff README + ADR-0002 §2).

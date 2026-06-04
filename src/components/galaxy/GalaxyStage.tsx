@@ -7,12 +7,11 @@ import {
 } from "react";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { createInMemoryStore } from "#/lib/galaxy/store";
-import { Astro } from "./Astro";
+import { BackdropTint } from "./BackdropTint";
+import { ChromeOverlay } from "./ChromeOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
-import { GalaxyChrome } from "./GalaxyChrome";
 import { MemoryStarLayer } from "./MemoryStarLayer";
-import { PaletteSwitcher } from "./PaletteSwitcher";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { usePalette } from "./usePalette";
 import { useStageFit } from "./useStageFit";
@@ -90,9 +89,14 @@ export const GalaxyStage = () => {
       onPointerMove={cam.onPointerMove}
       onPointerLeave={cam.onPointerLeave}
     >
-      <div className="galaxy-l1-wrap" ref={cam.l1} aria-hidden="true">
+      {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
+          the farthest/slowest parallax plane). Decorative. */}
+      <div className="galaxy-space" ref={cam.l1} aria-hidden="true">
+        <BackdropTint palette={palette} />
         <DeepStarfield />
       </div>
+      {/* Layer B — the contain-fit stage (UNCHANGED): disk glow (L2, transparent)
+          + memory stars (L3), scaled by --stage-scale and centered. */}
       <div
         className="galaxy-stage__fit"
         style={{ "--stage-scale": scale } as CSSProperties}
@@ -105,10 +109,15 @@ export const GalaxyStage = () => {
             <MemoryStarLayer stars={sky.stars} ignitingIds={ignitingIds} />
           </div>
         </div>
-        <GalaxyChrome count={sky.stars.length} />
-        <Astro />
-        <PaletteSwitcher value={palette} onChange={setPalette} />
       </div>
+      {/* Layer C — viewport-fixed chrome overlay (title · breadcrumb · live count
+          · ASTRO · palette), pinned at fixed px so it never scales with the
+          stage. See ChromeOverlay for the why. */}
+      <ChromeOverlay
+        count={sky.stars.length}
+        palette={palette}
+        onPaletteChange={setPalette}
+      />
     </div>
   );
 };

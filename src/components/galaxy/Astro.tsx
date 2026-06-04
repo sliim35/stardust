@@ -5,9 +5,10 @@ import { PixelAstronaut } from "./PixelAstronaut";
 
 /**
  * ASTRO (#70 + #72) — the galaxy's quiet host, pinned in the reserved bottom-right
- * slot of the stage. A sibling of `<GalaxyChrome />` inside `.galaxy-stage__fit`, so
- * it scales with `--stage-scale` but ignores the camera/parallax (it stays in the
- * corner like the title).
+ * slot. A sibling of `<GalaxyChrome />` in the viewport-fixed `.galaxy-chrome-overlay`
+ * (#76 lifted it out of `.galaxy-stage__fit` so it holds a fixed readable size in the
+ * corner like the title, rather than shrinking with the stage; it never took the
+ * camera/parallax).
  *
  * The sprite is decorative pixel-art chrome: `aria-hidden`, gently bobbing — never a
  * tab stop. The *words* carry meaning (#72), so the speech bubble — not the figure —

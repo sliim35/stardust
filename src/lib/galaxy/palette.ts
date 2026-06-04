@@ -5,8 +5,9 @@
  *
  * These tint the **backdrop, core, accent, and haze only** — never a memory
  * star's `color`, which the agent owns and the UI renders unchanged. The default
- * is `auroral` (sea-glass green), the owner's approved sky; `ember` (amber) and
- * `ice` (moonlit blue) are selectable alternates.
+ * is `ember` (amber) — the owner resolved the amber-vs-green direction → amber
+ * (2026-06-04), so the default sky matches the locked ASTRO/STARLIGHT + loader;
+ * `auroral` (sea-glass green) and `ice` (moonlit blue) are selectable alternates.
  */
 
 import type { Palette } from "#/lib/galaxy/types";
@@ -26,7 +27,7 @@ export type PaletteTokens = {
   dust: string;
 };
 
-export const DEFAULT_PALETTE: Palette = "auroral";
+export const DEFAULT_PALETTE: Palette = "ember";
 
 export const PALETTES = {
   auroral: {
@@ -73,7 +74,7 @@ export const PALETTES = {
   },
 } as const satisfies Record<Palette, PaletteTokens>;
 
-/** The hex token set for a palette (defaults to the approved auroral sky). */
+/** The hex token set for a palette (defaults to the approved ember/amber sky). */
 export const paletteFor = (palette: Palette = DEFAULT_PALETTE): PaletteTokens =>
   PALETTES[palette];
 
@@ -91,7 +92,11 @@ export const paletteAccentVars = (palette: Palette = DEFAULT_PALETTE) => {
   } as const;
 };
 
-/** Display order for the theme picker (auroral default first). */
+/**
+ * Display order for the theme picker (swatch order only — the default sky is
+ * `ember`/amber as of 2026-06-04, but the picker keeps the original
+ * auroral → ember → ice swatch sequence; order ≠ default).
+ */
 export const PALETTE_ORDER = ["auroral", "ember", "ice"] as const;
 
 /** Human swatch labels — resolves the #44 amber-vs-green call as a user choice. */

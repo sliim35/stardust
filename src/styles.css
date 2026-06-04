@@ -20,8 +20,8 @@
   --color-space-deep: #04050d; /* bg-space-deep  (page void / letterbox) */
   --color-space-mid: #0a0e24; /* bg-space-mid   (core-glow inner stop)  */
   --color-surface: rgb(9 9 15 / 0.86); /* bg-surface (panels/HUD) */
-  --color-accent: #9cd8c0; /* text-accent / border-accent (re-tinted per palette) */
-  --color-accent-soft: #9cd8c030; /* focus wash, halos */
+  --color-accent: #f5d6a0; /* ember/amber default (DEFAULT_PALETTE, 2026-06-04); re-tinted per palette at runtime */
+  --color-accent-soft: #f5d6a030; /* focus wash, halos — ember accentSoft default */
   --color-text: #f8f6f0; /* text-text     (primary)              */
   --color-text-bright: #fffdf6; /* text-text-bright (rare emphasis)  */
   --color-dim: #d0d0d8; /* text-dim      (captions)             */
@@ -176,11 +176,41 @@ body {
   touch-action: none;
 }
 
-/* L1 — full-viewport deep starfield (farthest plane). */
-.galaxy-l1-wrap {
+/* Layer A — full-bleed space (#76): nebula tint + L1 deep starfield, carrying
+   the cam.l1 (farthest, slowest) parallax. Full-viewport, decorative. */
+.galaxy-space {
   position: absolute;
   inset: 0;
   will-change: transform;
+}
+/* The nebula tint lifted out of the L2 canvas (#76): full-viewport radial
+   washes anchored on the disk center (50% 38%, matching the .galaxy gradient),
+   each fading to transparent — so the field is seamless to all four edges with
+   no confined-rect border. Colors come from the active palette via BackdropTint
+   (--tint-*), so a theme switch re-tints it together with the disk glow. */
+.galaxy-backdrop-tint {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      9% 11% at 50% 38%,
+      color-mix(in srgb, var(--tint-core-hot) 55%, transparent) 0%,
+      color-mix(in srgb, var(--tint-core-warm) 18%, transparent) 48%,
+      transparent 100%
+    ),
+    radial-gradient(
+      28% 32% at 50% 38%,
+      color-mix(in srgb, var(--tint-haze-near) 14%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      62% 72% at 50% 38%,
+      color-mix(in srgb, var(--tint-haze-far) 10%, transparent) 0%,
+      transparent 78%
+    );
 }
 .galaxy-l1 {
   position: absolute;
@@ -208,14 +238,16 @@ body {
 }
 
 /* ASTRO (#70 + #72) — the mascot in the reserved bottom-right slot. A sibling of
-   .galaxy-chrome inside .galaxy-stage__fit, so it scales with --stage-scale but
-   ignores the camera/parallax. Decorative chrome: clicks pass through. The bob
-   (outer) + drift (inner) compose without fighting (prototype nests them).
-   The whole unit (sprite + speech bubble) bobs together as one. */
+   .galaxy-chrome in the viewport-fixed .galaxy-chrome-overlay: #76 lifted it out
+   of .galaxy-stage__fit so it holds a fixed readable size like the title rather
+   than shrinking with the stage (the offsets below are now viewport px, not
+   stage px). Decorative chrome: clicks pass through. The bob (outer) + drift
+   (inner) compose without fighting (prototype nests them). The whole unit
+   (sprite + speech bubble) bobs together as one. */
 .galaxy-astro {
   position: absolute;
-  right: 80px; /* offset from the stage right edge (prototype anchor) */
-  bottom: 90px; /* offset from the bottom — clears the scale bar */
+  right: 80px; /* offset from the viewport right edge */
+  bottom: 90px; /* offset from the bottom — clears the bottom-center count */
   z-index: 4; /* above stars/captions, below the palette switcher (6) + panels */
   pointer-events: none; /* decorative; never captures mouse/touch */
   animation: astro-bob 4s ease-in-out infinite; /* = BOB_CYCLE_MS (lib/galaxy/astro.ts), pinned by astro.test.ts */
@@ -494,7 +526,19 @@ body {
   color: var(--star-color);
 }
 
-/* Chrome (title · breadcrumb · live count). */
+/* Layer C — chrome pinned to the viewport (#76): fixed inset:0, never scaled by
+   --stage-scale, so title/nav/count/palette hold a readable size at any width
+   (the #67 fix). pointer-events:none so it never blocks star hovers; the palette
+   dots re-enable pointer-events for themselves. Stacks above the contain stage. */
+.galaxy-chrome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Chrome (title · breadcrumb · live count). Offsets are viewport px + safe-area,
+   so they clear notches and stay put as the stage scales. */
 .galaxy-chrome {
   position: absolute;
   inset: 0;
@@ -502,8 +546,8 @@ body {
 }
 .galaxy-chrome__title {
   position: absolute;
-  left: 28px;
-  top: 22px;
+  left: max(28px, env(safe-area-inset-left));
+  top: max(22px, env(safe-area-inset-top));
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -528,8 +572,8 @@ body {
 }
 .galaxy-chrome__breadcrumb {
   position: absolute;
-  right: 28px;
-  top: 24px;
+  right: max(28px, env(safe-area-inset-right));
+  top: max(24px, env(safe-area-inset-top));
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 2px;
@@ -541,12 +585,22 @@ body {
 .galaxy-chrome__count {
   position: absolute;
   left: 50%;
-  bottom: 26px;
+  bottom: max(26px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
   letter-spacing: 1px;
   color: var(--color-dim-2);
+}
+
+/* Narrow widths (#76 AC7): drop the decorative breadcrumb so the top-right
+   palette dots never collide with the top-left title. Title + count + palette
+   dots stay visible; this is the only narrow-width degradation (1100px is the
+   design min — below it is usable, not pixel-perfect). */
+@media (max-width: 620px) {
+  .galaxy-chrome__breadcrumb {
+    display: none;
+  }
 }
 
 /* Backdrop theme picker (#44 — sea glass · amber · moonlit) is DOM chrome:
@@ -587,7 +641,8 @@ body {
 }
 
 /* ASTRO idle float (#70): a gentle bob + a slower drift. Weightless, two-stop —
-   never bounces, never springs (the brand rule). Stage px (scales with the fit). */
+   never bounces, never springs (the brand rule). Fixed px in the viewport
+   overlay (#76 — no longer scales with the fit). */
 @keyframes astro-bob {
   0%,
   100% {
@@ -646,5 +701,227 @@ body {
 @media (max-width: 720px) {
   .galaxy-astro {
     display: none;
+  }
+}
+
+/* --- ASTRO loading screen (#79 — recreated from astro/Loader.html) ---------- */
+
+/* Full-screen deep-space backdrop + radial amber glow. The amber `--color-accent`
+   / `--color-accent-soft` are published on this root by AstroLoader.tsx
+   (paletteAccentVars("ember")) so ASTRO's visor/trim + the halo read amber even
+   though the app default accent is sea glass (#75). Fades out on [data-ready]. */
+.astro-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      900px 620px at 50% 38%,
+      color-mix(in srgb, var(--color-accent) 5%, transparent),
+      transparent 62%
+    ),
+    var(--space-deep);
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+.astro-loader[data-ready] {
+  opacity: 0;
+}
+
+.astro-loader__stars {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.astro-loader__center {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.astro-loader__stage {
+  position: relative;
+  width: 160px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.astro-loader__halo {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  width: 170px;
+  height: 170px;
+  background: radial-gradient(
+    circle,
+    var(--color-accent-soft),
+    transparent 68%
+  );
+  pointer-events: none;
+}
+.astro-loader__drift {
+  will-change: transform;
+  animation: astro-loader-drift 9s ease-in-out infinite;
+}
+.astro-loader__bob {
+  will-change: transform;
+  animation: astro-loader-bob 4s ease-in-out infinite;
+}
+
+/* Fixed twinkling pixel accents around the helmet (positions in loader.ts). */
+.astro-loader__spark,
+.astro-loader__star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: currentColor;
+  pointer-events: none;
+  animation: astro-loader-twinkle 2.2s ease-in-out infinite;
+}
+/* A spark is a cross of five pixels; a star is a single pixel. */
+.astro-loader__spark {
+  box-shadow:
+    0 -3px currentColor,
+    0 3px currentColor,
+    -3px 0 currentColor,
+    3px 0 currentColor;
+}
+
+.astro-loader__word {
+  margin-top: 18px;
+  font-style: italic;
+  font-weight: 300;
+  font-size: 27px;
+  letter-spacing: 0.2px;
+  color: var(--color-accent);
+  line-height: 1;
+}
+.astro-loader__dot {
+  opacity: 0.25;
+  animation: astro-loader-blink 1.4s ease-in-out infinite;
+}
+
+.astro-loader__sub {
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--color-dim-2);
+  white-space: nowrap;
+}
+
+.astro-loader__track {
+  margin-top: 22px;
+  width: 188px;
+  height: 1px;
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  position: relative;
+  overflow: hidden;
+  border-radius: 1px;
+}
+.astro-loader__track::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent),
+    transparent
+  );
+  animation: astro-loader-sweep 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes astro-loader-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(-1.5deg);
+  }
+}
+@keyframes astro-loader-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(3px, -3px);
+  }
+  50% {
+    transform: translate(0, -5px);
+  }
+  75% {
+    transform: translate(-3px, -3px);
+  }
+}
+@keyframes astro-loader-blink {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes astro-loader-sweep {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+@keyframes astro-loader-twinkle {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.55);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Reduced motion (AC4): freeze bob/drift/blink/sweep/twinkle to a static frame.
+   The starfield canvas freezes itself (one frame) in LoaderStarfield.tsx. */
+@media (prefers-reduced-motion: reduce) {
+  .astro-loader__drift,
+  .astro-loader__bob,
+  .astro-loader__spark,
+  .astro-loader__star {
+    animation: none;
+  }
+  .astro-loader__spark,
+  .astro-loader__star {
+    opacity: 0.7;
+  }
+  .astro-loader__dot {
+    animation: none;
+    opacity: 0.7;
+  }
+  .astro-loader__track::before {
+    animation: none;
+    left: 0;
+    width: var(--reduced-fill, 38%);
+    opacity: 0.6;
   }
 }

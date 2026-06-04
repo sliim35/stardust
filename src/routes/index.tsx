@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GalaxyStage } from "#/components/galaxy/GalaxyStage";
+import { GalaxyWithLoader } from "#/components/galaxy/AstroLoader/GalaxyWithLoader";
 
-const Home = () => <GalaxyStage />;
+const Home = () => <GalaxyWithLoader />;
 
 export const Route = createFileRoute("/")({
   head: () => ({

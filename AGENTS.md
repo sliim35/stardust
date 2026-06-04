@@ -46,6 +46,10 @@ git history — reintroduce it for the galaxy only when an agent needs to read t
   incompatible with Vitest's SSR environment.
 - Deploy: Cloudflare Workers via `pnpm deploy` (wrangler).
 - Content: markdown in `content/` via `@content-collections`.
+- **Image artifacts — never at the repo root.** Preview/variant screenshots go under
+  `docs/img/preview/`; QA visual captures under `docs/qa/`. (Both live below the gitignored
+  `docs/`, so they stay local artifacts.) Repo-shipped assets — favicons, OG images — belong
+  in `src/`/`public/`, not here. Saving any `.png`/`.jpg` to the project root is wrong.
 - **Styling boundary (#75):** Tailwind utilities for DOM chrome; `src/styles.css`
   (+ `src/lib/galaxy/palette.ts`) for the canvas stage. Color/space/radius tokens live
   once in the `@theme` block in `styles.css` — never hardcode a hex in a chrome component.

@@ -1,0 +1,16 @@
+{
+  "seed": 424242,
+  "channel": "linkedin",
+  "NW": 200,
+  "NH": 105,
+  "SCALE": 6,
+  "astroHeightPx": 96,
+  "pose": "wave",
+  "expression": null,
+  "faceLeft": true,
+  "heroStar": true,
+  "headline": "a small keeper for\nthe memories we leave.",
+  "emphasis": "keeper",
+  "eyebrow": "Now in orbit",
+  "hudTag": "50,000 light-years"
+}

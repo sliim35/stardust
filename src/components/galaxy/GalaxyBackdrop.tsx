@@ -8,8 +8,8 @@ import {
   SHOOTER_ALPHA_CAP,
   stepMeteor,
 } from "#/lib/galaxy/meteors";
-import { type PaletteTokens, paletteFor } from "#/lib/galaxy/palette";
-import { GALAXY_CENTER, GALAXY_R, STAGE_H, STAGE_W } from "#/lib/galaxy/place";
+import { paletteFor } from "#/lib/galaxy/palette";
+import { STAGE_H, STAGE_W } from "#/lib/galaxy/place";
 import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
 
 /**
@@ -19,9 +19,12 @@ import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
  * blending), so the arms read as smooth luminous bands rather than crisp
  * pixel-art grit. Geometry + density are unchanged; only the surface is soft.
  *
- * Two stacked canvases at the fixed 1280×800 internal resolution: a static
- * `base` (haze + arms + core + bar + bulge, drawn once per backdrop) and a
- * `live` overlay (RAF twinkle + a few thin shooting stars). Deterministic from
+ * Two stacked canvases at the fixed 1280×800 internal resolution, both
+ * transparent-backed: a static `base` (the disk-glow point clouds — bgStars +
+ * arms + bulge — drawn once per backdrop) and a `live` overlay (RAF twinkle + a
+ * few thin shooting stars). The nebula haze + core washes moved out to the
+ * full-bleed `BackdropTint` (Layer A, #76), so this canvas paints only additive
+ * glow and the tint shows through with no rectangular seam. Deterministic from
  * `backdrop.seed`. Client-only (draws in effects); reduced motion paints the
  * base and stops.
  */
@@ -71,51 +74,23 @@ const paintGlow = (
   ctx.globalCompositeOperation = "source-over";
 };
 
+/**
+ * The disk glow only (#76): a transparent canvas of additive point-sprite
+ * clouds — `bgStars` → `arms` → `bulge`. The nebula haze + core full-rect washes
+ * that used to fill this 1280×800 canvas (their rectangular edge was the seam)
+ * now live full-bleed in `BackdropTint` (Layer A); this canvas starts cleared so
+ * the tint shows through everywhere — no background fill, no rectangle, no seam.
+ * The browser composites this transparent-backed canvas over that tint, so the
+ * additive `lighter` light lands over the nebula exactly as before.
+ */
 const drawBase = (
   ctx: CanvasRenderingContext2D,
   geom: ReturnType<typeof buildBackdropGeometry>,
-  p: PaletteTokens,
   sprites: Sprites,
 ): void => {
   ctx.clearRect(0, 0, STAGE_W, STAGE_H);
-
-  // Faint haze underlay — kept low so the arms read as soft light, not fog.
-  const haze = (color: string, radius: number, alphaHex: string): void => {
-    const g = ctx.createRadialGradient(
-      GALAXY_CENTER.x,
-      GALAXY_CENTER.y,
-      0,
-      GALAXY_CENTER.x,
-      GALAXY_CENTER.y,
-      radius,
-    );
-    g.addColorStop(0, color + alphaHex);
-    g.addColorStop(1, `${color}00`);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, STAGE_W, STAGE_H);
-  };
-  haze(p.hazeFar, GALAXY_R * 1.5, "16");
-  haze(p.hazeNear, GALAXY_R * 0.85, "1e");
-
   paintGlow(ctx, geom.bgStars, sprites);
   paintGlow(ctx, geom.arms, sprites);
-
-  // Compact, dim core glow drawn BEHIND the bright bar/bulge so the centre
-  // reads as concentrated light, not a dominating bloom.
-  const core = ctx.createRadialGradient(
-    GALAXY_CENTER.x,
-    GALAXY_CENTER.y,
-    0,
-    GALAXY_CENTER.x,
-    GALAXY_CENTER.y,
-    GALAXY_R * 0.2,
-  );
-  core.addColorStop(0, `${p.coreHot}99`);
-  core.addColorStop(0.5, `${p.coreWarm}33`);
-  core.addColorStop(1, `${p.coreWarm}00`);
-  ctx.fillStyle = core;
-  ctx.fillRect(0, 0, STAGE_W, STAGE_H);
-
   paintGlow(ctx, geom.bulge, sprites);
 };
 
@@ -145,7 +120,7 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
       makeGlowSprite(p.starHot),
     ];
     const geom = buildBackdropGeometry(backdrop);
-    drawBase(bctx, geom, p, sprites);
+    drawBase(bctx, geom, sprites);
 
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",

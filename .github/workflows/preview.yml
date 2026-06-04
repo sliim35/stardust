@@ -30,9 +30,9 @@ jobs:
       name: preview
       url: ${{ steps.upload.outputs.preview_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6 # version comes from package.json "packageManager"
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
@@ -63,7 +63,7 @@ jobs:
       # from 1Password at runtime via op:// references (ADR-0004) — identical to deploy.yml.
       - name: Load secrets from 1Password
         if: success() && steps.guard.outputs.configured == 'true'
-        uses: 1password/load-secrets-action@v2
+        uses: 1password/load-secrets-action@v4
         with:
           export-env: true
         env:
@@ -87,7 +87,7 @@ jobs:
       # Runs even on failure so QA always sees current status; never runs for forks.
       - name: Sticky preview comment
         if: always() && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           CONFIGURED: ${{ steps.guard.outputs.configured }}
           UPLOAD_OUTCOME: ${{ steps.upload.outcome }}
