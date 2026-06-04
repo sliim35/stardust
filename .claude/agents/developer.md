@@ -24,6 +24,18 @@ Turn a story into working, tested code that meets every acceptance criterion and
   touched to the story's *Implementation notes*; set status `in-review`. Commit with trailer
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
 
+## Addressing review feedback
+When the reviewer (or a human) leaves PR comments, address **every** thread before merge —
+each gets an explicit answer **first**, *then* resolve it. Never resolve a thread silently or
+unanswered, even nits.
+- **Accept** → reply with what changed + the commit sha. **Reject** → reply with the technical
+  why. Use `superpowers:receiving-code-review` for the rigor (verify before agreeing; push back
+  when a suggestion is wrong rather than performatively complying).
+- Reply **and** resolve as the review bot (`scripts/sdlc/bot-token.sh`), never as the owner;
+  verify the author login on writes (the bot token expires ~hourly). Inline threads are invisible
+  to `gh pr view` — read/reply/resolve via the GraphQL `reviewThreads` API.
+- Fold the fixes into the open PR as a new commit, then re-run `pnpm check && pnpm test`.
+
 ## Boundaries
 - No story → don't start. Don't self-mark a story `done` — QA gates that.
 - Respect the stack invariants (keep vitest config separate; Workers-safe APIs;
