@@ -133,14 +133,24 @@ export const parseSprite = (
 
 /* ── ASTRO expressions (#71) — glowing pixel-eyes ──────────────────────────
  *
- * Six moods recreated (output, not code — ADR-0002 §2) from the canonical
- * `stardust/project/Astro Expression Frames.html` (`LOCKED` figure + per-frame
- * `build([...])` eye overrides) and the variant-A reference PNGs. The figure never
- * moves between moods: helmet, suit, gloves, boots, pack and the amber chest-trim
- * are pixel-identical everywhere — only the pair of eyes inside the navy `v` visor
- * band (rows 2–4) changes shape, height and brightness. That carries the whole
- * emotion. The visor here is clean navy (the resting expression is the eye-lights),
+ * Six moods recreated (output, not code — ADR-0002 §2). The figure never moves
+ * between moods: helmet, suit, gloves, boots, pack and the amber chest-trim are
+ * pixel-identical everywhere — only the pair of eyes inside the navy `v` visor band
+ * (rows 2–4 × cols 5–10) changes shape, height and brightness. That carries the
+ * whole emotion. The visor is clean navy (the resting expression IS the eye-lights),
  * so these frames intentionally drop the #70 idle's fixed `V` pilot light.
+ *
+ * SOURCE OF TRUTH (owner-approved): the variant-A reference PNGs
+ * `stardust/project/astro/expression/astro_A_{calm,curious,happy,blink}_1x.png`.
+ * `calm`/`curious`/`happy`/`blink` reproduce variant A pixel-for-pixel (eye cells
+ * decoded from those 1× PNGs — palette `f5d6a0`→`e`, `fff6d0`→`E`, navy `1a2238`→`v`;
+ * variant A's slight asymmetry, e.g. happy's lone right dot, is preserved). The
+ * earlier `Astro Expression Frames.html` build is NOT the source — it was the wrong
+ * reference and is superseded here.
+ *
+ * `thinking` and `tender` have NO variant-A PNG, so they are DERIVED best-effort in
+ * variant A's pure-amber style (see their per-frame notes) and are NOT owner-approved
+ * art — pending owner review.
  *
  * Same 16×16 box, palette convention and anchor as `ASTRO_IDLE` — drop-in, no
  * position shift. Pure data: the component maps a mood → its grid via `parseSprite`.
@@ -165,12 +175,13 @@ export type AstroMood = (typeof ASTRO_MOODS)[number];
  * Each mood overrides only the eye region (rows 2–4). Authored fresh as literals.
  */
 export const ASTRO_FRAMES = {
-  // two soft, level eye-lights inside the navy band
+  // VARIANT A (PNG-exact). calm = two soft amber lights, left-heavy: eye cells
+  // [2,5,e][2,6,e][3,5,e][3,7,e][3,9,e] — decoded from astro_A_calm_1x.png.
   calm: [
     ".....hhhhhh.....",
     "....hhhhhhhh....",
-    "....hvvvvvvh....",
-    "....hvevvevh....",
+    "....heevvvvh....",
+    "....hevevevh....",
     "....hvvvvvvh....",
     "....hhhhhhhh....",
     ".....ssssss.....",
@@ -184,12 +195,13 @@ export const ASTRO_FRAMES = {
     "....bbb..bbb....",
     "................",
   ],
-  // transient ~120ms dip — eyes fall to a soft dim line
+  // VARIANT A (PNG-exact). blink = transient ~120 ms dip, eyes nearly shut:
+  // only [2,5,e][2,6,e][3,5,e] remain lit — decoded from astro_A_blink_1x.png.
   blink: [
     ".....hhhhhh.....",
     "....hhhhhhhh....",
-    "....hvvvvvvh....",
-    "....hvddddvh....",
+    "....heevvvvh....",
+    "....hevvvvvh....",
     "....hvvvvvvh....",
     "....hhhhhhhh....",
     ".....ssssss.....",
@@ -203,12 +215,13 @@ export const ASTRO_FRAMES = {
     "....bbb..bbb....",
     "................",
   ],
-  // taller, brighter, set higher — wide-open
+  // VARIANT A (PNG-exact). curious = wide-open, bright cream hotspots:
+  // [2,5,e][2,6,e][2,7,E][2,9,E][3,5,e][3,7,E][3,9,E] — astro_A_curious_1x.png.
   curious: [
     ".....hhhhhh.....",
     "....hhhhhhhh....",
-    "....hvEvvEvh....",
-    "....hvEvvEvh....",
+    "....heeEvEvh....",
+    "....hevEvEvh....",
     "....hvvvvvvh....",
     "....hhhhhhhh....",
     ".....ssssss.....",
@@ -222,12 +235,13 @@ export const ASTRO_FRAMES = {
     "....bbb..bbb....",
     "................",
   ],
-  // ∧ ∧ upward squint (a warm crinkle, not a grin)
+  // VARIANT A (PNG-exact). happy = upward crinkle, slightly asymmetric:
+  // [2,5,e][2,6,e][2,7,E][2,9,E][3,5,e][3,6,e][3,10,e] — astro_A_happy_1x.png.
   happy: [
     ".....hhhhhh.....",
     "....hhhhhhhh....",
-    "....hvEvvEvh....",
-    "....hEvEEvEh....",
+    "....heeEvEvh....",
+    "....heevvveh....",
     "....hvvvvvvh....",
     "....hhhhhhhh....",
     ".....ssssss.....",
@@ -241,11 +255,13 @@ export const ASTRO_FRAMES = {
     "....bbb..bbb....",
     "................",
   ],
-  // eyes drift up & aside — the "recalling…" state while narrating
+  // DERIVED in variant-A style — no approved PNG exists; pending owner review.
+  // thinking = calm's pure-amber lights drifted UP to row 2 and aside (recalling…),
+  // kept subtle (no bright `E` hotspot). Eye cells [2,5,e][2,7,e][2,9,e].
   thinking: [
     ".....hhhhhh.....",
     "....hhhhhhhh....",
-    "....hvevevvh....",
+    "....hevevevh....",
     "....hvvvvvvh....",
     "....hvvvvvvh....",
     "....hhhhhhhh....",
@@ -260,13 +276,15 @@ export const ASTRO_FRAMES = {
     "....bbb..bbb....",
     "................",
   ],
-  // half-lidded, downcast and soft — memorial beats
+  // DERIVED in variant-A style — no approved PNG exists; pending owner review.
+  // tender = calm's lights LOWERED to row 4 and softened, with dim `d` half-lids
+  // above them (downcast, soft). Eye cells [3,5,d][3,7,d][3,9,d] over [4,5,e][4,7,e][4,9,e].
   tender: [
     ".....hhhhhh.....",
     "....hhhhhhhh....",
     "....hvvvvvvh....",
-    "....hvdvvdvh....",
-    "....hvevvevh....",
+    "....hdvdvdvh....",
+    "....hevevevh....",
     "....hhhhhhhh....",
     ".....ssssss.....",
     "....asttttsap...",

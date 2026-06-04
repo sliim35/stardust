@@ -17,7 +17,77 @@ import {
   nextClickMood,
 } from "#/lib/galaxy/astro";
 
-/* ── D4 / AC3 — frame fidelity ───────────────────────────────────────────── */
+/* ── D4 / AC3 — frame fidelity (pixel-exact to the variant-A PNGs) ────────── */
+
+/**
+ * The eye region is rows 2–4 × cols 5–10 (0-indexed) on the locked clean-navy
+ * figure. Outside it every cell is the body/helmet/clean-navy visor and is
+ * byte-identical across moods.
+ */
+const EYE_ROWS = [2, 3, 4] as const;
+const EYE_COLS = [5, 6, 7, 8, 9, 10] as const;
+/** The navy visor key — an eye cell holding `v` is "off" (no light). */
+const VISOR_KEY = "v";
+
+/** Every lit (non-navy) eye cell of a frame as a `r,c,key` set, sorted. */
+const litEyeCells = (grid: readonly string[]): string[] => {
+  const out: string[] = [];
+  for (const r of EYE_ROWS) {
+    for (const c of EYE_COLS) {
+      const ch = grid[r][c];
+      if (ch !== VISOR_KEY) out.push(`${r},${c},${ch}`);
+    }
+  }
+  return out.sort();
+};
+
+const asSet = (cells: readonly [number, number, string][]): string[] =>
+  cells.map(([r, c, k]) => `${r},${c},${k}`).sort();
+
+/**
+ * The four owner-approved variant-A eye override sets — the SOURCE OF TRUTH.
+ * Decoded pixel-for-pixel from `stardust/project/astro/expression/astro_A_*_1x.png`
+ * (palette: `f5d6a0`→`e` soft amber, `fff6d0`→`E` cream hotspot, `1a2238`→navy `v`).
+ * Each frame must reproduce its set exactly, including variant A's slight asymmetry.
+ * (Replaces the prior assertions vs the now-wrong `Astro Expression Frames.html`.)
+ */
+const VARIANT_A_EYES = {
+  calm: asSet([
+    [2, 5, "e"],
+    [2, 6, "e"],
+    [3, 5, "e"],
+    [3, 7, "e"],
+    [3, 9, "e"],
+  ]),
+  curious: asSet([
+    [2, 5, "e"],
+    [2, 6, "e"],
+    [2, 7, "E"],
+    [2, 9, "E"],
+    [3, 5, "e"],
+    [3, 7, "E"],
+    [3, 9, "E"],
+  ]),
+  happy: asSet([
+    [2, 5, "e"],
+    [2, 6, "e"],
+    [2, 7, "E"],
+    [2, 9, "E"],
+    [3, 5, "e"],
+    [3, 6, "e"],
+    [3, 10, "e"],
+  ]),
+  blink: asSet([
+    [2, 5, "e"],
+    [2, 6, "e"],
+    [3, 5, "e"],
+  ]),
+} as const;
+
+/** The four moods that have approved variant-A PNG art. */
+const PNG_MOODS = ["calm", "curious", "happy", "blink"] as const;
+/** The two moods derived best-effort (no approved PNG — pending owner review). */
+const DERIVED_MOODS = ["thinking", "tender"] as const;
 
 describe("ASTRO_FRAMES (recreated variant-A expression grids, not copied)", () => {
   it("covers exactly the six owner-approved moods", () => {
@@ -52,13 +122,24 @@ describe("ASTRO_FRAMES (recreated variant-A expression grids, not copied)", () =
   it("never shifts the figure — only the eye band (rows 2–4) differs between moods", () => {
     // Everything OUTSIDE the eye region must be byte-identical to `calm` in every
     // frame (the recreate mandate: the figure never moves, only the eyes change).
-    const EYE_ROWS = new Set([2, 3, 4]);
+    const eyeRows = new Set<number>(EYE_ROWS);
     const calm = ASTRO_FRAMES.calm;
     for (const mood of ASTRO_MOODS) {
       const grid = ASTRO_FRAMES[mood];
       for (let r = 0; r < ASTRO_GRID_SIZE; r++) {
-        if (EYE_ROWS.has(r)) continue;
+        if (eyeRows.has(r)) continue;
         expect(grid[r]).toBe(calm[r]);
+      }
+    }
+  });
+
+  it("keeps the clean-navy visor frame (cols 4 & 11 are helmet) in every eye row", () => {
+    // The eye region is cols 5–10; cols 4/11 stay helmet, cols 12+ transparent.
+    for (const mood of ASTRO_MOODS) {
+      for (const r of EYE_ROWS) {
+        const row = ASTRO_FRAMES[mood][r];
+        expect(row[4]).toBe("h");
+        expect(row[11]).toBe("h");
       }
     }
   });
@@ -70,10 +151,18 @@ describe("ASTRO_FRAMES (recreated variant-A expression grids, not copied)", () =
     }
   });
 
-  it("keeps the visor band clean navy in calm with two soft eye-lights (e)", () => {
-    // calm = two level eye-lights inside the dark `v` band (canonical source).
-    const flat = ASTRO_FRAMES.calm.join("");
-    expect(flat).toContain("e");
+  // ── The four PNG-backed moods reproduce variant A pixel-for-pixel ──────────
+  it.each(
+    PNG_MOODS,
+  )("reproduces variant-A %s eyes exactly (decoded from astro_A_*_1x.png)", (mood) => {
+    expect(litEyeCells(ASTRO_FRAMES[mood])).toEqual(VARIANT_A_EYES[mood]);
+  });
+
+  it("preserves variant A's slight asymmetry (happy's lone right-side dot at 3,10)", () => {
+    // happy is asymmetric: left side has 3,5+3,6 but the right side has only 3,10.
+    expect(litEyeCells(ASTRO_FRAMES.happy)).toContain("3,10,e");
+    expect(ASTRO_FRAMES.happy[3][6]).toBe("e");
+    expect(ASTRO_FRAMES.happy[3][7]).toBe("v");
   });
 
   it("brightens curious/happy with the hotspot key (E)", () => {
@@ -81,15 +170,52 @@ describe("ASTRO_FRAMES (recreated variant-A expression grids, not copied)", () =
     expect(ASTRO_FRAMES.happy.join("")).toContain("E");
   });
 
-  it("dims blink + tender with the dim eye-glow key (d)", () => {
-    expect(ASTRO_FRAMES.blink.join("")).toContain("d");
+  it("dims blink with the navy band (no E) and tender with the dim key (d)", () => {
+    expect(ASTRO_FRAMES.blink.join("")).not.toContain("E");
     expect(ASTRO_FRAMES.tender.join("")).toContain("d");
   });
 
-  it("sets curious eyes higher than calm (row 2 lights, taller open)", () => {
-    // curious is wide-open: bright cells reach up into row 2 where calm has none.
-    expect(ASTRO_FRAMES.curious[2]).toContain("E");
-    expect(ASTRO_FRAMES.calm[2]).not.toMatch(/[eEd]/);
+  // ── The two derived moods: structural invariants only (NOT owner-approved) ──
+  it.each(
+    DERIVED_MOODS,
+  )("keeps every lit cell of derived mood %s inside the eye region (rows 2–4, cols 5–10)", (mood) => {
+    const eyeRows = new Set<number>(EYE_ROWS);
+    const eyeCols = new Set<number>(EYE_COLS);
+    for (let r = 0; r < ASTRO_GRID_SIZE; r++) {
+      for (let c = 0; c < ASTRO_GRID_SIZE; c++) {
+        const ch = ASTRO_FRAMES[mood][r][c];
+        if (ch === "e" || ch === "E" || ch === "d") {
+          expect(eyeRows.has(r)).toBe(true);
+          expect(eyeCols.has(c)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it.each(
+    DERIVED_MOODS,
+  )("derived mood %s keeps the body + visor frame identical to calm (only eyes derived)", (mood) => {
+    const eyeRows = new Set<number>(EYE_ROWS);
+    for (let r = 0; r < ASTRO_GRID_SIZE; r++) {
+      if (eyeRows.has(r)) continue;
+      expect(ASTRO_FRAMES[mood][r]).toBe(ASTRO_FRAMES.calm[r]);
+    }
+  });
+
+  it("derives thinking from calm's amber lights drifted up & aside (subtle, pure amber)", () => {
+    // No PNG exists — assert only the design intent: pure amber `e`, eyes lifted
+    // to row 2, none of curious/happy's bright `E` hotspot.
+    expect(ASTRO_FRAMES.thinking.join("")).toContain("e");
+    expect(ASTRO_FRAMES.thinking.join("")).not.toContain("E");
+    expect(ASTRO_FRAMES.thinking[2]).toContain("e");
+  });
+
+  it("derives tender as lowered, dim half-lidded eyes (d over e, downcast)", () => {
+    // No PNG exists — assert only the design intent: dim `d` lids sit above the
+    // lowered `e` lights (row 4), the lowest eye row of any mood.
+    expect(ASTRO_FRAMES.tender.join("")).toContain("d");
+    expect(ASTRO_FRAMES.tender[4]).toContain("e");
+    expect(ASTRO_FRAMES.tender.join("")).not.toContain("E");
   });
 });
 
