@@ -93,6 +93,22 @@ export const paletteAccentVars = (palette: Palette = DEFAULT_PALETTE) => {
 };
 
 /**
+ * The active palette's accent hex as a decimal `"r, g, b"` triple — the form a
+ * canvas `rgba(...)` fill needs (the loader starfield's accent-tier stars track
+ * the live sky like the chrome `--color-accent` does). Pure, SSR/Workers-safe,
+ * and unit-tested; defaults to the ember accent.
+ */
+export const paletteAccentRgb = (
+  palette: Palette = DEFAULT_PALETTE,
+): string => {
+  const hex = paletteFor(palette).accent.replace("#", "");
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
+};
+
+/**
  * Display order for the theme picker (swatch order only — the default sky is
  * `ember`/amber as of 2026-06-04, but the picker keeps the original
  * auroral → ember → ice swatch sequence; order ≠ default).
@@ -109,3 +125,21 @@ export const PALETTE_LABELS = {
 /** Guard for persisted / user-supplied palette values (e.g. from localStorage). */
 export const isPalette = (v: unknown): v is Palette =>
   typeof v === "string" && (PALETTE_ORDER as readonly string[]).includes(v);
+
+/** The localStorage key the chosen palette persists under (one source of truth). */
+export const PALETTE_STORAGE_KEY = "galaxy-palette";
+
+/**
+ * Read the persisted palette synchronously, defaulting to `ember` (the
+ * owner-resolved sky). SSR/Workers-safe: returns `DEFAULT_PALETTE` when
+ * `window`/localStorage is absent or holds an unknown value. This is the single
+ * resolution seam the galaxy hook (`usePalette`) AND the pre-galaxy loader both
+ * read, so on any selected palette — and after reload — the loader lands on the
+ * exact same sky the galaxy does (no hardcoded amber). Pure (no React), so it is
+ * unit-tested here in node alongside the rest of the palette model.
+ */
+export const readPersistedPalette = (): Palette => {
+  if (typeof window === "undefined") return DEFAULT_PALETTE;
+  const saved = window.localStorage.getItem(PALETTE_STORAGE_KEY);
+  return isPalette(saved) ? saved : DEFAULT_PALETTE;
+};

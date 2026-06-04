@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { GALAXY_ASTRO_SCALE } from "#/lib/galaxy/astro";
 import { ASTRO_GREETING, nextClickLine } from "#/lib/galaxy/astro-voice";
 import { AstroBubble } from "./AstroBubble";
 import { PixelAstronaut } from "./PixelAstronaut";
+import { useAstroFace } from "./useAstroFace";
 
 /**
  * ASTRO (#70 + #72) — the galaxy's quiet host, pinned in the reserved bottom-right
@@ -22,9 +24,21 @@ import { PixelAstronaut } from "./PixelAstronaut";
  *
  * The sprite wrapper stays `pointer-events: none` (clicks pass through to the stars);
  * only the click hit-area opts back in (`pointer-events: auto`) as a focusable,
- * keyboard-activatable `<button aria-label>` — the unified click trigger #71 also
- * hooks into when it ships. Placement, the bob/drift, the small-screen hide, and the
- * reduced-motion gate all live in `.galaxy-astro*` CSS (src/styles.css).
+ * keyboard-activatable `<button aria-label>` — the unified click trigger. Placement,
+ * the bob/drift, the small-screen hide, and the reduced-motion gate all live in
+ * `.galaxy-astro*` CSS (src/styles.css).
+ *
+ * #71 — expressions: `useAstroFace` drives the ambient idle-blink + the
+ * click → emotion change. The single `onClick` is the shared trigger seam: it
+ * speaks the next line (#72) AND advances the mood (#71) on the same click, so the
+ * two layers stay one interaction. The face mood feeds `PixelAstronaut`'s `mood`
+ * prop; the figure never shifts — only the glowing pixel-eyes change.
+ *
+ * Layout: `.galaxy-astro` is the **stable, un-animated corner frame** — the bubble
+ * is a direct child anchored to that frame, so the reading position stays steady
+ * while only the sprite bobs/drifts beneath it (`__bob` carries `astro-bob`, `__drift`
+ * the secondary wander). The sprite is rendered at `GALAXY_ASTRO_SCALE` (the single
+ * size knob), bigger than the prototype default so it sits with the bubble.
  */
 
 type Props = {
@@ -41,8 +55,13 @@ export const Astro = ({ message }: Props) => {
   const [spoken, setSpoken] = useState<string | null>(
     message ?? ASTRO_GREETING,
   );
+  const { mood, emote } = useAstroFace();
 
-  const speakNext = () => setSpoken((prev) => nextClickLine(prev));
+  // The shared click trigger: speak the next line (#72) AND emote (#71) together.
+  const onClick = () => {
+    setSpoken((prev) => nextClickLine(prev));
+    emote();
+  };
 
   return (
     <div className="galaxy-astro">
@@ -53,10 +72,12 @@ export const Astro = ({ message }: Props) => {
         type="button"
         className="galaxy-astro__hit"
         aria-label="hear from ASTRO"
-        onClick={speakNext}
+        onClick={onClick}
       >
-        <span className="galaxy-astro__drift" aria-hidden="true">
-          <PixelAstronaut />
+        <span className="galaxy-astro__bob" aria-hidden="true">
+          <span className="galaxy-astro__drift">
+            <PixelAstronaut mood={mood} scale={GALAXY_ASTRO_SCALE} />
+          </span>
         </span>
       </button>
     </div>

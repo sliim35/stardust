@@ -1,12 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_PALETTE,
   isPalette,
   PALETTE_LABELS,
   PALETTE_ORDER,
+  PALETTE_STORAGE_KEY,
   PALETTES,
+  paletteAccentRgb,
   paletteAccentVars,
   paletteFor,
+  readPersistedPalette,
 } from "#/lib/galaxy/palette";
 
 const keysOf = (p: Record<string, string>): string[] => Object.keys(p).sort();
@@ -78,6 +81,18 @@ describe("paletteAccentVars (publishes the active accent onto shared CSS vars)",
   });
 });
 
+describe("paletteAccentRgb (accent hex → `r, g, b` for canvas fills)", () => {
+  it("converts each palette's accent hex to a decimal RGB triple", () => {
+    expect(paletteAccentRgb("ember")).toBe("245, 214, 160"); // #f5d6a0
+    expect(paletteAccentRgb("auroral")).toBe("156, 216, 192"); // #9cd8c0
+    expect(paletteAccentRgb("ice")).toBe("200, 212, 232"); // #c8d4e8
+  });
+
+  it("defaults to the ember accent when no palette is given", () => {
+    expect(paletteAccentRgb()).toBe(paletteAccentRgb(DEFAULT_PALETTE));
+  });
+});
+
 describe("isPalette (guard for persisted/user input)", () => {
   it("accepts the three known palettes", () => {
     expect(isPalette("auroral")).toBe(true);
@@ -90,5 +105,47 @@ describe("isPalette (guard for persisted/user input)", () => {
     expect(isPalette("")).toBe(false);
     expect(isPalette(null)).toBe(false);
     expect(isPalette(42)).toBe(false);
+  });
+});
+
+describe("readPersistedPalette (the shared loader/galaxy resolution)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** Stub a minimal `window.localStorage` holding `saved` under the palette key. */
+  const withStorage = (saved: string | null) => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => (key === PALETTE_STORAGE_KEY ? saved : null),
+      },
+    });
+  };
+
+  it("persists under the shared `galaxy-palette` key", () => {
+    expect(PALETTE_STORAGE_KEY).toBe("galaxy-palette");
+  });
+
+  it("returns the SSR default when there is no `window` (Workers/server)", () => {
+    vi.stubGlobal("window", undefined);
+    expect(readPersistedPalette()).toBe(DEFAULT_PALETTE);
+  });
+
+  it("honors a persisted cool palette (matches the galaxy, not amber)", () => {
+    withStorage("ice");
+    expect(readPersistedPalette()).toBe("ice");
+    withStorage("auroral");
+    expect(readPersistedPalette()).toBe("auroral");
+  });
+
+  it("falls back to the SAME default (`ember`) the hook/stage use when unset", () => {
+    withStorage(null);
+    expect(readPersistedPalette()).toBe(DEFAULT_PALETTE);
+    expect(readPersistedPalette()).toBe("ember");
+  });
+
+  it("rejects a corrupt persisted value, falling back to the default", () => {
+    withStorage("amber"); // not a real palette key
+    expect(readPersistedPalette()).toBe(DEFAULT_PALETTE);
   });
 });

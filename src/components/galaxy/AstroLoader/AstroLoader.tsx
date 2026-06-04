@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { PixelAstronaut } from "#/components/galaxy/PixelAstronaut";
+import { DEFAULT_MOOD } from "#/lib/galaxy/astro";
 import {
   DEFAULT_LABEL,
   DOT_DELAYS_MS,
@@ -9,7 +10,12 @@ import {
   type LoaderAccent,
   REDUCED_SWEEP_FILL,
 } from "#/lib/galaxy/loader";
-import { paletteAccentVars } from "#/lib/galaxy/palette";
+import {
+  DEFAULT_PALETTE,
+  paletteAccentVars,
+  readPersistedPalette,
+} from "#/lib/galaxy/palette";
+import type { Palette } from "#/lib/galaxy/types";
 import { LoaderStarfield } from "./LoaderStarfield";
 
 /**
@@ -28,10 +34,20 @@ import { LoaderStarfield } from "./LoaderStarfield";
  * `onReady` (driven by the caller) triggers the opacity fade-out, after which
  * `onHidden` lets the parent unmount it.
  *
- * Accent note: the loader renders pre-galaxy, where the app default `--color-accent`
- * is sea-glass green (#75 @theme). To make ASTRO's visor-glow/trim read the intended
- * **amber**, the loader root publishes the `ember` accent vars (DRY via
- * `paletteAccentVars("ember")`), so the sprite + halo + glow all track amber.
+ * Accent note: the loader must show the **exact same sky as the galaxy** — same
+ * persisted source AND same default as `usePalette`/`GalaxyStage` (the shared,
+ * unit-tested `readPersistedPalette`/`DEFAULT_PALETTE` lib seam). It publishes that
+ * palette's accent vars onto its root (DRY via `paletteAccentVars`), so the sprite's
+ * eyes/trim + halo + glow + the "thinking…" accent all track the chosen sky — pick a
+ * cool palette and reload and the loader is that sky, not a hardcoded amber.
+ *
+ * The palette is resolved exactly like the galaxy hook: render the `DEFAULT_PALETTE`
+ * (so SSR and the client's hydration paint agree — no mismatch), then read the saved
+ * pick in a post-hydration `useEffect` and commit it to state. The earlier
+ * initializer-only read froze the SSR `ember` value in the DOM (hydration never
+ * reconciles a style set only in a `useState` initializer when no setter fires), so
+ * the cool palette was read but never applied — that was the amber bug. The accent
+ * settles to the chosen sky within the loader's hold; the starfield is client-only.
  */
 
 type Props = {
@@ -67,6 +83,15 @@ const Accent = ({ accent, kind }: { accent: LoaderAccent; kind: string }) => (
 
 export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
   const [hidden, setHidden] = useState(false);
+  // Resolve the sky exactly like `usePalette`/`GalaxyStage`: start at the
+  // `DEFAULT_PALETTE` (matches the SSR markup so hydration agrees — no mismatch),
+  // then read the persisted pick post-hydration and commit it. Committing via a
+  // setter (not just a `useState` initializer) is what actually re-tints the DOM
+  // on the client — the loader then matches the galaxy on any selected palette.
+  const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE);
+  useEffect(() => {
+    setPalette(readPersistedPalette());
+  }, []);
   const onHiddenRef = useRef(onHidden);
   onHiddenRef.current = onHidden;
 
@@ -89,10 +114,11 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
       aria-live="polite"
       aria-busy={!ready}
       data-ready={ready ? "" : undefined}
-      // Pin the amber accent for the pre-galaxy surface (see component doc).
-      style={paletteAccentVars("ember") as CSSProperties}
+      // Publish the selected/persisted sky's accent for the pre-galaxy surface
+      // (see component doc) so the sprite + halo + glow + starfield all track it.
+      style={paletteAccentVars(palette) as CSSProperties}
     >
-      <LoaderStarfield />
+      <LoaderStarfield palette={palette} />
       <div className="astro-loader__center">
         <div className="astro-loader__stage">
           <div className="astro-loader__halo" aria-hidden="true" />
@@ -104,7 +130,11 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
           ))}
           <div className="astro-loader__drift">
             <div className="astro-loader__bob">
-              <PixelAstronaut scale={6} />
+              {/* Render the galaxy's resting frame (`DEFAULT_MOOD` = calm) — the
+                  clean-navy visor + accent eye-dots, identical to the galaxy
+                  mascot at rest (modulo the loader's own scale 6), NOT the old
+                  #70 amber `V` pilot-light idle frame. */}
+              <PixelAstronaut mood={DEFAULT_MOOD} scale={6} />
             </div>
           </div>
         </div>

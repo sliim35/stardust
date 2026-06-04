@@ -35,6 +35,15 @@ describe("FAVICON_LINKS (root head wiring — AC2)", () => {
     });
   });
 
+  it("declares the 48x48 PNG raster (new in the re-sourced set)", () => {
+    expect(FAVICON_LINKS).toContainEqual({
+      rel: "icon",
+      type: "image/png",
+      sizes: "48x48",
+      href: "/favicon/favicon-48.png",
+    });
+  });
+
   it("declares the 180x180 Apple touch icon", () => {
     expect(FAVICON_LINKS).toContainEqual({
       rel: "apple-touch-icon",
@@ -66,7 +75,7 @@ describe("FAVICON_LINKS (root head wiring — AC2)", () => {
   it("has exactly one icon per role (no duplicate rels except rel=icon raster set)", () => {
     expect(findByRel("apple-touch-icon")).toHaveLength(1);
     expect(findByRel("manifest")).toHaveLength(1);
-    // rel="icon": one svg + two png rasters
-    expect(findByRel("icon")).toHaveLength(3);
+    // rel="icon": one svg + three png rasters (16 / 32 / 48)
+    expect(findByRel("icon")).toHaveLength(4);
   });
 });

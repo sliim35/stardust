@@ -70,6 +70,7 @@
   --astro-pack: #a0a0aa; /* backpack */
   --astro-boot: #404048; /* boots */
   --astro-visor: #1a2238; /* visor dark band — fixed navy, all skies */
+  --astro-eye-cream: #fff6d0; /* warm cream the eye-hotspot mixes toward — sky-independent (#71) */
 }
 
 * {
@@ -241,18 +242,27 @@ body {
    .galaxy-chrome in the viewport-fixed .galaxy-chrome-overlay: #76 lifted it out
    of .galaxy-stage__fit so it holds a fixed readable size like the title rather
    than shrinking with the stage (the offsets below are now viewport px, not
-   stage px). Decorative chrome: clicks pass through. The bob (outer) + drift
-   (inner) compose without fighting (prototype nests them). The whole unit
-   (sprite + speech bubble) bobs together as one. */
+   stage px). Decorative chrome: clicks pass through.
+
+   #71/#72 — the bubble is DECOUPLED from the bob: .galaxy-astro is a STABLE,
+   un-animated corner frame so the speech bubble (its direct child) holds a steady
+   reading position while only the sprite moves beneath it. The bob lives on
+   .galaxy-astro__bob and the secondary drift on .galaxy-astro__drift (nested, they
+   compose without fighting — the prototype technique). The bigger sprite
+   (GALAXY_ASTRO_SCALE = 112px) sits in the corner; offsets give it + the bubble room. */
 .galaxy-astro {
   position: absolute;
-  right: 80px; /* offset from the viewport right edge */
-  bottom: 90px; /* offset from the bottom — clears the bottom-center count */
+  right: 64px; /* offset from the viewport right edge (nudged in for the bigger sprite) */
+  bottom: 80px; /* offset from the bottom — clears the bottom-center count */
   z-index: 4; /* above stars/captions, below the palette switcher (6) + panels */
   pointer-events: none; /* decorative; never captures mouse/touch */
+}
+.galaxy-astro__bob {
+  display: block;
   animation: astro-bob 4s ease-in-out infinite; /* = BOB_CYCLE_MS (lib/galaxy/astro.ts), pinned by astro.test.ts */
 }
 .galaxy-astro__drift {
+  display: block;
   /* = DRIFT_CYCLE_MS (lib/galaxy/astro.ts), pinned by astro.test.ts — secondary weightless wander */
   animation: astro-drift 9s ease-in-out infinite;
 }
@@ -280,51 +290,54 @@ body {
   border-radius: var(--radius);
 }
 
-/* ASTRO's speech bubble (#72) — soft-glow glass chrome (NOT pixel-art), docked
-   above the sprite with a ▽ tail pointing down at it. Mirrors the read-panel
-   surface: dark translucent bg, backdrop blur, 1px amber accent border, serif
-   italic body. It rides inside .galaxy-astro, so it inherits the stage scale,
-   z-index, and the ≤720px hide (the bubble is tied to ASTRO's visibility). */
+/* ASTRO's speech bubble (#72) — soft-glow glass chrome (NOT pixel-art). DECOUPLED
+   from the bob (#71/#72): it is a direct child of the STABLE .galaxy-astro frame
+   (not the bobbing sprite), so the reading position stays steady while ASTRO bobs
+   beneath it. Anchored top-right to that fixed frame (`right:0`), it no longer
+   shifts with the sprite's drift or message length relative to the figure. Mirrors
+   the read-panel surface: dark translucent bg, backdrop blur, 1px accent border,
+   serif italic body. It still rides inside .galaxy-astro, so it inherits the
+   z-index and the ≤720px hide (the bubble is tied to ASTRO's visibility). */
 .galaxy-astro__bubble {
   position: absolute;
-  bottom: calc(100% + 14px); /* sit above the sprite, leaving room for the tail */
+  /* Sit well clear above the (un-bobbing) sprite frame — a roomier gap so the
+     bigger panel + the longer connector breathe over the mascot (Fix 2). The
+     anchor is the STABLE .galaxy-astro frame, so it never bobs with the sprite. */
+  bottom: calc(100% + 34px);
   right: 0;
   width: max-content;
-  max-width: 280px;
-  padding: 12px 30px 12px 14px; /* extra right padding clears the dismiss × */
+  /* A more substantial panel for the larger ≥16px body — the future AI-chat
+     surface (Fix 1): wider + more padding so the bigger text breathes. */
+  max-width: 340px;
+  padding: 16px 38px 16px 20px; /* extra right padding clears the dismiss × */
   background: var(--color-surface);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius);
-  box-shadow: 0 0 18px var(--color-accent-soft);
+  box-shadow: 0 0 22px var(--color-accent-soft);
   animation: astro-bubble-in 0.32s ease-out both;
 }
-/* The ▽ tail — a soft-glow triangle pointing down toward ASTRO. Border colour +
-   fill matched to the panel so it reads as one continuous chrome shape. */
+/* A subtle connector — a short soft-glow stem dropping from the bubble toward the
+   corner, NOT a literal ▽ tail (the sprite now bobs under a fixed bubble, so a tail
+   that points at an exact figure position would drift off-target). It reads as a
+   gentle tether to ASTRO's corner without tracking the bob. */
 .galaxy-astro__bubble::after {
   content: "";
   position: absolute;
   top: 100%;
-  right: 26px;
-  border: 7px solid transparent;
-  border-top-color: var(--color-accent);
-}
-.galaxy-astro__bubble::before {
-  content: "";
-  position: absolute;
-  top: 100%;
-  right: 27px;
-  border: 6px solid transparent;
-  border-top-color: var(--color-surface);
-  z-index: 1; /* sit over the accent tail so only a 1px accent edge shows */
+  right: 22px;
+  width: 2px;
+  height: 26px; /* longer stem to span the wider bubble↔sprite gap (Fix 2) */
+  background: linear-gradient(var(--color-accent), transparent);
+  opacity: 0.7;
 }
 .galaxy-astro__bubble-text {
   display: block;
   margin: 0;
   font-family: var(--font-serif);
   font-style: italic;
-  font-size: 14px;
+  font-size: 16px; /* readable body for the AI-chat surface (Fix 1, ≥16px) */
   line-height: 1.5;
   color: var(--color-text);
 }
@@ -686,7 +699,7 @@ body {
   }
   /* ASTRO holds a single static idle frame at rest — bob + drift disabled.
      The speech bubble (#72) appears instantly — no entrance fade/slide (AC7). */
-  .galaxy-astro,
+  .galaxy-astro__bob,
   .galaxy-astro__drift,
   .galaxy-astro__bubble {
     animation: none;
