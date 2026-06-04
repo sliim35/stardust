@@ -221,13 +221,14 @@ body {
    washes anchored on the disk center (50% 38%, matching the .galaxy gradient),
    each fading to transparent — so the field is seamless to all four edges with
    no confined-rect border. Colors come from the active palette via BackdropTint
-   (--tint-*), so a theme switch re-tints it together with the disk glow. */
-.galaxy-backdrop-tint {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+   (--tint-*), so a theme switch re-tints it together with the disk glow.
+
+   #94: the chrome layout (absolute/inset/size/pointer-events) moved to Tailwind
+   utilities on BackdropTint.tsx; the multi-stop gradient is a Tailwind-managed
+   `@utility` (Option B — chosen over a ~470-char arbitrary `[background:…]` class)
+   so it stays legible while still referencing only the palette `--tint-*` vars
+   (token boundary — no hex/rgba), keeping the Layer A re-tint on palette switch. */
+@utility backdrop-tint-gradient {
   background:
     radial-gradient(
       9% 11% at 50% 38%,
@@ -754,147 +755,14 @@ body {
 
 /* --- ASTRO loading screen (#79 — recreated from astro/Loader.html) ---------- */
 
-/* Full-screen deep-space backdrop + radial amber glow. The amber `--color-accent`
-   / `--color-accent-soft` are published on this root by AstroLoader.tsx
-   (paletteAccentVars("ember")) so ASTRO's visor/trim + the halo read amber even
-   though the app default accent is sea glass (#75). Fades out on [data-ready]. */
-.astro-loader {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background:
-    radial-gradient(
-      900px 620px at 50% 38%,
-      color-mix(in srgb, var(--color-accent) 5%, transparent),
-      transparent 62%
-    ),
-    var(--space-deep);
-  color: var(--color-text);
-  font-family: var(--font-serif);
-  opacity: 1;
-  transition: opacity 0.4s ease;
-}
-.astro-loader[data-ready] {
-  opacity: 0;
-}
-
-.astro-loader__stars {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-}
-
-.astro-loader__center {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.astro-loader__stage {
-  position: relative;
-  width: 160px;
-  height: 150px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.astro-loader__halo {
-  position: absolute;
-  left: 50%;
-  top: 48%;
-  transform: translate(-50%, -50%);
-  width: 170px;
-  height: 170px;
-  background: radial-gradient(
-    circle,
-    var(--color-accent-soft),
-    transparent 68%
-  );
-  pointer-events: none;
-}
-.astro-loader__drift {
-  will-change: transform;
-  animation: astro-loader-drift 9s ease-in-out infinite;
-}
-.astro-loader__bob {
-  will-change: transform;
-  animation: astro-loader-bob 4s ease-in-out infinite;
-}
-
-/* Fixed twinkling pixel accents around the helmet (positions in loader.ts). */
-.astro-loader__spark,
-.astro-loader__star {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: currentColor;
-  pointer-events: none;
-  animation: astro-loader-twinkle 2.2s ease-in-out infinite;
-}
-/* A spark is a cross of five pixels; a star is a single pixel. */
-.astro-loader__spark {
-  box-shadow:
-    0 -3px currentColor,
-    0 3px currentColor,
-    -3px 0 currentColor,
-    3px 0 currentColor;
-}
-
-.astro-loader__word {
-  margin-top: 18px;
-  font-style: italic;
-  font-weight: 300;
-  font-size: 27px;
-  letter-spacing: 0.2px;
-  color: var(--color-accent);
-  line-height: 1;
-}
-.astro-loader__dot {
-  opacity: 0.25;
-  animation: astro-loader-blink 1.4s ease-in-out infinite;
-}
-
-.astro-loader__sub {
-  margin-top: 16px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--color-dim-2);
-  white-space: nowrap;
-}
-
-.astro-loader__track {
-  margin-top: 22px;
-  width: 188px;
-  height: 1px;
-  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
-  position: relative;
-  overflow: hidden;
-  border-radius: 1px;
-}
-.astro-loader__track::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -40%;
-  width: 40%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--color-accent),
-    transparent
-  );
-  animation: astro-loader-sweep 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
+/* The loader's DOM-chrome (layout / typography / decorative gradients) moved to
+   Tailwind utilities on AstroLoader.tsx + LoaderStarfield.tsx per the #75 boundary
+   (story #96). Only the *animation side* stays in CSS below: the @keyframes
+   definitions and the prefers-reduced-motion override — which target the kept BEM
+   class selectors (.astro-loader__*), so those classNames remain on the elements
+   alongside the new utilities. The full-screen amber `--color-accent` /
+   `--color-accent-soft` are still published on the loader root by AstroLoader.tsx
+   (paletteAccentVars) so ASTRO's visor/trim + the halo read the selected sky. */
 
 @keyframes astro-loader-bob {
   0%,

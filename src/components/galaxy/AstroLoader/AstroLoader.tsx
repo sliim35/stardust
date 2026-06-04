@@ -66,9 +66,18 @@ type Props = {
   onHidden?: () => void;
 };
 
+// Fixed twinkling pixel accents around the helmet (positions in loader.ts). The
+// BEM class (`astro-loader__spark` / `__star`) is kept so the @keyframes binding
+// and the reduced-motion override in src/styles.css still match (#96). A spark is
+// a cross of five pixels (the box-shadow), a star a single pixel — only `__spark`
+// carries the cross, hence the conditional.
 const Accent = ({ accent, kind }: { accent: LoaderAccent; kind: string }) => (
   <i
-    className={`astro-loader__${kind}`}
+    className={`astro-loader__${kind} absolute size-[2px] bg-current pointer-events-none [animation:astro-loader-twinkle_2.2s_ease-in-out_infinite] ${
+      kind === "spark"
+        ? "[box-shadow:0_-3px_currentColor,0_3px_currentColor,-3px_0_currentColor,3px_0_currentColor]"
+        : ""
+    }`}
     aria-hidden="true"
     style={
       {
@@ -114,7 +123,7 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
 
   return (
     <div
-      className="astro-loader"
+      className="astro-loader fixed inset-0 z-[100] flex items-center justify-center overflow-hidden text-text font-serif opacity-100 transition-opacity duration-[400ms] ease-[ease] data-[ready]:opacity-0 [background:radial-gradient(900px_620px_at_50%_38%,color-mix(in_srgb,var(--color-accent)_5%,transparent),transparent_62%),var(--space-deep)]"
       aria-live="polite"
       aria-busy={!ready}
       data-ready={ready ? "" : undefined}
@@ -123,17 +132,20 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
       style={paletteAccentVars(palette) as CSSProperties}
     >
       <LoaderStarfield palette={palette} />
-      <div className="astro-loader__center">
-        <div className="astro-loader__stage">
-          <div className="astro-loader__halo" aria-hidden="true" />
+      <div className="astro-loader__center relative z-[1] flex flex-col items-center text-center">
+        <div className="astro-loader__stage relative w-[160px] h-[150px] flex items-center justify-center">
+          <div
+            className="astro-loader__halo absolute left-1/2 top-[48%] -translate-x-1/2 -translate-y-1/2 w-[170px] h-[170px] pointer-events-none [background:radial-gradient(circle,var(--color-accent-soft),transparent_68%)]"
+            aria-hidden="true"
+          />
           {LOADER_SPARKS.map((a) => (
             <Accent key={`spark-${a.left}-${a.top}`} accent={a} kind="spark" />
           ))}
           {LOADER_STARS.map((a) => (
             <Accent key={`star-${a.left}-${a.top}`} accent={a} kind="star" />
           ))}
-          <div className="astro-loader__drift">
-            <div className="astro-loader__bob">
+          <div className="astro-loader__drift will-change-transform [animation:astro-loader-drift_9s_ease-in-out_infinite]">
+            <div className="astro-loader__bob will-change-transform [animation:astro-loader-bob_4s_ease-in-out_infinite]">
               {/* Render the galaxy's resting frame (`DEFAULT_MOOD` = calm) — the
                   clean-navy visor + accent eye-dots, identical to the galaxy
                   mascot at rest (modulo the loader's own scale 6), NOT the old
@@ -143,12 +155,12 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
           </div>
         </div>
 
-        <div className="astro-loader__word">
+        <div className="astro-loader__word mt-[18px] italic font-light text-[27px] tracking-[0.2px] text-accent leading-none">
           {m.loader.thinking}
           {DOT_DELAYS_MS.map((delay) => (
             <span
               key={delay}
-              className="astro-loader__dot"
+              className="astro-loader__dot opacity-[0.25] [animation:astro-loader-blink_1.4s_ease-in-out_infinite]"
               style={{ animationDelay: `${delay}ms` }}
             >
               .
@@ -156,10 +168,12 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
           ))}
         </div>
 
-        <div className="astro-loader__sub">{label ?? m.loader.label}</div>
+        <div className="astro-loader__sub mt-[16px] font-mono text-[11px] tracking-[3px] uppercase text-dim-2 whitespace-nowrap">
+          {label ?? m.loader.label}
+        </div>
 
         <div
-          className="astro-loader__track"
+          className="astro-loader__track relative mt-[22px] w-[188px] h-px overflow-hidden rounded-[1px] [background:color-mix(in_srgb,var(--color-accent)_16%,transparent)] before:content-[''] before:absolute before:top-0 before:left-[-40%] before:w-[40%] before:h-full before:[background:linear-gradient(90deg,transparent,var(--color-accent),transparent)] before:[animation:astro-loader-sweep_2.2s_cubic-bezier(0.65,0,0.35,1)_infinite]"
           aria-hidden="true"
           style={
             {
