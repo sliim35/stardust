@@ -10,7 +10,7 @@ Gate the work: evidence before assertions.
 ## When to use
 After the developer reports a story at `in-review`.
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - The story `docs/stories/<id>-*.md` (especially the acceptance criteria).
 - The diff: `git --no-pager diff` against the base.
 

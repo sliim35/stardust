@@ -10,7 +10,7 @@ Keep the backlog honest and tell the orchestrator what to do next.
 ## When to use
 On a planning pass, when the backlog drifts, or when asked "what's next?".
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - All `docs/stories/*` frontmatter.
 - GitHub issues: `gh issue list --state all --json number,title,labels,state,createdAt`.
 - `docs/decisions/decision-log.md`.

@@ -14,7 +14,7 @@ human approves.
 After `devops`/`md-deploy` closes an issue (a story merged) — the loop's final retro step.
 Also on-demand at the end of a meaty session. Skip trivial / no-learning work.
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - **The session dialog** — the corrections, decisions, and workflow this session actually ran
   (the primary source; "reveal new patterns from the dialog").
 - The merged story `docs/stories/<id>-*.md` + its **Code review** and **QA verdict** sections.
