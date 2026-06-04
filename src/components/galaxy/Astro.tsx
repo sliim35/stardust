@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { GALAXY_ASTRO_SCALE } from "#/lib/galaxy/astro";
 import { ASTRO_GREETING, nextClickLine } from "#/lib/galaxy/astro-voice";
 import { AstroBubble } from "./AstroBubble";
 import { PixelAstronaut } from "./PixelAstronaut";
@@ -32,6 +33,12 @@ import { useAstroFace } from "./useAstroFace";
  * speaks the next line (#72) AND advances the mood (#71) on the same click, so the
  * two layers stay one interaction. The face mood feeds `PixelAstronaut`'s `mood`
  * prop; the figure never shifts — only the glowing pixel-eyes change.
+ *
+ * Layout: `.galaxy-astro` is the **stable, un-animated corner frame** — the bubble
+ * is a direct child anchored to that frame, so the reading position stays steady
+ * while only the sprite bobs/drifts beneath it (`__bob` carries `astro-bob`, `__drift`
+ * the secondary wander). The sprite is rendered at `GALAXY_ASTRO_SCALE` (the single
+ * size knob), bigger than the prototype default so it sits with the bubble.
  */
 
 type Props = {
@@ -67,8 +74,10 @@ export const Astro = ({ message }: Props) => {
         aria-label="hear from ASTRO"
         onClick={onClick}
       >
-        <span className="galaxy-astro__drift" aria-hidden="true">
-          <PixelAstronaut mood={mood} />
+        <span className="galaxy-astro__bob" aria-hidden="true">
+          <span className="galaxy-astro__drift">
+            <PixelAstronaut mood={mood} scale={GALAXY_ASTRO_SCALE} />
+          </span>
         </span>
       </button>
     </div>

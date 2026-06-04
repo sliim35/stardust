@@ -20,6 +20,15 @@ export const ASTRO_GRID_SIZE = 16;
 /** Logical px per cell — 16 × 4 = the 64×64 stage-px bounding box (prototype scale). */
 export const DEFAULT_CELL_PX = 4;
 
+/**
+ * The galaxy host ASTRO's render scale — the single size knob for the corner
+ * mascot (16 × 7 = a 112×112 box). Bigger than the prototype default so it sits
+ * with the decoupled speech bubble beside it instead of reading tiny; the owner
+ * fine-tunes the exact size from the preview by changing only this number. The
+ * loader keeps its own `scale={6}` and #70's tests keep `DEFAULT_CELL_PX`.
+ */
+export const GALAXY_ASTRO_SCALE = 7;
+
 /** The grid marker that paints nothing (the figure floats on transparency). */
 export const ASTRO_TRANSPARENT = ".";
 

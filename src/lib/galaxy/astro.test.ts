@@ -16,6 +16,7 @@ import {
   bobTransform,
   DEFAULT_CELL_PX,
   DRIFT_CYCLE_MS,
+  GALAXY_ASTRO_SCALE,
   parseSprite,
 } from "#/lib/galaxy/astro";
 
@@ -148,6 +149,14 @@ describe("layout constants", () => {
   it("renders 16 cells at 4 logical px = a 64px box", () => {
     expect(DEFAULT_CELL_PX).toBe(4);
     expect(ASTRO_GRID_SIZE * DEFAULT_CELL_PX).toBe(64);
+  });
+
+  it("sizes the galaxy host ASTRO at scale 7 = a 112px box (the single knob)", () => {
+    expect(GALAXY_ASTRO_SCALE).toBe(7);
+    expect(ASTRO_GRID_SIZE * GALAXY_ASTRO_SCALE).toBe(112);
+    // larger than both the prototype default and the loader's scale 6.
+    expect(GALAXY_ASTRO_SCALE).toBeGreaterThan(DEFAULT_CELL_PX);
+    expect(GALAXY_ASTRO_SCALE).toBeGreaterThan(6);
   });
 
   // The lib timing constants and the CSS animation durations are one number split
