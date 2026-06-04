@@ -13,6 +13,7 @@
  * for the seed corpus only; nothing here recolors a star supplied later.
  */
 
+import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import type {
   GalaxyBackdrop,
   GalaxySky,
@@ -48,26 +49,6 @@ export const DEFAULT_BACKDROP = {
   palette: "ember",
 } as const satisfies GalaxyBackdrop;
 
-// ── tiny seeded helpers (mirrors src/lib/starfield.ts mulberry32) ──────────────
-const memHash = (str: string): number => {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-};
-
-const memRng = (seed: number): (() => number) => {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
 /**
  * Deterministically place a star within its mood's wedge. Same id → same
  * `(r, angle)` forever, which is the invariant that keeps everyone's star put.
@@ -77,7 +58,7 @@ export const placeStar = (
   mood: Mood,
 ): { r: number; angle: number } => {
   const m = MOODS[mood];
-  const rng = memRng(memHash(id));
+  const rng = mulberry32(hashStr(id));
   const angle = m.angle + (rng() - 0.5) * m.spread;
   const r = 0.4 + rng() * 0.48;
   return { r, angle };
@@ -168,7 +149,7 @@ export const buildSeedSky = (): GalaxySky => {
   const stars: MemoryStar[] = SEED.map((s: SeedSpec, i) => {
     const id = `s${String(i + 1).padStart(2, "0")}`;
     const { r, angle } = placeStar(id, s.mood);
-    const rng = memRng(memHash(id) ^ 0x9e3779b9);
+    const rng = mulberry32(hashStr(id) ^ 0x9e3779b9);
     return {
       id,
       text: s.text,
