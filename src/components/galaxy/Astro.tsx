@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { GALAXY_ASTRO_SCALE } from "#/lib/galaxy/astro";
-import { ASTRO_GREETING, nextClickLine } from "#/lib/galaxy/astro-voice";
+import { nextClickIndex } from "#/lib/galaxy/astro-voice";
+import { getMessages, useLocale } from "#/lib/i18n";
 import { AstroBubble } from "./AstroBubble";
 import { PixelAstronaut } from "./PixelAstronaut";
 import { useAstroFace } from "./useAstroFace";
@@ -43,30 +44,53 @@ import { useAstroFace } from "./useAstroFace";
 
 type Props = {
   /**
-   * #72 seam (from #70) — the line ASTRO opens with. `undefined` (default) →
-   * the confirmed memorial greeting. Set it to override the auto-greet copy.
+   * #72 seam (from #70) — override the line ASTRO opens with. `undefined`
+   * (default) → the localized memorial greeting from the catalog. An explicit
+   * string overrides the auto-greet copy verbatim (not localized).
    */
   message?: string;
 };
 
+/**
+ * What ASTRO is currently saying: the greeting (mount/auto-greet) or a click line
+ * at `index` in the active locale's rotation. `null` once dismissed. Tracked as an
+ * index, not the rendered string, so the bubble re-speaks in the active locale and
+ * the click rotation stays locale-agnostic (#103).
+ */
+type Spoken = { kind: "greeting" } | { kind: "line"; index: number };
+
 export const Astro = ({ message }: Props) => {
-  // Seed the spoken line deterministically so SSR + the client agree on first
-  // paint (auto-greet on mount, no hydration flip). `null` once dismissed.
-  const [spoken, setSpoken] = useState<string | null>(
-    message ?? ASTRO_GREETING,
-  );
+  const m = getMessages(useLocale());
+  // Seed deterministically so SSR + the client agree on first paint (auto-greet
+  // on mount, no hydration flip). `null` once dismissed.
+  const [spoken, setSpoken] = useState<Spoken | null>({ kind: "greeting" });
   const { mood, emote } = useAstroFace();
 
   // The shared click trigger: speak the next line (#72) AND emote (#71) together.
   const onClick = () => {
-    setSpoken((prev) => nextClickLine(prev));
+    setSpoken((prev) => ({
+      kind: "line",
+      index: nextClickIndex(
+        prev?.kind === "line" ? prev.index : null,
+        m.astro.clickLines.length,
+      ),
+    }));
     emote();
   };
 
+  // Resolve the displayed text from the active locale's catalog (greeting unless
+  // an explicit `message` override is set; otherwise the rotated click line).
+  const text =
+    spoken == null
+      ? null
+      : spoken.kind === "greeting"
+        ? (message ?? m.astro.greeting)
+        : m.astro.clickLines[spoken.index];
+
   return (
     <div className="galaxy-astro">
-      {spoken != null && (
-        <AstroBubble message={spoken} onDismiss={() => setSpoken(null)} />
+      {text != null && (
+        <AstroBubble message={text} onDismiss={() => setSpoken(null)} />
       )}
       <button
         type="button"

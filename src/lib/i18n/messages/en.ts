@@ -19,4 +19,16 @@ export const en = {
     breadcrumbSolEarth: " › SOL › EARTH",
     countLabel: "{count} memories, still growing",
   },
+  // ASTRO narration (#72) — the source-of-truth copy, now localized (#103).
+  astro: {
+    greeting:
+      "Every star here is a memory someone left behind. The pulsing one is hers — but add your own, and I'll find its place.",
+    clickLines: [
+      "Every light you see used to be someone's warmth.",
+      "I've been here a long time. So have they.",
+      "Add a star. I'll find it a good place in the sky.",
+      "Some stars pulse a little brighter. Those are the ones most loved.",
+      "The sky keeps growing. It always does.",
+    ],
+  },
 } as const satisfies Messages;

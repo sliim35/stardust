@@ -1,77 +1,45 @@
 import { describe, expect, it } from "vitest";
-import {
-  ASTRO_CLICK_LINES,
-  ASTRO_GREETING,
-  nextClickLine,
-} from "#/lib/galaxy/astro-voice";
+import { nextClickIndex } from "#/lib/galaxy/astro-voice";
 
-describe("ASTRO_GREETING (the confirmed opening line — AC2)", () => {
-  it("is the exact confirmed memorial greeting", () => {
-    expect(ASTRO_GREETING).toBe(
-      "Every star here is a memory someone left behind. The pulsing one is hers — but add your own, and I'll find its place.",
-    );
+/**
+ * The rotation is index-based and locale-agnostic (#103): it advances an index
+ * through a click set of length `total`, so the same rule drives the en and ru
+ * `clickLines` arrays. A representative `total` of 5 (the shipped set size) is
+ * used here; the copy itself is asserted in the i18n catalog tests.
+ */
+describe("nextClickIndex — deterministic, locale-agnostic rotation (AC3)", () => {
+  const TOTAL = 5;
+
+  it("returns the first line index when there is no previous (mount/greeting/dismissed)", () => {
+    expect(nextClickIndex(null, TOTAL)).toBe(0);
   });
 
-  it("opens in sentence case (a leading capital)", () => {
-    expect(ASTRO_GREETING[0]).toBe(ASTRO_GREETING[0].toUpperCase());
-  });
-});
-
-describe("ASTRO_CLICK_LINES (the re-speak set — AC3)", () => {
-  it("is a non-empty set of distinct lines", () => {
-    expect(ASTRO_CLICK_LINES.length).toBeGreaterThan(0);
-    expect(new Set(ASTRO_CLICK_LINES).size).toBe(ASTRO_CLICK_LINES.length);
+  it("advances one and wraps at the end", () => {
+    expect(nextClickIndex(0, TOTAL)).toBe(1);
+    expect(nextClickIndex(TOTAL - 1, TOTAL)).toBe(0);
   });
 
-  it("keeps every line in sentence case (a leading capital)", () => {
-    for (const line of ASTRO_CLICK_LINES) {
-      expect(line[0]).toBe(line[0].toUpperCase());
-      expect(line.length).toBeGreaterThan(0);
+  it("walks the whole set in order, then wraps back to the first", () => {
+    let cur = nextClickIndex(null, TOTAL); // 0
+    for (let i = 1; i < TOTAL; i++) {
+      cur = nextClickIndex(cur, TOTAL);
+      expect(cur).toBe(i);
     }
+    expect(nextClickIndex(cur, TOTAL)).toBe(0);
   });
 
-  it("never reuses the greeting as a click line", () => {
-    expect(ASTRO_CLICK_LINES).not.toContain(ASTRO_GREETING);
-  });
-});
-
-describe("nextClickLine — deterministic rotation through the click set (AC3)", () => {
-  it("returns the first click line when there is no previous message", () => {
-    expect(nextClickLine(undefined)).toBe(ASTRO_CLICK_LINES[0]);
-  });
-
-  it("starts the rotation from the first line when the previous is the greeting", () => {
-    // Mount shows the greeting; the FIRST click should advance to a click line,
-    // not get stuck because the greeting isn't in the click set.
-    expect(nextClickLine(ASTRO_GREETING)).toBe(ASTRO_CLICK_LINES[0]);
-  });
-
-  it("advances to the next line in order, wrapping at the end", () => {
-    let cur = nextClickLine(undefined); // line[0]
-    for (let i = 1; i < ASTRO_CLICK_LINES.length; i++) {
-      cur = nextClickLine(cur);
-      expect(cur).toBe(ASTRO_CLICK_LINES[i]);
-    }
-    // Wrap back to the first line after the last.
-    expect(nextClickLine(cur)).toBe(ASTRO_CLICK_LINES[0]);
-  });
-
-  it("never returns the same line twice in a row", () => {
-    let cur: string | undefined;
-    for (let i = 0; i < ASTRO_CLICK_LINES.length * 3; i++) {
-      const next = nextClickLine(cur);
+  it("never returns the same index twice in a row (every click changes the bubble)", () => {
+    let cur = nextClickIndex(null, TOTAL);
+    for (let i = 0; i < TOTAL * 3; i++) {
+      const next = nextClickIndex(cur, TOTAL);
       expect(next).not.toBe(cur);
       cur = next;
     }
   });
 
-  it("is deterministic — same previous always yields the same next (SSR-safe)", () => {
-    for (const line of ASTRO_CLICK_LINES) {
-      expect(nextClickLine(line)).toBe(nextClickLine(line));
+  it("is deterministic — same input always yields the same next (SSR-safe)", () => {
+    for (let i = 0; i < TOTAL; i++) {
+      expect(nextClickIndex(i, TOTAL)).toBe(nextClickIndex(i, TOTAL));
     }
-  });
-
-  it("falls back to the first line for an unknown previous message", () => {
-    expect(nextClickLine("not a known line")).toBe(ASTRO_CLICK_LINES[0]);
   });
 });

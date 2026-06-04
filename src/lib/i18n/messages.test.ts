@@ -91,3 +91,48 @@ describe("owner-confirmed final strings (the authoritative table)", () => {
     );
   });
 });
+
+describe("ASTRO narration catalog (#72 copy, localized — #103 fold-in)", () => {
+  it("carries the exact en greeting + click set (source of truth)", () => {
+    expect(en.astro.greeting).toBe(
+      "Every star here is a memory someone left behind. The pulsing one is hers — but add your own, and I'll find its place.",
+    );
+    expect(en.astro.clickLines).toEqual([
+      "Every light you see used to be someone's warmth.",
+      "I've been here a long time. So have they.",
+      "Add a star. I'll find it a good place in the sky.",
+      "Some stars pulse a little brighter. Those are the ones most loved.",
+      "The sky keeps growing. It always does.",
+    ]);
+  });
+
+  it("carries the AI-generated ru narration", () => {
+    expect(ru.astro.greeting).toBe(
+      "Каждая звезда здесь — чьё-то оставленное воспоминание. Та, что мерцает, — её, но добавь свою, и я найду ей место.",
+    );
+    expect(ru.astro.clickLines).toEqual([
+      "Каждый огонёк, что ты видишь, когда-то был чьим-то теплом.",
+      "Я здесь уже очень давно. И они тоже.",
+      "Добавь звезду. Я найду ей хорошее место на небе.",
+      "Некоторые звёзды мерцают чуть ярче. Это те, кого любили больше всего.",
+      "Небо продолжает расти. Так было всегда.",
+    ]);
+  });
+
+  it("ships the same number of click lines per locale (rotation parity)", () => {
+    expect(ru.astro.clickLines.length).toBe(en.astro.clickLines.length);
+  });
+
+  it("keeps every line distinct, sentence-case, and never the greeting (both locales)", () => {
+    for (const loc of [en, ru]) {
+      const { greeting, clickLines } = loc.astro;
+      expect(greeting[0]).toBe(greeting[0].toUpperCase());
+      expect(new Set(clickLines).size).toBe(clickLines.length);
+      expect(clickLines).not.toContain(greeting);
+      for (const line of clickLines) {
+        expect(line.trim().length).toBeGreaterThan(0);
+        expect(line[0]).toBe(line[0].toUpperCase());
+      }
+    }
+  });
+});

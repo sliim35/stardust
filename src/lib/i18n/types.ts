@@ -3,11 +3,11 @@
  * shape; both dictionaries are typed `as const satisfies Messages`, so a missing
  * or extra key is a compile error (AC4/AC9).
  *
- * The shape is namespaced (`meta.*`, `chrome.*`) and carries an optional `astro?`
- * seam: a follow-up story can localize ASTRO narration by filling `astro` in
- * `messages/*.ts` (and optionally tightening this type) — touching neither
- * `rewrite.ts` nor `locale.ts` (AC10). `astro?` is optional so a missing block is
- * not a compile error today.
+ * The shape is namespaced (`meta.*`, `chrome.*`, `astro.*`). `astro` was the AC10
+ * seam: it is now filled (ASTRO narration localized, folded into #103) without
+ * touching `rewrite.ts` or `locale.ts` — exactly the seam's promise. Making it
+ * required enforces en/ru parity for the narration too. The galaxy narration may
+ * later become AI-generated per-locale; until then these are static lines.
  */
 export type Messages = {
   meta: {
@@ -23,6 +23,13 @@ export type Messages = {
     /** Carries the `{count}` placeholder — see `interpolate` in `index.ts`. */
     countLabel: string;
   };
-  /** AC10 seam — a narration follow-up fills this; resolution code is untouched. */
-  astro?: Record<string, string>;
+  /**
+   * ASTRO narration (#72 copy, localized in #103). `greeting` is the auto-greet
+   * line; `clickLines` is the re-speak rotation — addressed by index via
+   * `nextClickIndex` (lib/galaxy/astro-voice), so the rotation is locale-agnostic.
+   */
+  astro: {
+    greeting: string;
+    clickLines: readonly string[];
+  };
 };
