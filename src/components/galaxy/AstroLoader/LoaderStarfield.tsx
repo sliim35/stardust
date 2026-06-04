@@ -6,7 +6,7 @@ import {
   starCountFor,
   TWINKLE_CYCLE_MS,
 } from "#/lib/galaxy/loader";
-import { generateStars } from "#/lib/starfield";
+import { generateStars, type Star } from "#/lib/starfield";
 
 /**
  * The loader's full-viewport seeded twinkling starfield (AC1). Recreates the
@@ -38,22 +38,32 @@ export const LoaderStarfield = () => {
       "(prefers-reduced-motion: reduce)",
     ).matches;
     let raf = 0;
+    // The prebuilt field for the current viewport — rebuilt only on resize, never
+    // inside the rAF draw loop (the DeepStarfield build-once pattern).
+    let stars: Star[] = [];
 
-    // Seed once per layout: the field depends only on the viewport area + the fixed
-    // seed, so it's identical on every resize draw (deterministic, no flicker).
-    const draw = (t: number) => {
+    // Build once per layout: size the canvas + regenerate the seeded field for the
+    // current viewport area. The field depends only on that area + the fixed seed,
+    // so a same-size rebuild is identical (deterministic, no flicker). Called on
+    // mount and on every resize — NOT per frame.
+    const build = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
       canvas.width = w;
       canvas.height = h;
-      ctx.clearRect(0, 0, w, h);
       ctx.imageSmoothingEnabled = false;
-
-      const stars = generateStars(
+      stars = generateStars(
         LOADER_STARFIELD_SEED,
         starCountFor(w, h),
         Math.max(w, h),
       );
+    };
+
+    // Paint the prebuilt field: only reads canvas.width/height + `stars` (no
+    // generateStars, no canvas resize) so it's cheap to run every rAF tick.
+    const draw = (t: number) => {
+      const { width: w, height: h } = canvas;
+      ctx.clearRect(0, 0, w, h);
       for (const s of stars) {
         const tier = starColorTier(s);
         // Twinkle: a gentle per-star sine breathing keyed off the star's own alpha
@@ -73,11 +83,14 @@ export const LoaderStarfield = () => {
       if (!reduce) raf = requestAnimationFrame(draw);
     };
 
+    build();
     raf = requestAnimationFrame(draw);
 
-    // Re-render on resize: redraw a single static frame (or let the rAF loop pick up
-    // the new size on its next tick when animating).
+    // Resize: rebuild the field for the new viewport, then under reduced motion
+    // redraw the single static frame (the rAF loop picks up the new field/size on
+    // its next tick when animating).
     const onResize = () => {
+      build();
       if (reduce) draw(0);
     };
     window.addEventListener("resize", onResize);

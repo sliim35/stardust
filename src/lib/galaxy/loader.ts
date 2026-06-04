@@ -71,8 +71,10 @@ export const starCountFor = (
  * deterministically. The handoff drew a separate `rnd()` per star to tier it; here
  * we reuse the star's own `alpha` (a fresh RNG draw inside `generateStars`) as the
  * tier key — same deterministic sky, no second RNG, `generateStars` reused intact.
- * Brightest few are amber `accent`; a middle band is `cool` blue-grey; the rest are
- * the faint `dim` field — matching the handoff's `>0.97 / >0.6 / else` split.
+ * Brightest are amber `accent`; a middle band is `cool` blue-grey; the rest are the
+ * faint `dim` field — a `>0.94 / >0.6 / else` split. The amber cutoff is deliberately
+ * widened from the handoff's `>0.97` to `>0.94` so a few more stars catch the ember
+ * accent (the loader's pre-galaxy sky reads warmer); the lower bands are unchanged.
  */
 export const starColorTier = (star: Star): StarTier => {
   if (star.alpha > 0.94) return "accent";
