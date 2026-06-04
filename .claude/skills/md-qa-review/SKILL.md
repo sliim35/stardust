@@ -36,15 +36,23 @@ applies when qa would otherwise need to switch branches.
 1. **Verify with evidence** using the superpowers `verification-before-completion` skill:
    run `pnpm check`, `pnpm test`, and `pnpm build`; paste the actual output. Use the
    `playwright` MCP for UI acceptance checks where relevant — drive it against the PR's
-   **preview-deploy URL** (the sticky comment from `preview.yml`), not just localhost.
-   - **Visual evidence on the PR = that preview URL + a short list of the states you
-     verified** (route, `prefers-reduced-motion`, etc.). Playwright screenshots stay
-     local: **GitHub has no API to attach inline images** (drag-drop is browser-UI-only),
-     so never paste a local file path — it renders broken. Fill the PR's *Screenshots /
-     visual evidence* section with the preview URL + verified-states checklist (or
-     "N/A — no visual change" for non-visual PRs).
-   - **If you do save a Playwright screenshot locally, write it under `docs/qa/` — never the
-     repo root** (see AGENTS.md § Conventions; `docs/` is gitignored, so it stays a local artifact).
+   **preview-deploy URL** (the sticky comment from `preview.yml`). **Use the preview URL,
+   not localhost.** localhost (`pnpm dev`) is a last-resort fallback ONLY when the preview
+   URL is genuinely unavailable — and that unavailability is itself a blocker to flag (the
+   preview deploy is broken — e.g. the missing-Preview-URL bug #118), not something to paper
+   over with a silent localhost run. If you do fall back, say so explicitly in the verdict.
+   - **Attach the actual screenshots to the PR for every visual change — not optional.** The
+     owner reviews visually and has repeatedly flagged missing screenshots; an empty
+     Screenshots section reads as "skipped". Primary evidence = the live **preview URL + the
+     states you verified** (route, `prefers-reduced-motion`, etc.) — AND embed the captured
+     frames inline. Drag-drop upload is browser-UI-only, but you CAN attach images: commit the
+     PNGs to a throwaway branch via the git-database API (blobs → tree → orphan commit → ref)
+     and embed their `raw.githubusercontent.com` URLs in a PR comment (proven on #115; repo is
+     public; verify each URL returns `200 image/png` first). Curate honestly — only frames you
+     actually captured and viewed; if a required state couldn't be captured, say so rather than
+     relabel another shot.
+   - **Save local Playwright screenshots under `docs/qa/` — never the repo root** (see
+     AGENTS.md § Conventions; `docs/` is gitignored, so it stays a local artifact).
 2. **Check each AC** explicitly — tick the boxes that genuinely pass; for any that fail,
    say so with the failing output.
 3. **Review the diff** for **correctness** using the superpowers `requesting-code-review`
