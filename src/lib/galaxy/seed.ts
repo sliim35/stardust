@@ -38,13 +38,14 @@ export const MOODS = {
   { color: string; angle: number; spread: number }
 >;
 
-/** The default dim procedural galaxy. Palette defaults to `auroral` (design spec). */
+/** The default dim procedural galaxy. Palette defaults to `ember` (amber) — owner
+ *  resolved amber-vs-green → amber (2026-06-04), matching ASTRO/STARLIGHT + loader. */
 export const DEFAULT_BACKDROP = {
   seed: 7777,
   branches: 4,
   spin: 1,
   randomnessPower: 2.2,
-  palette: "auroral",
+  palette: "ember",
 } as const satisfies GalaxyBackdrop;
 
 // ── tiny seeded helpers (mirrors src/lib/starfield.ts mulberry32) ──────────────

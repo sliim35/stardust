@@ -20,8 +20,8 @@
   --color-space-deep: #04050d; /* bg-space-deep  (page void / letterbox) */
   --color-space-mid: #0a0e24; /* bg-space-mid   (core-glow inner stop)  */
   --color-surface: rgb(9 9 15 / 0.86); /* bg-surface (panels/HUD) */
-  --color-accent: #9cd8c0; /* text-accent / border-accent (re-tinted per palette) */
-  --color-accent-soft: #9cd8c030; /* focus wash, halos */
+  --color-accent: #f5d6a0; /* ember/amber default (DEFAULT_PALETTE, 2026-06-04); re-tinted per palette at runtime */
+  --color-accent-soft: #f5d6a030; /* focus wash, halos — ember accentSoft default */
   --color-text: #f8f6f0; /* text-text     (primary)              */
   --color-text-bright: #fffdf6; /* text-text-bright (rare emphasis)  */
   --color-dim: #d0d0d8; /* text-dim      (captions)             */

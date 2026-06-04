@@ -19,7 +19,7 @@ export type Mood =
   | "nostalgic"
   | "wonder";
 
-/** Backdrop sky tone. Default is `auroral` (design spec 2026-06-02). */
+/** Backdrop sky tone. Default is `ember` (amber) — owner resolved amber-vs-green → amber (2026-06-04). */
 export type Palette = "ember" | "ice" | "auroral";
 
 /** The dim, decorative procedural galaxy behind everything — reproducible from `seed`. */
