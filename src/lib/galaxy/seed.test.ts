@@ -11,8 +11,8 @@ describe("buildSeedSky", () => {
     );
   });
 
-  it("defaults the backdrop palette to auroral", () => {
-    expect(buildSeedSky().backdrop.palette).toBe("auroral");
+  it("defaults the backdrop palette to ember", () => {
+    expect(buildSeedSky().backdrop.palette).toBe("ember");
   });
 
   it("is deterministic — no module-scope random or clock (same output every call)", () => {

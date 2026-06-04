@@ -5,10 +5,11 @@ import type { Palette } from "#/lib/galaxy/types";
 const STORAGE_KEY = "galaxy-palette";
 
 /**
- * The chosen backdrop theme (#44 resolved as a user choice, not a fixed
- * default). SSR renders the approved `auroral` default; the saved pick is
- * restored after hydration and persisted on change. Only the backdrop is
- * themed — memory-star colors stay agent-owned.
+ * The chosen backdrop theme (#44 resolved as a user choice, layered over a
+ * fixed default). SSR renders the `ember` (amber) default — the owner-resolved
+ * amber-vs-green sky (2026-06-04); the saved pick is restored after hydration
+ * and persisted on change. Only the backdrop is themed — memory-star colors
+ * stay agent-owned.
  */
 export const usePalette = (): [Palette, (p: Palette) => void] => {
   const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE);
