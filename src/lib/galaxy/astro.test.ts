@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  ASTRO_EYE_BRIGHT_KEY,
+  ASTRO_EYE_DIM_KEY,
+  ASTRO_EYE_SOFT_KEY,
   ASTRO_GRID_SIZE,
   ASTRO_IDLE,
+  ASTRO_PALETTE,
   ASTRO_PALETTE_KEYS,
   ASTRO_TRANSPARENT,
   ASTRO_TRIM_KEY,
@@ -32,6 +36,35 @@ describe("ASTRO_IDLE grid (recreated STARLIGHT output, not copied)", () => {
     const flat = ASTRO_IDLE.join("");
     expect(flat).toContain(ASTRO_VISOR_GLOW_KEY);
     expect(flat).toContain(ASTRO_TRIM_KEY);
+  });
+});
+
+// Lock the eye-key palette contract (#71): the three expression eye keys are the
+// stable handle the frames + component address, so pin both their character and the
+// `AstroPart` material each maps to in `ASTRO_PALETTE`. Mirrors why `V`/`t` are keyed
+// — a rename or a re-route of an eye material breaks here before it ships.
+describe("ASTRO expression eye keys (palette contract)", () => {
+  it("are the expected single-character keys", () => {
+    expect(ASTRO_EYE_SOFT_KEY).toBe("e");
+    expect(ASTRO_EYE_BRIGHT_KEY).toBe("E");
+    expect(ASTRO_EYE_DIM_KEY).toBe("d");
+  });
+
+  it("map to their expected eye materials in ASTRO_PALETTE", () => {
+    // `e` is the live accent (soft, level); `E`/`d` are accent derivations.
+    expect(ASTRO_PALETTE[ASTRO_EYE_SOFT_KEY]).toBe("accent");
+    expect(ASTRO_PALETTE[ASTRO_EYE_BRIGHT_KEY]).toBe("eye-bright");
+    expect(ASTRO_PALETTE[ASTRO_EYE_DIM_KEY]).toBe("eye-dim");
+  });
+
+  it("are real palette keys (in ASTRO_PALETTE_KEYS)", () => {
+    for (const key of [
+      ASTRO_EYE_SOFT_KEY,
+      ASTRO_EYE_BRIGHT_KEY,
+      ASTRO_EYE_DIM_KEY,
+    ]) {
+      expect(ASTRO_PALETTE_KEYS).toContain(key);
+    }
   });
 });
 

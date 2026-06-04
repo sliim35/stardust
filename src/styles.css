@@ -70,6 +70,7 @@
   --astro-pack: #a0a0aa; /* backpack */
   --astro-boot: #404048; /* boots */
   --astro-visor: #1a2238; /* visor dark band — fixed navy, all skies */
+  --astro-eye-cream: #fff6d0; /* warm cream the eye-hotspot mixes toward — sky-independent (#71) */
 }
 
 * {

@@ -52,7 +52,8 @@ const PART_TOKENS = {
   glove: "var(--astro-glove)",
   pack: "var(--astro-pack)",
   boot: "var(--astro-boot)",
-  "eye-bright": "color-mix(in srgb, var(--color-accent) 55%, #fff6d0)",
+  "eye-bright":
+    "color-mix(in srgb, var(--color-accent) 55%, var(--astro-eye-cream))",
   "eye-dim": "color-mix(in srgb, var(--color-accent) 50%, var(--astro-visor))",
 } as const satisfies Record<AstroPart, string>;
 
