@@ -10,6 +10,18 @@
 		"nodejs_compat"
 	],
 	"main": "@tanstack/react-start/server-entry",
+	/**
+	 * Production custom domain (#65). The Custom Domain + DNS are provisioned in
+	 * the Cloudflare dashboard; declaring it here makes the binding reproducible —
+	 * `wrangler deploy` reconciles with the existing Custom Domain on this Worker.
+	 * https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
+	 */
+	"routes": [
+		{
+			"pattern": "stardust.mdvoy.org",
+			"custom_domain": true
+		}
+	],
 	"observability": {
 		"enabled": true
 	},
