@@ -125,3 +125,21 @@ export const PALETTE_LABELS = {
 /** Guard for persisted / user-supplied palette values (e.g. from localStorage). */
 export const isPalette = (v: unknown): v is Palette =>
   typeof v === "string" && (PALETTE_ORDER as readonly string[]).includes(v);
+
+/** The localStorage key the chosen palette persists under (one source of truth). */
+export const PALETTE_STORAGE_KEY = "galaxy-palette";
+
+/**
+ * Read the persisted palette synchronously, defaulting to `ember` (the
+ * owner-resolved sky). SSR/Workers-safe: returns `DEFAULT_PALETTE` when
+ * `window`/localStorage is absent or holds an unknown value. This is the single
+ * resolution seam the galaxy hook (`usePalette`) AND the pre-galaxy loader both
+ * read, so on any selected palette — and after reload — the loader lands on the
+ * exact same sky the galaxy does (no hardcoded amber). Pure (no React), so it is
+ * unit-tested here in node alongside the rest of the palette model.
+ */
+export const readPersistedPalette = (): Palette => {
+  if (typeof window === "undefined") return DEFAULT_PALETTE;
+  const saved = window.localStorage.getItem(PALETTE_STORAGE_KEY);
+  return isPalette(saved) ? saved : DEFAULT_PALETTE;
+};
