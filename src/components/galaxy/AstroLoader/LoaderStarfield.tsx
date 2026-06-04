@@ -19,11 +19,11 @@ import { generateStars, type Star } from "#/lib/starfield";
  */
 
 /** Tier → RGB triple (loader token family); accent rides amber on the loader root. */
-const TIER_RGB: Record<StarTier, string> = {
+const TIER_RGB = {
   accent: "245, 214, 160", // amber accent (matches the ember --color-accent)
   cool: "176, 176, 192", // cool blue-grey
   dim: "122, 124, 134", // faint dust
-};
+} as const satisfies Record<StarTier, string>;
 
 export const LoaderStarfield = () => {
   const ref = useRef<HTMLCanvasElement | null>(null);
