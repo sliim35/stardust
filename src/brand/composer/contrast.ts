@@ -37,7 +37,7 @@ export const contrastRatio = (fg: string, bg: string): number => {
  * lower-left scrim `rgba(3,4,10,.7)` composited over it (`out = src·α + dst·(1-α)`).
  * Both layers are near-black, so the zone is ≈ `#040509`.
  */
-export const SCRIMMED_TYPE_ZONE = "#040509";
+export const SCRIMMED_TYPE_ZONE = "#040509" as const;
 
 /** Composited type colors (spec §AC1 typography). */
 export const TYPE_COLORS = {

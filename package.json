@@ -22,7 +22,6 @@
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.26.0",
-    "@napi-rs/canvas": "^1.0.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/ai": "latest",
     "@tanstack/ai-anthropic": "latest",
@@ -55,6 +54,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
+    "@napi-rs/canvas": "^1.0.0",
     "@content-collections/core": "^0.13.1",
     "@content-collections/vite": "^0.3.0",
     "@tanstack/devtools-event-client": "latest",

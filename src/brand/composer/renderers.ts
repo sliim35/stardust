@@ -271,9 +271,15 @@ const STARFIELD_COLS = [
   "#cfe0da",
   "#fffdf6",
 ] as const;
-/** Dim-tier star count scales with native area (~2.7% of cells). */
+/**
+ * Dim-tier star count as a fraction of native cells (~2.7%). Encodes spec §AC1
+ * (composition rule 4: "~560 stars" on the 200×105 proof grid → 560/21000 ≈ 0.027).
+ */
 const STARFIELD_DENSITY = 0.027;
-/** Bright 4-point foreground sparkles. */
+/**
+ * Bright 4-point foreground sparkles. Encodes spec §AC1 (composition rule 4:
+ * "~14 brighter foreground sparkles drawn as a 4-point plus").
+ */
 const SPARKLE_COUNT = 14;
 
 /**

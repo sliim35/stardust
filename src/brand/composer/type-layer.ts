@@ -14,32 +14,46 @@
 
 import { existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { GlobalFonts, type SKRSContext2D } from "@napi-rs/canvas";
+// `@napi-rs/canvas` is a build/CLI-only native lib (devDependency). It is
+// **type-only** here (erased at compile time) and **lazily** loaded inside
+// `ensureFonts`, so this module never pins the native lib into a Worker runtime
+// graph — only the actual draw call (on the CLI/compose path) pulls it in (#83 F2).
+import type {
+  GlobalFonts as GlobalFontsType,
+  SKRSContext2D,
+} from "@napi-rs/canvas";
 import { TYPE_COLORS } from "#/brand/composer/contrast";
 
 const FONT_DIR = fileURLToPath(new URL("../assets/fonts/", import.meta.url));
 
-let fontsReady = false;
-/** Register any brand fonts shipped under assets/fonts/ (idempotent). */
-const ensureFonts = (): void => {
-  if (fontsReady) return;
-  fontsReady = true;
-  if (!existsSync(FONT_DIR)) return;
-  for (const f of readdirSync(FONT_DIR)) {
-    if (/\.(ttf|otf)$/i.test(f))
-      GlobalFonts.registerFromPath(`${FONT_DIR}${f}`);
+let registeredFonts: typeof GlobalFontsType | null = null;
+/**
+ * Register any brand fonts shipped under assets/fonts/ (idempotent) and return
+ * the `GlobalFonts` handle. The canvas lib is loaded lazily here so it stays out
+ * of any statically-reachable module graph (#83 F2).
+ */
+const ensureFonts = async (): Promise<typeof GlobalFontsType> => {
+  if (registeredFonts) return registeredFonts;
+  const { GlobalFonts } = await import("@napi-rs/canvas");
+  registeredFonts = GlobalFonts;
+  if (existsSync(FONT_DIR)) {
+    for (const f of readdirSync(FONT_DIR)) {
+      if (/\.(ttf|otf)$/i.test(f))
+        GlobalFonts.registerFromPath(`${FONT_DIR}${f}`);
+    }
   }
+  return GlobalFonts;
 };
 
-const has = (family: string): boolean =>
-  GlobalFonts.families.some((f) => f.family === family);
+const has = (fonts: typeof GlobalFontsType, family: string): boolean =>
+  fonts.families.some((f) => f.family === family);
 
 /** Serif family for the headline — brand Newsreader, else bundled PT Serif. */
-const serifFamily = (): string =>
-  has("Newsreader") ? "Newsreader" : "PT Serif";
+const serifFamily = (fonts: typeof GlobalFontsType): string =>
+  has(fonts, "Newsreader") ? "Newsreader" : "PT Serif";
 /** Mono family for eyebrow/HUD — brand JetBrains Mono, else bundled PT Mono. */
-const monoFamily = (): string =>
-  has("JetBrains Mono") ? "JetBrains Mono" : "PT Mono";
+const monoFamily = (fonts: typeof GlobalFontsType): string =>
+  has(fonts, "JetBrains Mono") ? "JetBrains Mono" : "PT Mono";
 
 /** Draw a string with manual letter-spacing (canvas has no native tracking). */
 const drawTracked = (
@@ -68,14 +82,14 @@ export type TypeCopy = {
  * stage-coordinates to the channel's export size so layout is consistent across
  * channels.
  */
-export const drawType = (
+export const drawType = async (
   ctx: SKRSContext2D,
   W: number,
   H: number,
   copy: TypeCopy,
   scale: number,
-): void => {
-  ensureFonts();
+): Promise<void> => {
+  const fonts = await ensureFonts();
   const left = 72 * scale;
   const bottom = 78 * scale;
   ctx.textBaseline = "alphabetic";
@@ -87,7 +101,7 @@ export const drawType = (
   if (copy.headline) {
     const fontPx = 50 * scale;
     const lineH = fontPx * 1.1;
-    ctx.font = `italic 400 ${fontPx}px "${serifFamily()}", serif`;
+    ctx.font = `italic 400 ${fontPx}px "${serifFamily(fonts)}", serif`;
     const lines = copy.headline.split("\n");
     const firstBaseline = H - bottom - (lines.length - 1) * lineH;
     lines.forEach((line, i) => {
@@ -114,7 +128,7 @@ export const drawType = (
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
-      ctx.font = `700 ${15 * scale}px "${monoFamily()}", monospace`;
+      ctx.font = `700 ${15 * scale}px "${monoFamily(fonts)}", monospace`;
       ctx.fillStyle = TYPE_COLORS.eyebrow;
       const eyebrowY = firstBaseline - lineH - 18 * scale;
       drawTracked(
@@ -132,7 +146,7 @@ export const drawType = (
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
-    ctx.font = `500 ${11 * scale}px "${monoFamily()}", monospace`;
+    ctx.font = `500 ${11 * scale}px "${monoFamily(fonts)}", monospace`;
     ctx.fillStyle = "rgba(176,194,188,0.42)";
     const txt = copy.hudTag.toUpperCase();
     const spacing = 0.3 * 11 * scale;

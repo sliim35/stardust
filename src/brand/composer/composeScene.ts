@@ -10,9 +10,14 @@
  *
  * The avatar channel is special-cased: per the owner-approved R3 decision it
  * reuses the ASTRO favicon tile (not a scene crop), so it ignores the seed.
+ *
+ * `@napi-rs/canvas` is a build/CLI-only native lib (devDependency). It is loaded
+ * **lazily** at the top of each async render fn — never via a static
+ * `import … from "@napi-rs/canvas"` — so the native lib stays out of every
+ * statically-reachable module graph and can only enter on the CLI/compose path,
+ * never a Worker route (#83 F2).
  */
 
-import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { faviconTilePath, spritePathFor } from "#/brand/composer/astro";
 import { CHANNELS } from "#/brand/composer/channels";
 import {
@@ -30,10 +35,11 @@ import type {
 } from "#/brand/composer/types";
 
 /** Derive the galaxy seed from the top-level seed (one number → whole frame). */
-const SCENE_SALT = 0x9e3779b9;
+const SCENE_SALT = 0x9e3779b9 as const;
 
 /** Render the fixed ASTRO favicon tile to the avatar export size (R3). */
 const renderAvatar = async (size: number): Promise<Buffer> => {
+  const { createCanvas, loadImage } = await import("@napi-rs/canvas");
   const canvas = createCanvas(size, size);
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
@@ -82,6 +88,8 @@ export const composeScene = async (
   if (channel === "avatar") {
     return { png: await renderAvatar(exportW), sidecar };
   }
+
+  const { createCanvas, loadImage } = await import("@napi-rs/canvas");
 
   // ── native low-res canvas: paint L0–L5 at 1 px per grid cell ──────────────
   const native = createCanvas(NW, NH);
@@ -155,7 +163,7 @@ export const composeScene = async (
   m.drawImage(native, 0, 0, NW, NH, 0, 0, upW, upH);
 
   // L6 — full-res type (scale maps the 1200-wide proof coords to this export)
-  drawType(
+  await drawType(
     m,
     exportW,
     exportH,

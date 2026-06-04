@@ -29,7 +29,7 @@ export const writeRender = async (
 
 export type NamedRender = { name: string; input: ComposeSceneInput };
 
-export const DEFAULT_RENDER_SET: readonly NamedRender[] = [
+export const DEFAULT_RENDER_SET = [
   // The AC8 reference render — should match docs/.../proof-pixel-galaxy.png.
   {
     name: "proof-pixel-galaxy",
@@ -72,4 +72,4 @@ export const DEFAULT_RENDER_SET: readonly NamedRender[] = [
   },
   // Avatar — the ASTRO favicon tile (seed-independent).
   { name: "astro-avatar", input: { channel: "avatar", seed: 0 } },
-] as const;
+] as const satisfies readonly NamedRender[];
