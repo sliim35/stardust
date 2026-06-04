@@ -5,6 +5,7 @@ import {
   PALETTE_LABELS,
   PALETTE_ORDER,
   PALETTES,
+  paletteAccentRgb,
   paletteAccentVars,
   paletteFor,
 } from "#/lib/galaxy/palette";
@@ -75,6 +76,18 @@ describe("paletteAccentVars (publishes the active accent onto shared CSS vars)",
 
   it("defaults to the ember sky when no palette is given", () => {
     expect(paletteAccentVars()).toEqual(paletteAccentVars(DEFAULT_PALETTE));
+  });
+});
+
+describe("paletteAccentRgb (accent hex → `r, g, b` for canvas fills)", () => {
+  it("converts each palette's accent hex to a decimal RGB triple", () => {
+    expect(paletteAccentRgb("ember")).toBe("245, 214, 160"); // #f5d6a0
+    expect(paletteAccentRgb("auroral")).toBe("156, 216, 192"); // #9cd8c0
+    expect(paletteAccentRgb("ice")).toBe("200, 212, 232"); // #c8d4e8
+  });
+
+  it("defaults to the ember accent when no palette is given", () => {
+    expect(paletteAccentRgb()).toBe(paletteAccentRgb(DEFAULT_PALETTE));
   });
 });
 

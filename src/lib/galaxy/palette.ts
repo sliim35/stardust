@@ -93,6 +93,22 @@ export const paletteAccentVars = (palette: Palette = DEFAULT_PALETTE) => {
 };
 
 /**
+ * The active palette's accent hex as a decimal `"r, g, b"` triple — the form a
+ * canvas `rgba(...)` fill needs (the loader starfield's accent-tier stars track
+ * the live sky like the chrome `--color-accent` does). Pure, SSR/Workers-safe,
+ * and unit-tested; defaults to the ember accent.
+ */
+export const paletteAccentRgb = (
+  palette: Palette = DEFAULT_PALETTE,
+): string => {
+  const hex = paletteFor(palette).accent.replace("#", "");
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
+};
+
+/**
  * Display order for the theme picker (swatch order only — the default sky is
  * `ember`/amber as of 2026-06-04, but the picker keeps the original
  * auroral → ember → ice swatch sequence; order ≠ default).

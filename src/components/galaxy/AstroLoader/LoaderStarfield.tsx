@@ -6,6 +6,8 @@ import {
   starCountFor,
   TWINKLE_CYCLE_MS,
 } from "#/lib/galaxy/loader";
+import { paletteAccentRgb } from "#/lib/galaxy/palette";
+import type { Palette } from "#/lib/galaxy/types";
 import { generateStars, type Star } from "#/lib/starfield";
 
 /**
@@ -16,16 +18,24 @@ import { generateStars, type Star } from "#/lib/starfield";
  * draws in an effect (never during SSR), so the loader's server markup is a black
  * placeholder until hydration (the DeepStarfield pattern, ADR-0003). Re-renders on
  * viewport resize. Honors `prefers-reduced-motion` by drawing one static frame.
+ *
+ * The accent-tier stars track the selected `palette` (passed from the loader), so
+ * they ride the chosen sky like the chrome `--color-accent` does — the cool/dim
+ * tiers stay neutral.
  */
 
-/** Tier → RGB triple (loader token family); accent rides amber on the loader root. */
-const TIER_RGB = {
-  accent: "245, 214, 160", // amber accent (matches the ember --color-accent)
+/** The neutral (palette-independent) tiers — cool blue-grey + faint dust. */
+const NEUTRAL_TIER_RGB = {
   cool: "176, 176, 192", // cool blue-grey
   dim: "122, 124, 134", // faint dust
-} as const satisfies Record<StarTier, string>;
+} as const satisfies Record<Exclude<StarTier, "accent">, string>;
 
-export const LoaderStarfield = () => {
+type Props = {
+  /** The selected/persisted sky whose accent tints the accent-tier stars. */
+  palette: Palette;
+};
+
+export const LoaderStarfield = ({ palette }: Props) => {
   const ref = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -33,6 +43,12 @@ export const LoaderStarfield = () => {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // Tier → RGB triple: the accent tier rides the live sky; the rest are neutral.
+    const tierRgb: Record<StarTier, string> = {
+      accent: paletteAccentRgb(palette),
+      ...NEUTRAL_TIER_RGB,
+    };
 
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -77,7 +93,7 @@ export const LoaderStarfield = () => {
                   (t / TWINKLE_CYCLE_MS) * Math.PI + s.alpha * Math.PI * 2,
                 ),
               );
-        ctx.fillStyle = `rgba(${TIER_RGB[tier]}, ${(s.alpha * tw).toFixed(3)})`;
+        ctx.fillStyle = `rgba(${tierRgb[tier]}, ${(s.alpha * tw).toFixed(3)})`;
         ctx.fillRect(s.x, s.y, s.size, s.size);
       }
       if (!reduce) raf = requestAnimationFrame(draw);
@@ -99,7 +115,7 @@ export const LoaderStarfield = () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [palette]);
 
   return <canvas ref={ref} className="astro-loader__stars" />;
 };

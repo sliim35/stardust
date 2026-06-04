@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { PixelAstronaut } from "#/components/galaxy/PixelAstronaut";
+import { readPersistedPalette } from "#/components/galaxy/usePalette";
 import {
   DEFAULT_LABEL,
   DOT_DELAYS_MS,
@@ -29,9 +30,14 @@ import { LoaderStarfield } from "./LoaderStarfield";
  * `onHidden` lets the parent unmount it.
  *
  * Accent note: the loader renders pre-galaxy, where the app default `--color-accent`
- * is sea-glass green (#75 @theme). To make ASTRO's visor-glow/trim read the intended
- * **amber**, the loader root publishes the `ember` accent vars (DRY via
- * `paletteAccentVars("ember")`), so the sprite + halo + glow all track amber.
+ * is sea-glass green (#75 @theme). It publishes the **selected/persisted** palette's
+ * accent vars onto its root (DRY via `paletteAccentVars`), so the sprite + halo +
+ * glow + eye accent all track the chosen sky — picking a palette and reloading now
+ * shows that sky on the loading screen, not a hardcoded amber. SSR honesty: the
+ * choice lives client-side (localStorage, `readPersistedPalette`), so the server
+ * renders the `ember` default and the client reads the saved pick in the state
+ * initializer — a correct first client paint, no post-mount flash (the starfield is
+ * client-only anyway). Defaults to `ember` when nothing is saved.
  */
 
 type Props = {
@@ -67,6 +73,9 @@ const Accent = ({ accent, kind }: { accent: LoaderAccent; kind: string }) => (
 
 export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
   const [hidden, setHidden] = useState(false);
+  // The persisted sky, read once in the initializer: SSR yields `ember`, the
+  // client's first paint already has the saved pick (no jarring post-mount flip).
+  const [palette] = useState(readPersistedPalette);
   const onHiddenRef = useRef(onHidden);
   onHiddenRef.current = onHidden;
 
@@ -89,10 +98,11 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
       aria-live="polite"
       aria-busy={!ready}
       data-ready={ready ? "" : undefined}
-      // Pin the amber accent for the pre-galaxy surface (see component doc).
-      style={paletteAccentVars("ember") as CSSProperties}
+      // Publish the selected/persisted sky's accent for the pre-galaxy surface
+      // (see component doc) so the sprite + halo + glow + starfield all track it.
+      style={paletteAccentVars(palette) as CSSProperties}
     >
-      <LoaderStarfield />
+      <LoaderStarfield palette={palette} />
       <div className="astro-loader__center">
         <div className="astro-loader__stage">
           <div className="astro-loader__halo" aria-hidden="true" />
