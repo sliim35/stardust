@@ -38,8 +38,9 @@ export const ASTRO_CLICK_LINES = [
  * Never returns the same line twice in a row, so every click visibly changes
  * the bubble. Deterministic (no randomness/time) → SSR and client agree.
  */
-export const nextClickLine = (prev: string | undefined): string => {
-  const i = prev == null ? -1 : ASTRO_CLICK_LINES.indexOf(prev as never);
+export const nextClickLine = (prev: string | null | undefined): string => {
+  const i =
+    prev == null ? -1 : (ASTRO_CLICK_LINES as readonly string[]).indexOf(prev);
   // -1 (unknown/greeting/none) → first line; otherwise advance + wrap.
   const next = (i + 1) % ASTRO_CLICK_LINES.length;
   return ASTRO_CLICK_LINES[next];

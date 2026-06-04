@@ -41,7 +41,7 @@ export const Astro = ({ message }: Props) => {
     message ?? ASTRO_GREETING,
   );
 
-  const speakNext = () => setSpoken((prev) => nextClickLine(prev ?? undefined));
+  const speakNext = () => setSpoken((prev) => nextClickLine(prev));
 
   return (
     <div className="galaxy-astro">
