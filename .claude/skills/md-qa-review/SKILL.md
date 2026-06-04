@@ -14,6 +14,24 @@ After the developer reports a story at `in-review`.
 - The story `docs/stories/<id>-*.md` (especially the acceptance criteria).
 - The diff: `git --no-pager diff` against the base.
 
+## Staging the target branch (who runs the gate) — #99
+The `qa` agent's allowlist (`.claude/agents/qa.md`) intentionally **omits**
+`git fetch`/`checkout`/`switch`/`worktree`, so qa **cannot self-stage** a PR branch under
+`isolation: "worktree"`: the fresh worktree is forked from the parent HEAD, qa can't switch it
+onto the target branch, and its `pnpm` tools only match its own cwd (so it can't `cd` into a
+separately-staged path either). The phase therefore **splits**:
+- **Orchestrator stages + runs the gate.** It checks out the target branch (typically a detached
+  `origin/<branch>` worktree) and runs `pnpm check && pnpm test && pnpm build`, capturing the
+  output to hand to qa.
+- **qa adjudicates.** It reads the story ACs and the diff (`git --no-pager diff`), checks each AC
+  against that gate output, runs any UI/`playwright` acceptance checks it can, and records the
+  verdict. **qa still owns the pass/fail gate** — it must *see* green `check`/`test`/`build`
+  output, never take it on faith.
+
+When qa can already run the gate in its own cwd (e.g. dispatched in-place on an
+already-checked-out branch), it runs `pnpm check/test/build` directly per step 1 — the split only
+applies when qa would otherwise need to switch branches.
+
 ## Procedure
 1. **Verify with evidence** using the superpowers `verification-before-completion` skill:
    run `pnpm check`, `pnpm test`, and `pnpm build`; paste the actual output. Use the

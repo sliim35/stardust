@@ -122,6 +122,9 @@ issue bodies must duplicate goal + acceptance criteria. See
 ### Backlog conventions (GitHub Issues)
 
 - **`gh` is the interface.** Issue number = story id; story file `<issue#>-<slug>.md`.
+- **Branches:** `<type>/<issue#>-<short-description>` — the conventional-commit type, the
+  story's issue number, then a kebab slug (e.g. `chore/99-qa-stage-split`,
+  `feat/71-astro-interactive-states`, `fix/86-starfield-hydration`). Branch off `main`.
 - **Labels:** `type:{epic,story,bug,spike}` · `priority:{P0..P3}` ·
   `status:{todo,in-progress,in-review,blocked}` (done = closed) ·
   `role:{research,architecture,design,dev,qa,devops}`. Defined in `.github/labels.yml`.
