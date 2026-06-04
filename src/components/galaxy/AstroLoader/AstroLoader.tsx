@@ -2,7 +2,6 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { PixelAstronaut } from "#/components/galaxy/PixelAstronaut";
 import { DEFAULT_MOOD } from "#/lib/galaxy/astro";
 import {
-  DEFAULT_LABEL,
   DOT_DELAYS_MS,
   FADE_MS,
   LOADER_SPARKS,
@@ -16,6 +15,7 @@ import {
   readPersistedPalette,
 } from "#/lib/galaxy/palette";
 import type { Palette } from "#/lib/galaxy/types";
+import { getMessages, useLocale } from "#/lib/i18n";
 import { LoaderStarfield } from "./LoaderStarfield";
 
 /**
@@ -51,7 +51,10 @@ import { LoaderStarfield } from "./LoaderStarfield";
  */
 
 type Props = {
-  /** Sub-label copy (default "gathering her stars"). Updatable by the caller. */
+  /**
+   * Sub-label copy. Defaults to the localized `loader.label` from the catalog
+   * ("gathering her stars" / "собираю её звёзды"); a caller may override it.
+   */
   label?: string;
   /**
    * Caller flips this true when the app is ready; the loader fades out then calls
@@ -82,6 +85,7 @@ const Accent = ({ accent, kind }: { accent: LoaderAccent; kind: string }) => (
 );
 
 export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
+  const m = getMessages(useLocale());
   const [hidden, setHidden] = useState(false);
   // Resolve the sky exactly like `usePalette`/`GalaxyStage`: start at the
   // `DEFAULT_PALETTE` (matches the SSR markup so hydration agrees — no mismatch),
@@ -140,7 +144,7 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
         </div>
 
         <div className="astro-loader__word">
-          thinking
+          {m.loader.thinking}
           {DOT_DELAYS_MS.map((delay) => (
             <span
               key={delay}
@@ -152,7 +156,7 @@ export const AstroLoader = ({ label, ready = false, onHidden }: Props) => {
           ))}
         </div>
 
-        <div className="astro-loader__sub">{label ?? DEFAULT_LABEL}</div>
+        <div className="astro-loader__sub">{label ?? m.loader.label}</div>
 
         <div
           className="astro-loader__track"
