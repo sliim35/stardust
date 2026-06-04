@@ -25,6 +25,8 @@ After the developer reports a story at `in-review`.
      so never paste a local file path — it renders broken. Fill the PR's *Screenshots /
      visual evidence* section with the preview URL + verified-states checklist (or
      "N/A — no visual change" for non-visual PRs).
+   - **If you do save a Playwright screenshot locally, write it under `docs/qa/` — never the
+     repo root** (see AGENTS.md § Conventions; `docs/` is gitignored, so it stays a local artifact).
 2. **Check each AC** explicitly — tick the boxes that genuinely pass; for any that fail,
    say so with the failing output.
 3. **Review the diff** for **correctness** using the superpowers `requesting-code-review`

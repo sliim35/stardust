@@ -27,6 +27,8 @@ Galaxy" product.
     writing into a shared Figma workspace** — it's outward-facing.
   - Use the `playwright` MCP to inspect running prototype/states. **Recreate** the design in
     React/TS — never copy prototype/Figma code verbatim.
+  - **Preview/variant screenshots go under `docs/img/preview/`, never the repo root**
+    (AGENTS.md § Conventions) — including the 2–3 real variants you render for the owner to pick.
 - **Write:** `docs/design/YYYY-MM-DD-<slug>.md` from the template — layout, components mapped
   to Radix/Tailwind v4, states, design tokens, accessibility, and a buildable handoff. Link the
   Claude Design / Figma source URL in the spec's `source:` frontmatter when one was generated.
