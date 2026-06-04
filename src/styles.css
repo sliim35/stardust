@@ -300,11 +300,16 @@ body {
    z-index and the ≤720px hide (the bubble is tied to ASTRO's visibility). */
 .galaxy-astro__bubble {
   position: absolute;
-  bottom: calc(100% + 18px); /* sit above the (un-bobbing) sprite frame + connector gap */
+  /* Sit well clear above the (un-bobbing) sprite frame — a roomier gap so the
+     bigger panel + the longer connector breathe over the mascot (Fix 2). The
+     anchor is the STABLE .galaxy-astro frame, so it never bobs with the sprite. */
+  bottom: calc(100% + 34px);
   right: 0;
   width: max-content;
-  max-width: 280px;
-  padding: 12px 30px 12px 16px; /* extra right padding clears the dismiss × */
+  /* A more substantial panel for the larger ≥16px body — the future AI-chat
+     surface (Fix 1): wider + more padding so the bigger text breathes. */
+  max-width: 340px;
+  padding: 16px 38px 16px 20px; /* extra right padding clears the dismiss × */
   background: var(--color-surface);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -323,7 +328,7 @@ body {
   top: 100%;
   right: 22px;
   width: 2px;
-  height: 12px;
+  height: 26px; /* longer stem to span the wider bubble↔sprite gap (Fix 2) */
   background: linear-gradient(var(--color-accent), transparent);
   opacity: 0.7;
 }
@@ -332,7 +337,7 @@ body {
   margin: 0;
   font-family: var(--font-serif);
   font-style: italic;
-  font-size: 14px;
+  font-size: 16px; /* readable body for the AI-chat surface (Fix 1, ≥16px) */
   line-height: 1.5;
   color: var(--color-text);
 }
