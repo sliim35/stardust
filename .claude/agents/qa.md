@@ -18,6 +18,7 @@ explicit gate decision: sign off, or send back with specifics.
   (run `pnpm check`, `pnpm test`, `pnpm build` and paste the actual output) and
   `superpowers:requesting-code-review` (**correctness** — conventions/style are the `reviewer`
   phase, `md-review-pr`, which ran before you). Use the `playwright` MCP for UI acceptance checks.
+  Any screenshot you save goes under `docs/qa/`, never the repo root (AGENTS.md § Conventions).
 - **Record:** write the verdict (commands + output + per-AC pass/fail) into the story's *QA
   verdict* section. File real defects as bug issues (`gh issue create --label type:bug,role:dev`).
 
