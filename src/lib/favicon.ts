@@ -1,7 +1,7 @@
 /**
  * The ASTRO favicon set (#80) — the STARLIGHT helmet pixel-art mark, not a star.
  *
- * The art assets (`favicon.svg`, `favicon-16/32/48/180/512.png`) are copied from
+ * The art assets (`favicon.svg`, `favicon-16/32/180/512.png`) are copied from
  * the gitignored `astro/favicon/` Claude Design handoff into `public/favicon/`
  * (committed art deliverables) and referenced here by their served `/favicon/…`
  * paths — never the `astro/` source. The route imports `FAVICON_LINKS` into its
@@ -19,7 +19,7 @@ type FaviconLink = {
   sizes?: string;
 };
 
-export const FAVICON_LINKS: readonly FaviconLink[] = [
+export const FAVICON_LINKS = [
   { rel: "icon", type: "image/svg+xml", href: "/favicon/favicon.svg" },
   {
     rel: "icon",
@@ -39,4 +39,4 @@ export const FAVICON_LINKS: readonly FaviconLink[] = [
     href: "/favicon/favicon-180.png",
   },
   { rel: "manifest", href: "/site.webmanifest" },
-] as const;
+] as const satisfies readonly FaviconLink[];
