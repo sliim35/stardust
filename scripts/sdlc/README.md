@@ -51,10 +51,13 @@ GH_TOKEN="$BOT_TOKEN" gh api repos/sliim35/stardust/pulls/<pr>/reviews ...
 3. **Allow the key-touch** in `.claude/settings.local.json` `permissions.allow`: **`Bash(op read:*)`**
    (and `Bash(gh token:*)` if your local auto-mode gates it). **No `Bash(node …)` grant** — that's
    the simplification over the retired hand-rolled minter.
-4. **(Optional, for caching)** To let the `reviewer` agent call the cached helper unattended, add
-   **`Bash(scripts/sdlc/bot-token.sh:*)`** to `permissions.allow` **and** to `.claude/agents/reviewer.md`
-   `tools:` — one small owner-manual grant (an agent can't widen its own perms). **Skip it and nothing
-   breaks:** the agent just falls back to the inline `gh token generate` recipe under its existing
+4. **(For caching — agent side already wired here.)** `.claude/agents/reviewer.md` `tools:` already
+   grants **`Bash(scripts/sdlc/bot-token.sh:*)`** (shipped with #116). The **only** remaining
+   owner-manual bit is the **gitignored** local allow-rule — add the same
+   **`Bash(scripts/sdlc/bot-token.sh:*)`** to `.claude/settings.local.json` `permissions.allow` so the
+   helper runs unattended (an agent can't self-apply settings). Encapsulating the mint in the script
+   means this **one** grant replaces exposing `op read` + `gh token` to the agent. **Skip it and nothing
+   breaks:** the agent falls back to the inline `gh token generate` recipe under its existing
    `Bash(gh:*)` (per-review `op` prompt, no caching).
 
 **Local prerequisite:** `op` (1Password CLI) installed and an **authenticated session** (`op signin`),
