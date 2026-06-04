@@ -207,10 +207,11 @@ body {
   will-change: transform;
 }
 
-/* ASTRO (#70) — the mascot in the reserved bottom-right slot. A sibling of
+/* ASTRO (#70 + #72) — the mascot in the reserved bottom-right slot. A sibling of
    .galaxy-chrome inside .galaxy-stage__fit, so it scales with --stage-scale but
    ignores the camera/parallax. Decorative chrome: clicks pass through. The bob
-   (outer) + drift (inner) compose without fighting (prototype nests them). */
+   (outer) + drift (inner) compose without fighting (prototype nests them).
+   The whole unit (sprite + speech bubble) bobs together as one. */
 .galaxy-astro {
   position: absolute;
   right: 80px; /* offset from the stage right edge (prototype anchor) */
@@ -226,6 +227,111 @@ body {
 .galaxy-astro__sprite {
   display: grid;
   image-rendering: pixelated; /* crisp hard pixels at any DPR */
+}
+
+/* The click hit-area (#72): a focusable, keyboard-activatable button that opts
+   pointer events back in (the only interactive part of the inert wrapper). It is
+   a bare button — no chrome of its own; the sprite inside carries the look. The
+   unified click trigger #71 hooks here too. */
+.galaxy-astro__hit {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto; /* opt back in — clicks here reach ASTRO */
+}
+.galaxy-astro__hit:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: var(--radius);
+}
+
+/* ASTRO's speech bubble (#72) — soft-glow glass chrome (NOT pixel-art), docked
+   above the sprite with a ▽ tail pointing down at it. Mirrors the read-panel
+   surface: dark translucent bg, backdrop blur, 1px amber accent border, serif
+   italic body. It rides inside .galaxy-astro, so it inherits the stage scale,
+   z-index, and the ≤720px hide (the bubble is tied to ASTRO's visibility). */
+.galaxy-astro__bubble {
+  position: absolute;
+  bottom: calc(100% + 14px); /* sit above the sprite, leaving room for the tail */
+  right: 0;
+  width: max-content;
+  max-width: 280px;
+  padding: 12px 30px 12px 14px; /* extra right padding clears the dismiss × */
+  background: rgba(8, 8, 14, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  box-shadow: 0 0 18px var(--color-accent-soft);
+  animation: astro-bubble-in 0.32s ease-out both;
+}
+/* The ▽ tail — a soft-glow triangle pointing down toward ASTRO. Border colour +
+   fill matched to the panel so it reads as one continuous chrome shape. */
+.galaxy-astro__bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 26px;
+  border: 7px solid transparent;
+  border-top-color: var(--color-accent);
+}
+.galaxy-astro__bubble::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 27px;
+  border: 6px solid transparent;
+  border-top-color: rgba(8, 8, 14, 0.85);
+  z-index: 1; /* sit over the accent tail so only a 1px accent edge shows */
+}
+.galaxy-astro__bubble-text {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+.galaxy-astro__bubble-dismiss {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--color-dim-2);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.galaxy-astro__bubble-dismiss:hover {
+  color: var(--color-text);
+}
+.galaxy-astro__bubble-dismiss:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-snug);
+}
+
+@keyframes astro-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* L2 — the disk (static base + live overlay canvases). */
@@ -522,10 +628,15 @@ body {
   .mem-star__flare-v {
     transition: none;
   }
-  /* ASTRO holds a single static idle frame at rest — bob + drift disabled. */
+  /* ASTRO holds a single static idle frame at rest — bob + drift disabled.
+     The speech bubble (#72) appears instantly — no entrance fade/slide (AC7). */
   .galaxy-astro,
-  .galaxy-astro__drift {
+  .galaxy-astro__drift,
+  .galaxy-astro__bubble {
     animation: none;
+  }
+  .galaxy-astro__bubble-dismiss {
+    transition: none;
   }
 }
 
