@@ -33,14 +33,23 @@ prioritized item. No story → don't start (loop back to `md-create-story`).
 6. **Record**: append approach + files touched to the story's *Implementation notes*; set
    status `in-review`. Commit with the trailer
    `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+7. **Address review** (after `md-review-pr` posts comments): handle **every** thread before
+   merge — answer it **first**, *then* resolve. Never resolve a thread unanswered, even nits.
+   **Accept** → reply with what changed + the commit sha; **reject** → reply with the technical
+   why (delegate the rigor to `superpowers:receiving-code-review`). Reply **and** resolve as the
+   review bot via `scripts/sdlc/bot-token.sh` (verify the author login — the token expires
+   ~hourly); inline threads are invisible to `gh pr view`, so read/reply/resolve through the
+   GraphQL `reviewThreads` API. Fold fixes into the PR as a new commit and re-run
+   `pnpm check && pnpm test`.
 
 ## Output
 Source + tests; story at `in-review`; clean `pnpm check && pnpm test`.
 
 ## Delegates to
 `superpowers:test-driven-development` (core), `using-git-worktrees`, `executing-plans`,
-`subagent-driven-development`, `systematic-debugging`.
+`subagent-driven-development`, `systematic-debugging`, `receiving-code-review` (review loop).
 
 ## Done when
 Every AC has a passing test, `pnpm check && pnpm test` are green, and notes are recorded.
-Hand to `md-review-pr` (reviewer), then `md-qa-review` — do NOT self-mark done.
+Hand to `md-review-pr` (reviewer), then `md-qa-review` — do NOT self-mark done. After review,
+**every** thread is answered (accept/reject with why) **and** resolved before merge.
