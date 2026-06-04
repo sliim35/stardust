@@ -19,6 +19,11 @@ export const en = {
     breadcrumbSolEarth: " › SOL › EARTH",
     countLabel: "{count} memories, still growing",
   },
+  // ASTRO loading screen (#79) — the source-of-truth copy, now localized (#103).
+  loader: {
+    thinking: "thinking",
+    label: "gathering her stars",
+  },
   // ASTRO narration (#72) — the source-of-truth copy, now localized (#103).
   astro: {
     greeting:

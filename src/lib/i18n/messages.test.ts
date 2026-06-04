@@ -136,3 +136,15 @@ describe("ASTRO narration catalog (#72 copy, localized — #103 fold-in)", () =>
     }
   });
 });
+
+describe("ASTRO loading screen catalog (#79 copy, localized — #103 fold-in)", () => {
+  it("carries the exact en loader copy (source of truth)", () => {
+    expect(en.loader.thinking).toBe("thinking");
+    expect(en.loader.label).toBe("gathering her stars");
+  });
+
+  it("carries the AI-generated ru loader copy", () => {
+    expect(ru.loader.thinking).toBe("думаю");
+    expect(ru.loader.label).toBe("собираю её звёзды");
+  });
+});

@@ -23,6 +23,13 @@ export type Messages = {
     /** Carries the `{count}` placeholder — see `interpolate` in `index.ts`. */
     countLabel: string;
   };
+  /** ASTRO loading screen (#79), localized in #103. */
+  loader: {
+    /** The italic word above the progress track (followed by animated dots). */
+    thinking: string;
+    /** The mono sub-label under the sprite (default copy; per-call overridable). */
+    label: string;
+  };
   /**
    * ASTRO narration (#72 copy, localized in #103). `greeting` is the auto-greet
    * line; `clickLines` is the re-speak rotation — addressed by index via
