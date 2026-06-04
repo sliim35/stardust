@@ -1,11 +1,13 @@
 import { PixelAstronaut } from "./PixelAstronaut";
 
 /**
- * ASTRO (#70) — the galaxy's quiet host, pinned in the reserved bottom-right slot of
- * the stage. A sibling of `<GalaxyChrome />` inside `.galaxy-stage__fit`, so it scales
- * with `--stage-scale` but ignores the camera/parallax (it stays in the corner like the
- * title). At rest it is pure decorative chrome: `aria-hidden`, `pointer-events: none`
- * (clicks pass through), gently bobbing — never a tab stop, never a control.
+ * ASTRO (#70) — the galaxy's quiet host, pinned in the reserved bottom-right slot.
+ * A sibling of `<GalaxyChrome />` in the viewport-fixed `.galaxy-chrome-overlay`
+ * (#76 lifted it out of `.galaxy-stage__fit` so it holds a fixed readable size in
+ * the corner like the title, rather than shrinking with the stage; it never took
+ * the camera/parallax). At rest it is pure decorative chrome: `aria-hidden`,
+ * `pointer-events: none` (clicks pass through), gently bobbing — never a tab stop,
+ * never a control.
  *
  * Placement, the bob keyframe (~4s ease-in-out), the optional drift, the small-screen
  * hide, and the reduced-motion gate all live in `.galaxy-astro*` CSS (src/styles.css),
