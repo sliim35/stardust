@@ -15,7 +15,7 @@ import { AstroLoader } from "./AstroLoader";
  */
 
 /** Simulated minimum display time for ASTRO's debut (presentation-only). */
-const SIMULATED_READY_MS = 1600;
+const SIMULATED_READY_MS = 2500;
 
 export const GalaxyWithLoader = () => {
   const [ready, setReady] = useState(false);
