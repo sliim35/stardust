@@ -59,6 +59,17 @@
   --space-deep: var(--color-space-deep);
   --space-mid: var(--color-space-mid);
   --star: #ffffff;
+
+  /* ASTRO mascot materials (#70) — neutral, theme-agnostic sprite parts. They do
+     NOT re-tint per palette; only the visor-glow + trim track the active accent
+     (passed in by GalaxyStage), so ASTRO reads as one consistent physical object
+     across all three skies. */
+  --astro-suit: #f3f3f7; /* suit + arms — near-white */
+  --astro-helmet: #e8e8ee; /* helmet rim */
+  --astro-glove: #d0d0d6; /* gloves */
+  --astro-pack: #a0a0aa; /* backpack */
+  --astro-boot: #404048; /* boots */
+  --astro-visor: #1a2238; /* visor dark band — fixed navy, all skies */
 }
 
 * {
@@ -194,6 +205,27 @@ body {
   inset: 0;
   transform-origin: center center;
   will-change: transform;
+}
+
+/* ASTRO (#70) — the mascot in the reserved bottom-right slot. A sibling of
+   .galaxy-chrome inside .galaxy-stage__fit, so it scales with --stage-scale but
+   ignores the camera/parallax. Decorative chrome: clicks pass through. The bob
+   (outer) + drift (inner) compose without fighting (prototype nests them). */
+.galaxy-astro {
+  position: absolute;
+  right: 80px; /* offset from the stage right edge (prototype anchor) */
+  bottom: 90px; /* offset from the bottom — clears the scale bar */
+  z-index: 4; /* above stars/captions, below the palette switcher (6) + panels */
+  pointer-events: none; /* decorative; never captures mouse/touch */
+  animation: astro-bob 4s ease-in-out infinite; /* = BOB_CYCLE_MS (lib/galaxy/astro.ts), pinned by astro.test.ts */
+}
+.galaxy-astro__drift {
+  /* = DRIFT_CYCLE_MS (lib/galaxy/astro.ts), pinned by astro.test.ts — secondary weightless wander */
+  animation: astro-drift 9s ease-in-out infinite;
+}
+.galaxy-astro__sprite {
+  display: grid;
+  image-rendering: pixelated; /* crisp hard pixels at any DPR */
 }
 
 /* L2 — the disk (static base + live overlay canvases). */
@@ -447,6 +479,35 @@ body {
   }
 }
 
+/* ASTRO idle float (#70): a gentle bob + a slower drift. Weightless, two-stop —
+   never bounces, never springs (the brand rule). Stage px (scales with the fit). */
+@keyframes astro-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(-1.5deg);
+  }
+}
+@keyframes astro-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(6px, -4px);
+  }
+  50% {
+    transform: translate(0, -8px);
+  }
+  75% {
+    transform: translate(-5px, -3px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .galaxy__core {
     animation: none;
@@ -460,5 +521,18 @@ body {
   .mem-star__flare-h,
   .mem-star__flare-v {
     transition: none;
+  }
+  /* ASTRO holds a single static idle frame at rest — bob + drift disabled. */
+  .galaxy-astro,
+  .galaxy-astro__drift {
+    animation: none;
+  }
+}
+
+/* Hide ASTRO on small/portrait stages (it is decorative) — matches the corner
+   caption breakpoint so small screens stay uncluttered. */
+@media (max-width: 720px) {
+  .galaxy-astro {
+    display: none;
   }
 }

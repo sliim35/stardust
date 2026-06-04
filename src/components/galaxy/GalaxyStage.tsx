@@ -7,6 +7,7 @@ import {
 } from "react";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { createInMemoryStore } from "#/lib/galaxy/store";
+import { Astro } from "./Astro";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { GalaxyChrome } from "./GalaxyChrome";
@@ -105,6 +106,7 @@ export const GalaxyStage = () => {
           </div>
         </div>
         <GalaxyChrome count={sky.stars.length} />
+        <Astro />
         <PaletteSwitcher value={palette} onChange={setPalette} />
       </div>
     </div>
