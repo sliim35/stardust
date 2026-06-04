@@ -11,7 +11,7 @@ Define the *what & why* before anyone designs the *how*.
 At the start of a feature/epic, once the problem is understood (often after `md-research`).
 Don't write code or pick a stack here — that's `md-plan-architecture`.
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - Research notes in `docs/research/*`.
 - For the product itself: `stardust/README.md` and `docs/pixel-galaxy-ui.md`.
 - Any user intent captured in the triggering request.

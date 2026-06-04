@@ -22,6 +22,14 @@
    durable record** — `docs/` is local and gitignored, so put anything shareable in the
    issue body/comments, not only in the doc.
 
+## Reachability (worktrees / CI)
+
+`docs/` is **gitignored** — it lives only in the main working copy, **not in fresh git
+worktrees or CI**. If you isolate work in a worktree, read/write `docs/` via the **main-repo
+absolute path**, not the worktree cwd. Only committed files (`AGENTS.md`, `src/`, configs) are
+guaranteed present in a worktree — so a convention that must reach a worktree-isolated developer
+belongs in `AGENTS.md`, not only in `docs/conventions/code-style.md`.
+
 ## Naming (see docs/README.md)
 
 - Dated artifacts: `YYYY-MM-DD-<kebab>.md`
@@ -31,5 +39,6 @@
 ## Don't
 
 - Don't start implementation without a story + acceptance criteria.
+- Don't `gh issue create` without first searching open+closed issues for a match (idempotency — avoid duplicates).
 - Don't duplicate what a superpowers skill already does — delegate to it.
 - Don't edit an Accepted ADR; supersede it with a new one.

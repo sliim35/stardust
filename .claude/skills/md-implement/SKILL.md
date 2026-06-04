@@ -11,13 +11,20 @@ Build the story with TDD. This skill is a thin SDLC wrapper — the **process is
 When a story has acceptance criteria, a design/architecture shape, and is the next
 prioritized item. No story → don't start (loop back to `md-create-story`).
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - The story `docs/stories/<id>-*.md` and everything in its `links:` (PRD, ADR, design).
-- `docs/architecture/overview.md` and `AGENTS.md` conventions.
+- `docs/architecture/overview.md`, the **learned conventions** in
+  `docs/conventions/code-style.md` (apply them up front so the reviewer doesn't re-flag them),
+  and `AGENTS.md` conventions.
+- **`docs/` is gitignored → absent in a fresh git worktree.** If you isolate (step 2), read
+  these via the **main-repo absolute path**, not the worktree cwd. Only committed files
+  (`AGENTS.md`, `src/`, configs) are guaranteed present in a worktree — so conventions that
+  must reach the worktree live in `AGENTS.md`.
 
 ## Procedure
 1. **Set status** `in-progress` (story frontmatter + issue `status:in-progress`).
 2. **Isolate** if the change is non-trivial: use the superpowers `using-git-worktrees` skill.
+   (Remember: `docs/` won't exist in the worktree — read it via the main-repo path.)
 3. **TDD**: use the superpowers `test-driven-development` skill — write a failing test per
    acceptance criterion first, then the minimum code to pass, then refactor. For a
    multi-step story, follow the plan via `executing-plans` / `subagent-driven-development`.

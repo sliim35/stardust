@@ -10,7 +10,7 @@ Ship the verified work and close the loop.
 ## When to use
 After QA sign-off, or for wrangler/CI/secrets/bindings work.
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - The signed-off story and its QA verdict.
 - `docs/architecture/overview.md` and `wrangler.jsonc`.
 

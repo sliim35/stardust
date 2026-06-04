@@ -24,7 +24,7 @@ Before implementing any screen or component. The product is the pixel-art "Memor
 All three converge on the **same deliverable**: a `docs/design/` spec. The Figma / Claude Design
 file is the *source*; the dated spec is the durable handoff (and issues duplicate what must survive).
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - The `stardust/` handoff (gitignored): `stardust/README.md` + `stardust/project/*`.
 - `docs/pixel-galaxy-ui.md` (the UI contract/brief) and the relevant PRD in `docs/product/*`.
 - **`docs/research/2026-06-02-pixel-art-style.md`** — the canonical pixel-art **style rule**

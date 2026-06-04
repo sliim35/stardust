@@ -11,7 +11,7 @@ Give a feature a technical shape and capture the *why* so it's traceable.
 Before implementing anything with a non-obvious design, a new dependency, or a
 cross-cutting effect. Skip for mechanical changes.
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - The PRD in `docs/product/*` and relevant `docs/research/*`.
 - `docs/architecture/overview.md` and existing `docs/architecture/adr/*`.
 - Repo source and `AGENTS.md` conventions; `tanstack … --json` for framework facts.

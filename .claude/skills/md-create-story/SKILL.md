@@ -10,13 +10,16 @@ Produce a self-contained unit of work that a developer can pick up cold.
 ## When to use
 After a PRD (and architecture/design where relevant) exists and work needs slicing.
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - `docs/product/*` (scope slices), `docs/architecture/adr/*`, `docs/design/*`.
 
 ## Procedure
 1. **Slice** the scope into small, independently shippable stories with **testable**
    acceptance criteria. One story = one issue.
-2. **Open the GitHub issue first** (if a remote exists) so we get the number:
+2. **Open the GitHub issue first** (if a remote exists) so we get the number — but
+   **check for an existing match first (idempotency):** `gh issue list --state all --search
+   "<key title terms>"` and scan `docs/stories/*`; if an issue/story already covers this slice,
+   **update it instead of opening a duplicate**. Otherwise create it:
    `gh issue create --title "<title>" --body "<goal + AC>" --label "type:story,priority:P?,role:dev,status:todo"`.
    The issue body MUST duplicate goal + acceptance criteria (the durable record — `docs/` is gitignored).
    *If no remote exists yet,* skip this and use a `draft-<slug>` id; add the story to

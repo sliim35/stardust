@@ -13,7 +13,7 @@ by learning from the inline comments left on PRs. Runs at `in-review`, after
 A story is at `status:in-review` with an open PR. This phase owns conventions/style +
 the learning loop; correctness/AC verification is QA's gate, not this one.
 
-## Inputs (read first)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - The PR diff + metadata: `gh pr diff <pr>` and `gh pr view <pr> --json title,body,files`.
 - **The human's inline review comments are NOT in `gh pr view`.** `--json comments`
   returns only issue-timeline comments, and `reviews[].body` is empty when the human

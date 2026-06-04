@@ -11,7 +11,7 @@ Turn an open question into a written finding + recommendation in the knowledge b
 Before a PRD or architecture decision, whenever there's a real unknown (new library, API
 feasibility, a "which approach" fork). Skip for things you already know.
 
-## Inputs (read first — see references/docs-contract.md)
+## Inputs (read first — see .claude/skills/references/docs-contract.md)
 - The triggering question / story / epic.
 - `docs/product/*` and `docs/architecture/overview.md` for context.
 - Existing `docs/research/*` (don't redo prior work).
