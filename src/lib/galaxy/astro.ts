@@ -28,6 +28,13 @@ export const ASTRO_VISOR_GLOW_KEY = "V";
 /** Palette key for the chest/waist trim cells — the single amber accent stripe. */
 export const ASTRO_TRIM_KEY = "t";
 
+/** Palette key for a soft, level eye-light (pale amber) — the resting `calm` eyes. */
+export const ASTRO_EYE_SOFT_KEY = "e";
+/** Palette key for a bright eye-hotspot (warm cream) — `curious`/`happy` brighten here. */
+export const ASTRO_EYE_BRIGHT_KEY = "E";
+/** Palette key for a dim eye-glow (muted amber) — the `blink` dip + `tender` lids. */
+export const ASTRO_EYE_DIM_KEY = "d";
+
 /**
  * The canonical STARLIGHT `idle` pose — both arms relaxed, weightless float; the
  * resting pose ASTRO holds ~95% of the time. Recreated cell-for-cell from
@@ -69,6 +76,12 @@ export const ASTRO_PALETTE = {
   p: "pack",
   b: "boot",
   a: "suit", // arms share the suit material
+  // expression-only eyes (#71) — three brightness levels of the live accent so the
+  // glowing pixel-eyes track the sky like the visor-glow does. `e` = the live accent
+  // (soft, level), `E` = a brightened hotspot, `d` = a dimmed glow (blink/tender).
+  e: "accent", // soft, level eye-light → the live accent
+  E: "eye-bright", // bright hotspot (curious/happy)
+  d: "eye-dim", // dim eye-glow (blink dip + tender lids)
 } as const satisfies Record<string, AstroPart>;
 
 /** The material/role a sprite cell paints with (neutral parts + the themed accent). */
@@ -79,7 +92,9 @@ export type AstroPart =
   | "suit"
   | "glove"
   | "pack"
-  | "boot";
+  | "boot"
+  | "eye-bright"
+  | "eye-dim";
 
 /** Every palette key the grids may use (for grid validation + char allow-listing). */
 export const ASTRO_PALETTE_KEYS = Object.keys(
@@ -114,6 +129,255 @@ export const parseSprite = (
     }
   }
   return cells;
+};
+
+/* ── ASTRO expressions (#71) — glowing pixel-eyes ──────────────────────────
+ *
+ * Six moods recreated (output, not code — ADR-0002 §2) from the canonical
+ * `stardust/project/Astro Expression Frames.html` (`LOCKED` figure + per-frame
+ * `build([...])` eye overrides) and the variant-A reference PNGs. The figure never
+ * moves between moods: helmet, suit, gloves, boots, pack and the amber chest-trim
+ * are pixel-identical everywhere — only the pair of eyes inside the navy `v` visor
+ * band (rows 2–4) changes shape, height and brightness. That carries the whole
+ * emotion. The visor here is clean navy (the resting expression is the eye-lights),
+ * so these frames intentionally drop the #70 idle's fixed `V` pilot light.
+ *
+ * Same 16×16 box, palette convention and anchor as `ASTRO_IDLE` — drop-in, no
+ * position shift. Pure data: the component maps a mood → its grid via `parseSprite`.
+ */
+
+/** The owner-approved mood set (calm + blink ambient; the rest situational). */
+export const ASTRO_MOODS = [
+  "calm",
+  "blink",
+  "curious",
+  "happy",
+  "thinking",
+  "tender",
+] as const;
+
+/** A single ASTRO expression mood. */
+export type AstroMood = (typeof ASTRO_MOODS)[number];
+
+/**
+ * The locked emotion figure: identical to `ASTRO_IDLE` below the visor, with a
+ * clean navy `v` visor band (no pilot light) so the eyes are the only expression.
+ * Each mood overrides only the eye region (rows 2–4). Authored fresh as literals.
+ */
+export const ASTRO_FRAMES = {
+  // two soft, level eye-lights inside the navy band
+  calm: [
+    ".....hhhhhh.....",
+    "....hhhhhhhh....",
+    "....hvvvvvvh....",
+    "....hvevvevh....",
+    "....hvvvvvvh....",
+    "....hhhhhhhh....",
+    ".....ssssss.....",
+    "....asttttsap...",
+    "....assssssap...",
+    "....asttttsa....",
+    "....gssssssg....",
+    ".....ssssss.....",
+    ".....ss..ss.....",
+    ".....bb..bb.....",
+    "....bbb..bbb....",
+    "................",
+  ],
+  // transient ~120ms dip — eyes fall to a soft dim line
+  blink: [
+    ".....hhhhhh.....",
+    "....hhhhhhhh....",
+    "....hvvvvvvh....",
+    "....hvddddvh....",
+    "....hvvvvvvh....",
+    "....hhhhhhhh....",
+    ".....ssssss.....",
+    "....asttttsap...",
+    "....assssssap...",
+    "....asttttsa....",
+    "....gssssssg....",
+    ".....ssssss.....",
+    ".....ss..ss.....",
+    ".....bb..bb.....",
+    "....bbb..bbb....",
+    "................",
+  ],
+  // taller, brighter, set higher — wide-open
+  curious: [
+    ".....hhhhhh.....",
+    "....hhhhhhhh....",
+    "....hvEvvEvh....",
+    "....hvEvvEvh....",
+    "....hvvvvvvh....",
+    "....hhhhhhhh....",
+    ".....ssssss.....",
+    "....asttttsap...",
+    "....assssssap...",
+    "....asttttsa....",
+    "....gssssssg....",
+    ".....ssssss.....",
+    ".....ss..ss.....",
+    ".....bb..bb.....",
+    "....bbb..bbb....",
+    "................",
+  ],
+  // ∧ ∧ upward squint (a warm crinkle, not a grin)
+  happy: [
+    ".....hhhhhh.....",
+    "....hhhhhhhh....",
+    "....hvEvvEvh....",
+    "....hEvEEvEh....",
+    "....hvvvvvvh....",
+    "....hhhhhhhh....",
+    ".....ssssss.....",
+    "....asttttsap...",
+    "....assssssap...",
+    "....asttttsa....",
+    "....gssssssg....",
+    ".....ssssss.....",
+    ".....ss..ss.....",
+    ".....bb..bb.....",
+    "....bbb..bbb....",
+    "................",
+  ],
+  // eyes drift up & aside — the "recalling…" state while narrating
+  thinking: [
+    ".....hhhhhh.....",
+    "....hhhhhhhh....",
+    "....hvevevvh....",
+    "....hvvvvvvh....",
+    "....hvvvvvvh....",
+    "....hhhhhhhh....",
+    ".....ssssss.....",
+    "....asttttsap...",
+    "....assssssap...",
+    "....asttttsa....",
+    "....gssssssg....",
+    ".....ssssss.....",
+    ".....ss..ss.....",
+    ".....bb..bb.....",
+    "....bbb..bbb....",
+    "................",
+  ],
+  // half-lidded, downcast and soft — memorial beats
+  tender: [
+    ".....hhhhhh.....",
+    "....hhhhhhhh....",
+    "....hvvvvvvh....",
+    "....hvdvvdvh....",
+    "....hvevvevh....",
+    "....hhhhhhhh....",
+    ".....ssssss.....",
+    "....asttttsap...",
+    "....assssssap...",
+    "....asttttsa....",
+    "....gssssssg....",
+    ".....ssssss.....",
+    ".....ss..ss.....",
+    ".....bb..bb.....",
+    "....bbb..bbb....",
+    "................",
+  ],
+} as const satisfies Record<AstroMood, readonly string[]>;
+
+/** The default resting mood ASTRO holds ~95% of the time. */
+export const DEFAULT_MOOD: AstroMood = "calm";
+
+/**
+ * The situational moods a click rotates through, in order. `calm`/`blink` are
+ * ambient and never click-triggered; this is the click vocabulary (curious →
+ * happy → thinking → tender → wrap).
+ */
+export const CLICK_MOOD_CYCLE = [
+  "curious",
+  "happy",
+  "thinking",
+  "tender",
+] as const satisfies readonly AstroMood[];
+
+/**
+ * The click mood to show next, given the currently-displayed mood. A pure,
+ * deterministic rotation through `CLICK_MOOD_CYCLE` (mirrors `nextClickLine`):
+ * - resting/ambient/unknown (`calm`/`blink`/`null`) → the first click mood;
+ * - a known click mood → the next one, wrapping at the end.
+ *
+ * Never returns the same mood twice in a row, so every click visibly changes the
+ * expression. Deterministic (no randomness/time) → SSR and client agree and it is
+ * fully unit-testable.
+ */
+export const nextClickMood = (
+  prev: AstroMood | null | undefined,
+): AstroMood => {
+  const i =
+    prev == null
+      ? -1
+      : (CLICK_MOOD_CYCLE as readonly AstroMood[]).indexOf(prev);
+  const next = (i + 1) % CLICK_MOOD_CYCLE.length;
+  return CLICK_MOOD_CYCLE[next];
+};
+
+/** After a click emote, ASTRO settles back to `calm` after this long (~5 s). */
+export const EMOTE_SETTLE_MS = 5000;
+
+/** Idle-blink lower bound — the shortest gap between ambient blinks. */
+export const BLINK_MIN_MS = 4000;
+/** Idle-blink upper bound — the longest gap between ambient blinks. */
+export const BLINK_MAX_MS = 8000;
+/** How long the blink dip is held before the eyes reopen (~120 ms). */
+export const BLINK_DIP_MS = 120;
+
+/**
+ * The next idle-blink delay, jittered across the 4–8 s window so the blink never
+ * reads as a metronome. Takes an injected `rand` (a `() => number` in `[0,1)`,
+ * default `Math.random`) so the timing is deterministic and unit-testable. Pure:
+ * no clock, no DOM — the caller schedules the actual timer.
+ */
+export const nextBlinkDelay = (rand: () => number = Math.random): number =>
+  BLINK_MIN_MS + rand() * (BLINK_MAX_MS - BLINK_MIN_MS);
+
+/** What `startBlinkLoop` needs to drive the ambient blink (all injected). */
+export type BlinkLoopOptions = {
+  /** `() => number` in `[0,1)` for the jitter — default `Math.random`. */
+  rand?: () => number;
+  /** Whether ASTRO is at rest right now (only blink while resting on `calm`). */
+  isResting: () => boolean;
+  /** Called to dip the eyes to `blink`. */
+  onBlink: () => void;
+  /** Called ~120 ms later to reopen the eyes. */
+  onReopen: () => void;
+};
+
+/**
+ * Run the ambient idle-blink loop (AC1): wait a jittered 4–8 s, and — if ASTRO is
+ * still resting — dip the eyes (`onBlink`), reopen them after `BLINK_DIP_MS`
+ * (`onReopen`), then reschedule on a fresh jittered delay (never a metronome).
+ *
+ * Framework-free and clock-injectable (uses the ambient `setTimeout`/`clearTimeout`,
+ * which vitest fake timers replace) so the timer behaviour is unit-testable. The
+ * React shell (`useAstroFace`) just supplies the callbacks and the reduced-motion
+ * gate. Returns a `stop()` that cancels any pending timers (effect cleanup).
+ */
+export const startBlinkLoop = (opts: BlinkLoopOptions): (() => void) => {
+  const rand = opts.rand ?? Math.random;
+  let scheduleTimer: ReturnType<typeof setTimeout>;
+  let dipTimer: ReturnType<typeof setTimeout>;
+
+  const schedule = (): void => {
+    scheduleTimer = setTimeout(() => {
+      if (opts.isResting()) {
+        opts.onBlink();
+        dipTimer = setTimeout(opts.onReopen, BLINK_DIP_MS);
+      }
+      schedule();
+    }, nextBlinkDelay(rand));
+  };
+  schedule();
+
+  return () => {
+    clearTimeout(scheduleTimer);
+    clearTimeout(dipTimer);
+  };
 };
 
 /** The idle-bob cycle: ~4000ms ease-in-out, infinite (CSS owns the easing). */
