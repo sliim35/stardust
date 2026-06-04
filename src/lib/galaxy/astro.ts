@@ -320,7 +320,7 @@ export const CLICK_MOOD_CYCLE = [
 
 /**
  * The click mood to show next, given the currently-displayed mood. A pure,
- * deterministic rotation through `CLICK_MOOD_CYCLE` (mirrors `nextClickLine`):
+ * deterministic rotation through `CLICK_MOOD_CYCLE` (mirrors `nextClickIndex`):
  * - resting/ambient/unknown (`calm`/`blink`/`null`) → the first click mood;
  * - a known click mood → the next one, wrapping at the end.
  *

@@ -29,8 +29,8 @@ export const TWINKLE_CYCLE_MS = 2200;
 /** Stagger delays for the three blinking "thinking…" dots (handoff: 0/200/400ms). */
 export const DOT_DELAYS_MS = [0, 200, 400] as const;
 
-/** Default sub-label copy when no `label` prop is supplied. */
-export const DEFAULT_LABEL = "gathering her stars";
+// Loader copy ("thinking", sub-label) is localized — see the i18n `loader.*`
+// catalog (src/lib/i18n) and `AstroLoader`. This module stays pure timing/layout.
 
 /** Fade-out transition once `onReady` fires — `transition: opacity 0.4s ease`. */
 export const FADE_MS = 400;

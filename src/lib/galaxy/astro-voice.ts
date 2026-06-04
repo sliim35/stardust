@@ -1,47 +1,25 @@
 /**
- * Pure, headless voice model for ASTRO (#72) — the copy ASTRO speaks and the
- * deterministic rule for which line a click shows next. The component half
- * (`AstroBubble` + the `Astro` wiring) stays draw-only; this module is the
- * lib-pure, unit-tested seam (mirrors `astro.ts` for the sprite).
+ * Pure, headless rotation rule for ASTRO's re-speak lines (#72). The lines
+ * themselves now live in the i18n catalog (`messages/*.astro`, localized in
+ * #103), so ASTRO speaks the active locale. This module keeps only the
+ * deterministic rule for WHICH line a click shows next — an **index**, not a
+ * string, so the rotation is locale-agnostic (the same index addresses the en or
+ * ru `clickLines` array; a Russian line never has to be looked up by value).
  *
- * Deterministic by design: `nextClickLine` is a pure rotation (never random),
- * so SSR and the client never disagree and the rotation is fully unit-testable.
- * No DOM, no `Math.random`, no time — SSR/Workers-safe.
+ * Deterministic by design: a pure modular advance — no randomness, no time, no
+ * DOM — so SSR and the client never disagree and the rule is fully unit-testable.
+ * SSR/Workers-safe.
  */
 
 /**
- * The confirmed opening line ASTRO auto-greets with on mount (AC2). Sentence
- * case, wistful voice; the em dash + "I'll" carry ASTRO's first-person host tone.
- */
-export const ASTRO_GREETING =
-  "Every star here is a memory someone left behind. The pulsing one is hers — but add your own, and I'll find its place." as const;
-
-/**
- * The small set of lines ASTRO re-speaks on click (AC3). Sentence case, wistful;
- * each is distinct and none repeats the greeting. Rotated through in order by
- * `nextClickLine` so every click shows a fresh line.
- */
-export const ASTRO_CLICK_LINES = [
-  "Every light you see used to be someone's warmth.",
-  "I've been here a long time. So have they.",
-  "Add a star. I'll find it a good place in the sky.",
-  "Some stars pulse a little brighter. Those are the ones most loved.",
-  "The sky keeps growing. It always does.",
-] as const;
-
-/**
- * The click line to show next, given the currently-displayed message. A pure,
- * deterministic rotation through `ASTRO_CLICK_LINES`:
- * - no previous (mount/greeting/unknown) → the first click line;
- * - a known click line → the next one, wrapping at the end.
+ * The index of the click line to show next, given the current one.
+ * - `prev == null` (mount / showing the greeting / just dismissed) → `0`, the
+ *   first click line, so the first click always advances off the greeting;
+ * - otherwise advance one and wrap at `total`.
  *
- * Never returns the same line twice in a row, so every click visibly changes
- * the bubble. Deterministic (no randomness/time) → SSR and client agree.
+ * `total` is the active locale's `clickLines.length`, passed in so this stays
+ * pure with no catalog import. With `total > 1` it never returns `prev`, so every
+ * click visibly changes the bubble.
  */
-export const nextClickLine = (prev: string | null | undefined): string => {
-  const i =
-    prev == null ? -1 : (ASTRO_CLICK_LINES as readonly string[]).indexOf(prev);
-  // -1 (unknown/greeting/none) → first line; otherwise advance + wrap.
-  const next = (i + 1) % ASTRO_CLICK_LINES.length;
-  return ASTRO_CLICK_LINES[next];
-};
+export const nextClickIndex = (prev: number | null, total: number): number =>
+  prev == null ? 0 : (prev + 1) % total;
