@@ -17,7 +17,7 @@ import {
   nextClickMood,
 } from "#/lib/galaxy/astro";
 
-/* ── D4 / AC3 — frame fidelity (pixel-exact to the variant-A PNGs) ────────── */
+/* ── D4 / AC3 — frame fidelity (exact to the showcase `build()` overrides) ── */
 
 /**
  * The eye region is rows 2–4 × cols 5–10 (0-indexed) on the locked clean-navy
@@ -45,51 +45,53 @@ const asSet = (cells: readonly [number, number, string][]): string[] =>
   cells.map(([r, c, k]) => `${r},${c},${k}`).sort();
 
 /**
- * The four owner-approved variant-A eye override sets — the SOURCE OF TRUTH.
- * Decoded pixel-for-pixel from `stardust/project/astro/expression/astro_A_*_1x.png`
- * (palette: `f5d6a0`→`e` soft amber, `fff6d0`→`E` cream hotspot, `1a2238`→navy `v`).
- * Each frame must reproduce its set exactly, including variant A's slight asymmetry.
- * (Replaces the prior assertions vs the now-wrong `Astro Expression Frames.html`.)
+ * The six owner-approved eye override sets — the SOURCE OF TRUTH, taken EXACTLY
+ * from the showcase `Astro Expression Frames.html` `build()` overrides (the
+ * six-mood "glowing pixel-eyes" reference; the variant-A PNGs were the previous,
+ * wrong reference and are superseded). Coordinates are `[row, col, char]`,
+ * 0-indexed, painted over the locked clean-navy visor band. SHAPE comes from the
+ * showcase; the eye COLOR wiring (`e`/`E`/`d` → the live accent derivations) is
+ * kept as-is, so the showcase's fixed amber renders accent-colored here — same
+ * shapes, sky-tinted eyes.
  */
-const VARIANT_A_EYES = {
+const SHOWCASE_EYES = {
   calm: asSet([
-    [2, 5, "e"],
-    [2, 6, "e"],
-    [3, 5, "e"],
-    [3, 7, "e"],
+    [3, 6, "e"],
     [3, 9, "e"],
   ]),
   curious: asSet([
-    [2, 5, "e"],
-    [2, 6, "e"],
-    [2, 7, "E"],
+    [2, 6, "E"],
+    [3, 6, "E"],
     [2, 9, "E"],
-    [3, 5, "e"],
-    [3, 7, "E"],
     [3, 9, "E"],
   ]),
-  happy: asSet([
-    [2, 5, "e"],
+  thinking: asSet([
     [2, 6, "e"],
-    [2, 7, "E"],
+    [2, 8, "e"],
+  ]),
+  happy: asSet([
+    [3, 5, "E"],
+    [2, 6, "E"],
+    [3, 7, "E"],
+    [3, 8, "E"],
     [2, 9, "E"],
-    [3, 5, "e"],
-    [3, 6, "e"],
-    [3, 10, "e"],
+    [3, 10, "E"],
+  ]),
+  tender: asSet([
+    [3, 6, "d"],
+    [3, 9, "d"],
+    [4, 6, "e"],
+    [4, 9, "e"],
   ]),
   blink: asSet([
-    [2, 5, "e"],
-    [2, 6, "e"],
-    [3, 5, "e"],
+    [3, 6, "d"],
+    [3, 7, "d"],
+    [3, 8, "d"],
+    [3, 9, "d"],
   ]),
 } as const;
 
-/** The four moods that have approved variant-A PNG art. */
-const PNG_MOODS = ["calm", "curious", "happy", "blink"] as const;
-/** The two moods derived best-effort (no approved PNG — pending owner review). */
-const DERIVED_MOODS = ["thinking", "tender"] as const;
-
-describe("ASTRO_FRAMES (recreated variant-A expression grids, not copied)", () => {
+describe("ASTRO_FRAMES (recreated showcase expression grids, not copied)", () => {
   it("covers exactly the six owner-approved moods", () => {
     expect(Object.keys(ASTRO_FRAMES).sort()).toEqual([...ASTRO_MOODS].sort());
     expect(ASTRO_MOODS).toEqual([
@@ -151,18 +153,29 @@ describe("ASTRO_FRAMES (recreated variant-A expression grids, not copied)", () =
     }
   });
 
-  // ── The four PNG-backed moods reproduce variant A pixel-for-pixel ──────────
-  it.each(
-    PNG_MOODS,
-  )("reproduces variant-A %s eyes exactly (decoded from astro_A_*_1x.png)", (mood) => {
-    expect(litEyeCells(ASTRO_FRAMES[mood])).toEqual(VARIANT_A_EYES[mood]);
+  // ── Every mood reproduces its showcase `build()` overrides exactly ─────────
+  // thinking/tender are now FIRST-CLASS (they ship in the showcase) — no longer
+  // "derived / pending owner review", asserted with exact expected cells.
+  it.each([
+    ...ASTRO_MOODS,
+  ])("reproduces the showcase %s eyes exactly (from the html build() overrides)", (mood) => {
+    expect(litEyeCells(ASTRO_FRAMES[mood])).toEqual(SHOWCASE_EYES[mood]);
   });
 
-  it("preserves variant A's slight asymmetry (happy's lone right-side dot at 3,10)", () => {
-    // happy is asymmetric: left side has 3,5+3,6 but the right side has only 3,10.
-    expect(litEyeCells(ASTRO_FRAMES.happy)).toContain("3,10,e");
-    expect(ASTRO_FRAMES.happy[3][6]).toBe("e");
-    expect(ASTRO_FRAMES.happy[3][7]).toBe("v");
+  it("keeps every lit cell inside the eye region (rows 2–4, cols 5–10) for every mood", () => {
+    const eyeRows = new Set<number>(EYE_ROWS);
+    const eyeCols = new Set<number>(EYE_COLS);
+    for (const mood of ASTRO_MOODS) {
+      for (let r = 0; r < ASTRO_GRID_SIZE; r++) {
+        for (let c = 0; c < ASTRO_GRID_SIZE; c++) {
+          const ch = ASTRO_FRAMES[mood][r][c];
+          if (ch === "e" || ch === "E" || ch === "d") {
+            expect(eyeRows.has(r)).toBe(true);
+            expect(eyeCols.has(c)).toBe(true);
+          }
+        }
+      }
+    }
   });
 
   it("brightens curious/happy with the hotspot key (E)", () => {
@@ -170,52 +183,51 @@ describe("ASTRO_FRAMES (recreated variant-A expression grids, not copied)", () =
     expect(ASTRO_FRAMES.happy.join("")).toContain("E");
   });
 
-  it("dims blink with the navy band (no E) and tender with the dim key (d)", () => {
+  it("dims blink + tender with the dim key (d), and keeps no E in either", () => {
+    expect(ASTRO_FRAMES.blink.join("")).toContain("d");
     expect(ASTRO_FRAMES.blink.join("")).not.toContain("E");
     expect(ASTRO_FRAMES.tender.join("")).toContain("d");
+    expect(ASTRO_FRAMES.tender.join("")).not.toContain("E");
   });
 
-  // ── The two derived moods: structural invariants only (NOT owner-approved) ──
-  it.each(
-    DERIVED_MOODS,
-  )("keeps every lit cell of derived mood %s inside the eye region (rows 2–4, cols 5–10)", (mood) => {
-    const eyeRows = new Set<number>(EYE_ROWS);
-    const eyeCols = new Set<number>(EYE_COLS);
-    for (let r = 0; r < ASTRO_GRID_SIZE; r++) {
-      for (let c = 0; c < ASTRO_GRID_SIZE; c++) {
-        const ch = ASTRO_FRAMES[mood][r][c];
-        if (ch === "e" || ch === "E" || ch === "d") {
-          expect(eyeRows.has(r)).toBe(true);
-          expect(eyeCols.has(c)).toBe(true);
-        }
-      }
-    }
+  it("keeps happy symmetric (∧∧ upward squint) across the visor centre", () => {
+    // happy's upper hotspots sit at 2,6 + 2,9 and the lower row spans 3,5..3,10
+    // symmetrically — the showcase's symmetric ∧∧ shape (no lone asymmetric dot).
+    expect(litEyeCells(ASTRO_FRAMES.happy)).toEqual(
+      asSet([
+        [3, 5, "E"],
+        [2, 6, "E"],
+        [3, 7, "E"],
+        [3, 8, "E"],
+        [2, 9, "E"],
+        [3, 10, "E"],
+      ]),
+    );
   });
 
-  it.each(
-    DERIVED_MOODS,
-  )("derived mood %s keeps the body + visor frame identical to calm (only eyes derived)", (mood) => {
-    const eyeRows = new Set<number>(EYE_ROWS);
-    for (let r = 0; r < ASTRO_GRID_SIZE; r++) {
-      if (eyeRows.has(r)) continue;
-      expect(ASTRO_FRAMES[mood][r]).toBe(ASTRO_FRAMES.calm[r]);
-    }
-  });
-
-  it("derives thinking from calm's amber lights drifted up & aside (subtle, pure amber)", () => {
-    // No PNG exists — assert only the design intent: pure amber `e`, eyes lifted
-    // to row 2, none of curious/happy's bright `E` hotspot.
+  it("lifts thinking's pair up to row 2, drifted aside (subtle, no bright E)", () => {
     expect(ASTRO_FRAMES.thinking.join("")).toContain("e");
     expect(ASTRO_FRAMES.thinking.join("")).not.toContain("E");
-    expect(ASTRO_FRAMES.thinking[2]).toContain("e");
+    expect(litEyeCells(ASTRO_FRAMES.thinking)).toEqual(
+      asSet([
+        [2, 6, "e"],
+        [2, 8, "e"],
+      ]),
+    );
   });
 
-  it("derives tender as lowered, dim half-lidded eyes (d over e, downcast)", () => {
-    // No PNG exists — assert only the design intent: dim `d` lids sit above the
-    // lowered `e` lights (row 4), the lowest eye row of any mood.
-    expect(ASTRO_FRAMES.tender.join("")).toContain("d");
+  it("renders tender as half-lidded dim lids (d) over lowered soft lights (e)", () => {
+    // dim `d` half-lids on row 3 sit above the lowered soft `e` lights on row 4.
+    expect(ASTRO_FRAMES.tender[3]).toContain("d");
     expect(ASTRO_FRAMES.tender[4]).toContain("e");
-    expect(ASTRO_FRAMES.tender.join("")).not.toContain("E");
+    expect(litEyeCells(ASTRO_FRAMES.tender)).toEqual(
+      asSet([
+        [3, 6, "d"],
+        [3, 9, "d"],
+        [4, 6, "e"],
+        [4, 9, "e"],
+      ]),
+    );
   });
 });
 
