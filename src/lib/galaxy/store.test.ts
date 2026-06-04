@@ -87,6 +87,42 @@ describe("createInMemoryStore", () => {
     expect(store.getSky().stars).toHaveLength(n);
   });
 
+  it("getSky is a deep snapshot — mutating a returned star cannot change stored state", () => {
+    const store = createInMemoryStore();
+    const first = store.getSky().stars[0];
+    const originalAngle = first.angle;
+    first.angle = originalAngle + 99; // try to move a stored star by reference
+    first.color = "#000000";
+    const after = store.getSky().stars[0];
+    expect(after.angle).toBe(originalAngle);
+    expect(after.color).not.toBe("#000000");
+  });
+
+  it("getSky is a deep snapshot — mutating the returned backdrop cannot change stored state", () => {
+    const store = createInMemoryStore();
+    const originalSeed = store.getSky().backdrop.seed;
+    store.getSky().backdrop.seed = originalSeed + 1; // try to mutate stored backdrop
+    expect(store.getSky().backdrop.seed).toBe(originalSeed);
+  });
+
+  it("owns its copy — mutating the caller's initial sky after construction never leaks in", () => {
+    const initial: GalaxySky = {
+      backdrop: {
+        seed: 1,
+        branches: 2,
+        spin: 0,
+        randomnessPower: 2,
+        palette: "ice",
+      },
+      stars: [sampleStar({ id: "seed-0", color: "#111111" })],
+    };
+    const store = createInMemoryStore(initial);
+    initial.backdrop.seed = 999;
+    initial.stars[0].color = "#999999";
+    expect(store.getSky().backdrop.seed).toBe(1);
+    expect(store.getSky().stars[0].color).toBe("#111111");
+  });
+
   it("does not mutate a caller-supplied initial sky when adding stars", () => {
     const initial: GalaxySky = {
       backdrop: {

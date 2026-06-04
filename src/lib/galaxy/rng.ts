@@ -4,8 +4,9 @@
  * the same input always yields the same sky, so SSR and the client agree and a
  * Cloudflare Worker never touches a module-scope `Math.random()` (ADR-0003).
  *
- * NOTE: `src/lib/starfield.ts` and `src/lib/galaxy/seed.ts` still carry their own
- * copies of these; folding them onto this module is tracked as bug #45 (R1).
+ * The single home for these primitives: `starfield.ts` (mulberry32) and
+ * `galaxy/seed.ts` (mulberry32 + hashStr, formerly `memRng`/`memHash`) both
+ * import from here — no PRNG is re-implemented anywhere (#45 R1).
  */
 
 /** mulberry32 — fast 32-bit PRNG. Same seed → same sequence of [0, 1) floats. */
