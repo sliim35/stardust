@@ -7,13 +7,11 @@ import {
 } from "react";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { createInMemoryStore } from "#/lib/galaxy/store";
-import { Astro } from "./Astro";
 import { BackdropTint } from "./BackdropTint";
+import { ChromeOverlay } from "./ChromeOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
-import { GalaxyChrome } from "./GalaxyChrome";
 import { MemoryStarLayer } from "./MemoryStarLayer";
-import { PaletteSwitcher } from "./PaletteSwitcher";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { usePalette } from "./usePalette";
 import { useStageFit } from "./useStageFit";
@@ -112,16 +110,14 @@ export const GalaxyStage = () => {
           </div>
         </div>
       </div>
-      {/* Layer C — chrome pinned to the viewport at fixed px (never scales with
-          the stage). pointer-events:none so it never blocks star hovers; the
-          palette dots re-enable pointer-events for themselves. ASTRO joins the
-          overlay so the mascot stays a fixed-size corner host like the title,
-          rather than shrinking with the stage (#70 placed it inside the fit). */}
-      <div className="galaxy-chrome-overlay">
-        <GalaxyChrome count={sky.stars.length} />
-        <Astro />
-        <PaletteSwitcher value={palette} onChange={setPalette} />
-      </div>
+      {/* Layer C — viewport-fixed chrome overlay (title · breadcrumb · live count
+          · ASTRO · palette), pinned at fixed px so it never scales with the
+          stage. See ChromeOverlay for the why. */}
+      <ChromeOverlay
+        count={sky.stars.length}
+        palette={palette}
+        onPaletteChange={setPalette}
+      />
     </div>
   );
 };
