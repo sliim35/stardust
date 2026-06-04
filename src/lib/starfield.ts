@@ -10,7 +10,7 @@
 
 import { mulberry32 } from "#/lib/galaxy/rng";
 
-export interface Star {
+export type Star = {
   /** x offset in px from the field origin */
   x: number;
   /** y offset in px from the field origin */
@@ -19,7 +19,7 @@ export interface Star {
   size: 1 | 2;
   /** 0..1 opacity, drives the faint twinkle of depth */
   alpha: number;
-}
+};
 
 /** Scatter `count` stars across a `spread`×`spread` px square, deterministically. */
 export const generateStars = (

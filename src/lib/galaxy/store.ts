@@ -19,14 +19,14 @@ export const createInMemoryStore = (initial?: GalaxySky): GalaxyStore => {
         backdrop: { ...initial.backdrop },
         stars: initial.stars.map((s) => ({ ...s })),
       }
-    : buildSeedSky();
+    : buildSeedSky(); // fresh allocation — nothing to copy
 
   const subscribers = new Set<(sky: GalaxySky) => void>();
 
-  // Deep snapshot each read so callers can't mutate stored state by reference:
-  // a fresh array, plus fresh `backdrop` + star objects (shallow elements suffice —
-  // `MemoryStar`/`GalaxyBackdrop` are flat). `getSky().backdrop.seed = …` or editing
-  // a returned star no longer leaks back into the store.
+  // Deep snapshot each read so callers can't mutate stored state by reference.
+  // A single spread is a full copy because `MemoryStar`/`GalaxyBackdrop` are flat
+  // structs (no nested object fields), so `getSky().backdrop.seed = …` or editing a
+  // returned star no longer leaks back into the store.
   const snapshot = (): GalaxySky => ({
     backdrop: { ...sky.backdrop },
     stars: sky.stars.map((s) => ({ ...s })),
