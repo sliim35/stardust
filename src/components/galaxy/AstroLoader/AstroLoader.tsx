@@ -25,9 +25,10 @@ import { LoaderStarfield } from "./LoaderStarfield";
  * glow, a seeded twinkling starfield (`LoaderStarfield`), the STARLIGHT ASTRO
  * sprite (`PixelAstronaut`) bobbing inside a slow drift in an accent halo, fixed
  * twinkling sparks, italic "thinking…" with three staggered dots, a mono sub-label,
- * and an accent sweep progress track. Full `prefers-reduced-motion` support lives in
- * the CSS (`src/styles.css` `.astro-loader*`); all timing/layout numbers live in the
- * pure, unit-tested `#/lib/galaxy/loader`.
+ * and an accent sweep progress track. The DOM-chrome styles are Tailwind utilities on
+ * the elements (#96); the `@media (prefers-reduced-motion)` block + `@keyframes` stay in
+ * `src/styles.css`, targeting the kept `.astro-loader__*` BEM selectors. All timing/layout
+ * numbers live in the pure, unit-tested `#/lib/galaxy/loader`.
  *
  * The host `window.AstroLoader.setLabel()/.hide()` API from the handoff is replaced
  * by React props (out of scope per the story): `label` updates the sub copy, and
