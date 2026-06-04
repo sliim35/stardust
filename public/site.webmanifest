@@ -1,0 +1,20 @@
+{
+  "name": "Memory Galaxy",
+  "short_name": "Memory Galaxy",
+  "icons": [
+    {
+      "src": "/favicon/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#0a0e16",
+  "background_color": "#0a0e16",
+  "display": "standalone",
+  "start_url": "/"
+}
