@@ -53,6 +53,16 @@ git history — reintroduce it for the galaxy only when an agent needs to read t
 - **Styling boundary (#75):** Tailwind utilities for DOM chrome; `src/styles.css`
   (+ `src/lib/galaxy/palette.ts`) for the canvas stage. Color/space/radius tokens live
   once in the `@theme` block in `styles.css` — never hardcode a hex in a chrome component.
+- **i18n — all user-facing text lives in the catalog (ADR-0007, #103):** Every string a
+  user can see or a screen reader announces — visible copy, `aria-label`, `alt`,
+  `<title>`/`meta`, button/sr-only labels — **MUST** be added to the typed i18n catalog
+  (`src/lib/i18n/messages/{en,ru}.ts`, shaped by `Messages` in `src/lib/i18n/types.ts`) and
+  read in components via `getMessages(useLocale())`. **Never hardcode a user-facing string
+  inline** in a component or route. Fill **both** locales (`en` is the source, `ru` the
+  translation); ru parity is compile-enforced by `as const satisfies Messages`. Use
+  `interpolate(...)` for `{token}` placeholders; keep the rotation/active-locale rules pure
+  functions of the URL (no `Accept-Language`/cookie/`Date`/random → no hydration mismatch).
+  Non-user-facing strings (class names, `data-*`, test fixtures, dev logs) are exempt.
 - LLMO: the conference LLMO helpers (`seo.ts`, `structured-data.ts`, …) were retired in
   the clean-slate commit (ADR-0003). The patterns + a re-apply checklist live in
   `docs/tanstack-ai.md`; reintroduce `head()` structured data once the galaxy has crawlable
