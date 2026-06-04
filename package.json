@@ -11,6 +11,7 @@
     "build": "vite build",
     "preview": "pnpm run build && vite preview",
     "test": "vitest run",
+    "render:brand": "tsx src/brand/composer/render-cli.ts",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
@@ -53,6 +54,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
+    "@napi-rs/canvas": "^1.0.0",
     "@content-collections/core": "^0.13.1",
     "@content-collections/vite": "^0.3.0",
     "@tanstack/devtools-event-client": "latest",
