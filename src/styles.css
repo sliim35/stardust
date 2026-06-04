@@ -15,6 +15,38 @@
  * declaration, two consumers, zero drift. The active palette re-tints
  * --color-accent / --color-accent-soft at runtime (see palette.ts paletteAccentVars).
  */
+/* Self-hosted families (variable TTFs in /public/fonts). Nunito = main/body,
+   Fraunces = display + memorable quotes (soft axis up for warmth). JetBrains
+   Mono (labels) stays a system fallback. */
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/Nunito-Variable.ttf") format("truetype");
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/Nunito-Italic-Variable.ttf") format("truetype");
+  font-weight: 200 1000;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Fraunces";
+  src: url("/fonts/Fraunces-Variable.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Fraunces";
+  src: url("/fonts/Fraunces-Italic-Variable.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
 @theme {
   /* colors → bg-*, text-*, border-* utilities */
   --color-space-deep: #04050d; /* bg-space-deep  (page void / letterbox) */
@@ -28,15 +60,17 @@
   --color-dim-2: #8a8c96; /* text-dim-2 (attribution; AA-safe ~5.2:1, not #7a7c86) */
   --color-dim-3: #4a4c58; /* text-dim-3    (scaffolding)         */
 
-  /* type → font-serif / font-mono utilities */
-  --font-serif: "Newsreader", "Cormorant Garamond", Georgia, serif;
+  /* type → font-sans (main/body) · font-serif (display + quotes) · font-mono (labels) */
+  --font-sans: "Nunito", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-serif: "Fraunces", "Newsreader", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* font sizes → text-eyebrow / text-count / text-title (only what chrome uses today) */
   --text-eyebrow: 10px; /* mono sub/breadcrumb */
   --text-eyebrow--letter-spacing: 0.2em;
   --text-count: 11px; /* live-count line */
-  --text-title: 28px; /* "for mom" serif italic */
+  --text-title: 28px; /* "For Mom" — Fraunces upright display */
 
   /* spacing → p-*, gap-*, m-* utilities (handoff scale) */
   --spacing-gutter: 60px;
@@ -83,8 +117,7 @@ body {
   min-height: 100%;
   background: var(--space-deep);
   color: #e8ecff;
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -335,8 +368,8 @@ body {
 .galaxy-astro__bubble-text {
   display: block;
   margin: 0;
-  font-family: var(--font-serif);
-  font-style: italic;
+  font-family: var(--font-sans);
+  font-style: normal;
   font-size: 16px; /* readable body for the AI-chat surface (Fix 1, ≥16px) */
   line-height: 1.5;
   color: var(--color-text);
@@ -526,7 +559,7 @@ body {
   opacity: 1;
 }
 .mem-star__name {
-  font-family: Newsreader, Georgia, serif;
+  font-family: var(--font-serif);
   font-style: italic;
   font-size: 15px;
   color: var(--color-text);
@@ -568,8 +601,10 @@ body {
   font-weight: 400;
 }
 .galaxy-chrome__for {
-  font-family: Newsreader, Georgia, serif;
-  font-style: italic;
+  font-family: var(--font-serif);
+  font-style: normal;
+  font-weight: 600;
+  font-variation-settings: "opsz" 56, "SOFT" 100, "WONK" 0;
   font-size: 28px;
   /* The dedication rides the single accent thread (spec §3 conflict table +
      §4: title #f5d6a0 → var(--color-accent)); it re-tints with the active sky. */

@@ -8,12 +8,12 @@ import {
 describe("ASTRO_GREETING (the confirmed opening line — AC2)", () => {
   it("is the exact confirmed memorial greeting", () => {
     expect(ASTRO_GREETING).toBe(
-      "every star here is a memory someone left behind. the pulsing one is hers — but add your own, and i'll find its place.",
+      "Every star here is a memory someone left behind. The pulsing one is hers — but add your own, and I'll find its place.",
     );
   });
 
-  it("keeps the lowercase, wistful voice (no leading capital)", () => {
-    expect(ASTRO_GREETING[0]).toBe(ASTRO_GREETING[0].toLowerCase());
+  it("opens in sentence case (a leading capital)", () => {
+    expect(ASTRO_GREETING[0]).toBe(ASTRO_GREETING[0].toUpperCase());
   });
 });
 
@@ -23,9 +23,9 @@ describe("ASTRO_CLICK_LINES (the re-speak set — AC3)", () => {
     expect(new Set(ASTRO_CLICK_LINES).size).toBe(ASTRO_CLICK_LINES.length);
   });
 
-  it("keeps every line in the lowercase, wistful voice", () => {
+  it("keeps every line in sentence case (a leading capital)", () => {
     for (const line of ASTRO_CLICK_LINES) {
-      expect(line).toBe(line.toLowerCase());
+      expect(line[0]).toBe(line[0].toUpperCase());
       expect(line.length).toBeGreaterThan(0);
     }
   });

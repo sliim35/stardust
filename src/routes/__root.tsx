@@ -51,7 +51,17 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
           "A growing galaxy of memories — each star is a memory someone shared.",
       },
     ],
-    links: [{ rel: "stylesheet", href: appCss }, ...FAVICON_LINKS],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      {
+        rel: "preload",
+        href: "/fonts/Nunito-Variable.ttf",
+        as: "font",
+        type: "font/ttf",
+        crossOrigin: "anonymous",
+      },
+      ...FAVICON_LINKS,
+    ],
   }),
   shellComponent: RootDocument,
 });
