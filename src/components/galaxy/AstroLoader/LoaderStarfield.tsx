@@ -117,5 +117,5 @@ export const LoaderStarfield = ({ palette }: Props) => {
     };
   }, [palette]);
 
-  return <canvas ref={ref} className="astro-loader__stars" />;
+  return <canvas ref={ref} className="astro-loader__stars fixed inset-0 z-0" />;
 };
