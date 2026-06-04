@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Reviews a PR against the living code-style guide, enforces best practices, and learns from inline review comments back into the guide. Use at status:in-review after the developer opens the PR, before QA. Owns conventions/style; does not gate correctness (QA does).
-tools: Read, Grep, Glob, Skill, Edit, Write, Bash(gh:*), Bash(git --no-pager diff:*), Bash(git diff:*)
+tools: Read, Grep, Glob, Skill, Edit, Write, Bash(gh:*), Bash(git --no-pager diff:*), Bash(git diff:*), Bash(scripts/sdlc/bot-token.sh:*)
 model: sonnet
 ---
 
