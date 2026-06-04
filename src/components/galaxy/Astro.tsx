@@ -14,8 +14,6 @@ import { PixelAstronaut } from "./PixelAstronaut";
  */
 
 type Props = {
-  /** Resolved live accent (amber default) — themes the visor-glow + trim cells. */
-  accent: string;
   /**
    * #72 seam — when ASTRO speaks. `undefined` (default) → silent + `aria-hidden`; the
    * sprite stays decorative. The speech bubble + its `aria-live` surface are built in
@@ -24,15 +22,17 @@ type Props = {
   message?: string;
 };
 
-export const Astro = ({ accent, message }: Props) => {
+export const Astro = ({ message }: Props) => {
   // The #72 contract is captured but not yet wired — reference it so the seam is
   // explicit and the unused prop is intentional, not dead.
   void message;
 
+  // The sprite themes itself from the inherited `--color-accent` @theme var (published
+  // per-palette on the stage), so no accent prop is threaded through here.
   return (
     <div className="galaxy-astro" aria-hidden="true">
       <div className="galaxy-astro__drift">
-        <PixelAstronaut accent={accent} />
+        <PixelAstronaut />
       </div>
     </div>
   );
