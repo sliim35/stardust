@@ -12,9 +12,9 @@ import {
 const keysOf = (p: Record<string, string>): string[] => Object.keys(p).sort();
 
 describe("paletteFor", () => {
-  it("defaults to auroral (sea-glass) — the owner-approved sky", () => {
-    expect(DEFAULT_PALETTE).toBe("auroral");
-    expect(paletteFor(DEFAULT_PALETTE).accent).toBe("#9cd8c0");
+  it("defaults to ember (amber) — the owner-resolved sky (2026-06-04)", () => {
+    expect(DEFAULT_PALETTE).toBe("ember");
+    expect(paletteFor(DEFAULT_PALETTE).accent).toBe("#f5d6a0");
   });
 
   it("returns the concrete hex set for each palette (design-spec token table)", () => {
@@ -73,7 +73,7 @@ describe("paletteAccentVars (publishes the active accent onto shared CSS vars)",
     ]);
   });
 
-  it("defaults to the auroral sky when no palette is given", () => {
+  it("defaults to the ember sky when no palette is given", () => {
     expect(paletteAccentVars()).toEqual(paletteAccentVars(DEFAULT_PALETTE));
   });
 });

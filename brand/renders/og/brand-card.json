@@ -1,0 +1,16 @@
+{
+  "seed": 424242,
+  "channel": "og",
+  "NW": 200,
+  "NH": 105,
+  "SCALE": 6,
+  "astroHeightPx": 96,
+  "pose": "point",
+  "expression": null,
+  "faceLeft": true,
+  "heroStar": true,
+  "headline": "every star here is a\nmemory someone left.",
+  "emphasis": "memory",
+  "eyebrow": "Memory Galaxy",
+  "hudTag": "50,000 light-years"
+}

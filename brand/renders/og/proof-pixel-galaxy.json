@@ -1,0 +1,16 @@
+{
+  "seed": 424242,
+  "channel": "og",
+  "NW": 200,
+  "NH": 105,
+  "SCALE": 6,
+  "astroHeightPx": 96,
+  "pose": "idle",
+  "expression": null,
+  "faceLeft": true,
+  "heroStar": false,
+  "headline": "Every star here is a memory\nsomeone left behind.",
+  "emphasis": "left behind.",
+  "eyebrow": "A tender memorial",
+  "hudTag": "50,000 light-years"
+}
