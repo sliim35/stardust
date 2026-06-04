@@ -10,23 +10,23 @@
  */
 
 /**
- * The confirmed opening line ASTRO auto-greets with on mount (AC2). Lowercase,
- * wistful voice; the em dash + "i'll" carry ASTRO's first-person host tone.
+ * The confirmed opening line ASTRO auto-greets with on mount (AC2). Sentence
+ * case, wistful voice; the em dash + "I'll" carry ASTRO's first-person host tone.
  */
 export const ASTRO_GREETING =
-  "every star here is a memory someone left behind. the pulsing one is hers — but add your own, and i'll find its place." as const;
+  "Every star here is a memory someone left behind. The pulsing one is hers — but add your own, and I'll find its place." as const;
 
 /**
- * The small set of lines ASTRO re-speaks on click (AC3). Lowercase, wistful;
+ * The small set of lines ASTRO re-speaks on click (AC3). Sentence case, wistful;
  * each is distinct and none repeats the greeting. Rotated through in order by
  * `nextClickLine` so every click shows a fresh line.
  */
 export const ASTRO_CLICK_LINES = [
-  "every light you see used to be someone's warmth.",
-  "i've been here a long time. so have they.",
-  "add a star. i'll find it a good place in the sky.",
-  "some stars pulse a little brighter. those are the ones most loved.",
-  "the sky keeps growing. it always does.",
+  "Every light you see used to be someone's warmth.",
+  "I've been here a long time. So have they.",
+  "Add a star. I'll find it a good place in the sky.",
+  "Some stars pulse a little brighter. Those are the ones most loved.",
+  "The sky keeps growing. It always does.",
 ] as const;
 
 /**

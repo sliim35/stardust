@@ -9,7 +9,7 @@
 export const GalaxyChrome = ({ count }: { count: number }) => (
   <div className="galaxy-chrome">
     <h1 className="galaxy-chrome__title">
-      <span className="galaxy-chrome__for">for mom</span>
+      <span className="galaxy-chrome__for">For Mom</span>
       <span className="galaxy-chrome__sub">A QUIET PLACE IN THE MILKY WAY</span>
       <span className="sr-only">
         Memory Galaxy — a sky of stars, each one a memory.
