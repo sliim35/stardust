@@ -8,6 +8,7 @@ import {
 import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { Astro } from "./Astro";
+import { BackdropTint } from "./BackdropTint";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { GalaxyChrome } from "./GalaxyChrome";
@@ -90,9 +91,14 @@ export const GalaxyStage = () => {
       onPointerMove={cam.onPointerMove}
       onPointerLeave={cam.onPointerLeave}
     >
-      <div className="galaxy-l1-wrap" ref={cam.l1} aria-hidden="true">
+      {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
+          the farthest/slowest parallax plane). Decorative. */}
+      <div className="galaxy-space" ref={cam.l1} aria-hidden="true">
+        <BackdropTint palette={palette} />
         <DeepStarfield />
       </div>
+      {/* Layer B — the contain-fit stage (UNCHANGED): disk glow (L2, transparent)
+          + memory stars (L3), scaled by --stage-scale and centered. */}
       <div
         className="galaxy-stage__fit"
         style={{ "--stage-scale": scale } as CSSProperties}
@@ -105,6 +111,13 @@ export const GalaxyStage = () => {
             <MemoryStarLayer stars={sky.stars} ignitingIds={ignitingIds} />
           </div>
         </div>
+      </div>
+      {/* Layer C — chrome pinned to the viewport at fixed px (never scales with
+          the stage). pointer-events:none so it never blocks star hovers; the
+          palette dots re-enable pointer-events for themselves. ASTRO joins the
+          overlay so the mascot stays a fixed-size corner host like the title,
+          rather than shrinking with the stage (#70 placed it inside the fit). */}
+      <div className="galaxy-chrome-overlay">
         <GalaxyChrome count={sky.stars.length} />
         <Astro />
         <PaletteSwitcher value={palette} onChange={setPalette} />
