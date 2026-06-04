@@ -55,9 +55,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { rel: "stylesheet", href: appCss },
       {
         rel: "preload",
-        href: "/fonts/Nunito-Variable.ttf",
+        href: "/fonts/Nunito-Variable.woff2",
         as: "font",
-        type: "font/ttf",
+        type: "font/woff2",
         crossOrigin: "anonymous",
       },
       ...FAVICON_LINKS,

@@ -20,28 +20,28 @@
    Mono (labels) stays a system fallback. */
 @font-face {
   font-family: "Nunito";
-  src: url("/fonts/Nunito-Variable.ttf") format("truetype");
+  src: url("/fonts/Nunito-Variable.woff2") format("woff2");
   font-weight: 200 1000;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Nunito";
-  src: url("/fonts/Nunito-Italic-Variable.ttf") format("truetype");
+  src: url("/fonts/Nunito-Italic-Variable.woff2") format("woff2");
   font-weight: 200 1000;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Fraunces";
-  src: url("/fonts/Fraunces-Variable.ttf") format("truetype");
+  src: url("/fonts/Fraunces-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Fraunces";
-  src: url("/fonts/Fraunces-Italic-Variable.ttf") format("truetype");
+  src: url("/fonts/Fraunces-Italic-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: italic;
   font-display: swap;
