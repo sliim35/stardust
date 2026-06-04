@@ -1,0 +1,16 @@
+{
+  "seed": 0,
+  "channel": "avatar",
+  "NW": 64,
+  "NH": 64,
+  "SCALE": 8,
+  "astroHeightPx": 128,
+  "pose": "point",
+  "expression": null,
+  "faceLeft": true,
+  "heroStar": true,
+  "headline": null,
+  "emphasis": null,
+  "eyebrow": null,
+  "hudTag": null
+}
