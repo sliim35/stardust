@@ -23,6 +23,12 @@ Turn a story into working, tested code that meets every acceptance criterion and
 - **Verify & record:** run `pnpm check && pnpm test` (must be green); append approach + files
   touched to the story's *Implementation notes*; set status `in-review`. Commit with trailer
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+- **Open the PR + tag it:** push the branch and open the PR **as the bot**
+  (`scripts/sdlc/bot-token.sh`); then **assign yourself (the bot) and request review from the owner
+  (`sliim35`)** — owner rule. Use the REST API; `gh pr edit --add-assignee/--add-reviewer` currently
+  hard-fails on a Projects-classic GraphQL bug, so:
+  `gh api -X POST repos/sliim35/stardust/pulls/<pr>/requested_reviewers -f 'reviewers[]=sliim35'` and
+  `gh api -X POST repos/sliim35/stardust/issues/<pr>/assignees -f 'assignees[]=reviewer-stardust-project[bot]'`.
 
 ## Addressing review feedback
 When the reviewer (or a human) leaves PR comments, address **every** thread before merge —
