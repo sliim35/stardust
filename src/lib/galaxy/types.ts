@@ -140,14 +140,15 @@ export type Universe = {
  * the in-memory impl; the interface is intentionally small so an async transport
  * can wrap it.
  *
- * The universe-aware reads (`getUniverse` / `skyFor` / `starsForView`) *extend*,
- * never replace, the flat `getSky()` home-galaxy projection (ADR-0008 §5).
+ * The universe-aware reads (`getUniverse` / `skyFor` / `starsForView` / `homeNode`)
+ * *extend*, never replace, the flat `getSky()` home-galaxy projection (ADR-0008 §5).
  */
 export type GalaxyStore = {
   getSky(): GalaxySky; // the home-galaxy (tier-2) projection — unchanged contract
   addStar(star: MemoryStar): void; // append-only; never moves existing stars
   subscribe?(fn: (sky: GalaxySky) => void): () => void; // optional; live-growth later
   getUniverse?(): Universe; // the full derived scene graph (scenery + placed stars)
+  homeNode?(): GalaxyNode; // the Local Group's focused/home tier-2 node, with live stars
   skyFor?(nodeId: string): GalaxySky; // a per-galaxy `GalaxySky` projection
   starsForView?(tier: Tier, parentId?: string): MemoryStar[]; // stars placed in one view
 };

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { createFocusController } from "#/lib/galaxy/focus";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
+import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { BackdropTint } from "./BackdropTint";
 import { ChromeOverlay } from "./ChromeOverlay";
@@ -23,9 +24,14 @@ const IGNITE_MS = 1500;
 /**
  * The top-level galaxy scene (#4): composes L1 (deep starfield) · L2 (the disk)
  * · L3 (memory stars) under an eased camera + parallax, contain-fit to the
- * viewport. Reads a `GalaxySky` from the in-memory store seam (#2) and ignites
- * any star added through it without moving the rest (AC3). Live producers
- * (Telegram ingestion) arrive in epic #8; here the seam is local.
+ * viewport. Renders the **home galaxy as the tier-2 node** of the universe
+ * (ADR-0008 §3, #126): the sky is read via the home-galaxy projection
+ * `skyFor(HOME_GALAXY_ID)` rather than the bare `getSky()`. The two are
+ * byte-identical (the flat `GalaxySky` *is* the tier-2 home projection), so the
+ * render is unchanged — this just routes the data through the scene graph. It
+ * ignites any star added through the seam without moving the rest (AC3); live
+ * producers (Telegram ingestion) arrive in epic #8. Tier transitions / descent
+ * (#125) and LOD/breadcrumb (#112) build on this.
  *
  * SSR-safe: the disk/deep-field canvases draw client-side, while the DOM memory
  * layer + chrome render server-side over the seeded CSS starfield placeholder
@@ -33,7 +39,11 @@ const IGNITE_MS = 1500;
  */
 export const GalaxyStage = () => {
   const [store] = useState(() => createInMemoryStore());
-  const [sky, setSky] = useState(() => store.getSky());
+  // The home galaxy IS the tier-2 view of the universe's `home` node (ADR-0008 §3):
+  // skyFor('home') ≡ getSky() byte-for-byte, so this is render-parity, not a redraw.
+  const [sky, setSky] = useState(
+    () => store.skyFor?.(HOME_GALAXY_ID) ?? store.getSky(),
+  );
   const [ignitingIds, setIgnitingIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );

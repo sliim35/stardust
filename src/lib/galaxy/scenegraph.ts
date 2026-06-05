@@ -211,6 +211,21 @@ export const buildLocalGroup = (seed: number): LocalGroup => {
 };
 
 /**
+ * The home galaxy is the Local Group's **focused/`home` tier-2 node** (ADR-0008 §3,
+ * #126 AC2): the one curated, memory-bearing galaxy you land on when you enter the
+ * group. A pure selector over the (memoized) group — returns the exact node held by
+ * the group, so callers reuse its derived scenery + live stars without re-deriving.
+ * Throws if the group has no home node, since that violates the build invariant
+ * (`buildLocalGroup` always seats exactly one).
+ */
+export const homeGalaxyOf = (localGroup: LocalGroup): GalaxyNode => {
+  const home = localGroup.galaxies.find((g) => g.id === HOME_GALAXY_ID);
+  if (!home)
+    throw new Error(`Local Group is missing its "${HOME_GALAXY_ID}" galaxy`);
+  return home;
+};
+
+/**
  * Filter Memory Stars to one tier+parent view (ADR-0008 §5). A star without an
  * explicit `placement` is treated as the home galaxy (`tier:'galaxy', parentId:'home'`)
  * — the back-compat default for today's flat seeded stars.
