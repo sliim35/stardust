@@ -110,6 +110,19 @@ export type Messages = {
     wonder: string;
     memory: string;
   };
+  /**
+   * Card chrome (interaction spec §4, #146/#5) — the soft-glass panel's own labels,
+   * *not* the object copy (lore lines live in `lore.*`, memory text on the star). The
+   * lore card's `fieldLog` eyebrow is ASTRO's "FIELD LOG" voice; `close` is the
+   * dismiss-button accessible name (aria-label / sr-only). Object content is never
+   * here — only the chrome around it.
+   */
+  card: {
+    /** Lore-card eyebrow — ASTRO's "FIELD LOG" register above the object name. */
+    fieldLog: string;
+    /** Dismiss-button accessible name (aria-label / sr-only). */
+    close: string;
+  };
 };
 
 /** A real-object lore entry — name + mono sublabel + ASTRO's lore line. */
