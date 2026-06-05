@@ -5,6 +5,7 @@ import {
   clampCenter,
   INERTIA_DECAY,
   INERTIA_STOP,
+  MAX_RELEASE_VELOCITY,
   PAN_BOUNDS,
   panBoundsFor,
   panCamera,
@@ -136,6 +137,14 @@ describe("releaseVelocity — track the fling velocity at release", () => {
 
   it("is zero for a zero-duration sample (no divide-by-zero blowup)", () => {
     expect(releaseVelocity({ x: 60, y: -30 }, 0)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("clamps a fast flick to MAX_RELEASE_VELOCITY, preserving direction", () => {
+    // 200 world-px in 0.01s → 20000 px/s raw, far over the cap
+    const v = releaseVelocity({ x: 200, y: 0 }, 0.01);
+    expect(Math.hypot(v.x, v.y)).toBeCloseTo(MAX_RELEASE_VELOCITY, 6);
+    expect(v.x).toBeGreaterThan(0); // +x direction kept
+    expect(v.y).toBeCloseTo(0, 6);
   });
 });
 

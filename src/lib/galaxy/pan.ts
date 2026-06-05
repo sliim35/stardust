@@ -113,13 +113,28 @@ export const panCamera = (
 export type Velocity = { x: number; y: number };
 
 /**
- * Release velocity (world px / s) from the last drag sample: the world-space
- * `delta` the pointer travelled over `dt` seconds. A zero/negative `dt` yields a
- * dead-zero velocity (no divide-by-zero blow-up), so a stationary release can't
- * fling.
+ * Cap on release speed (world px / s). A fast flick otherwise computes a huge
+ * `delta/dt` and flings the camera clear across the disk to the bounds; clamping the
+ * release magnitude keeps the throw controlled (a flick travels ≈ `v / ln(1/DECAY)`
+ * px, so 700 ⇒ ~120 px of glide — a calm pan, not a slingshot to the rim).
  */
-export const releaseVelocity = (delta: Point, dt: number): Velocity =>
-  dt <= 0 ? { x: 0, y: 0 } : { x: delta.x / dt, y: delta.y / dt };
+export const MAX_RELEASE_VELOCITY = 700;
+
+/**
+ * Release velocity (world px / s) from the last drag sample: the world-space
+ * `delta` the pointer travelled over `dt` seconds, **clamped to
+ * `MAX_RELEASE_VELOCITY`** (direction preserved) so a quick flick can't slingshot
+ * across the disk. A zero/negative `dt` yields a dead-zero velocity (no
+ * divide-by-zero blow-up), so a stationary release can't fling.
+ */
+export const releaseVelocity = (delta: Point, dt: number): Velocity => {
+  if (dt <= 0) return { x: 0, y: 0 };
+  const raw = { x: delta.x / dt, y: delta.y / dt };
+  const speed = Math.hypot(raw.x, raw.y);
+  if (speed <= MAX_RELEASE_VELOCITY) return raw;
+  const k = MAX_RELEASE_VELOCITY / speed;
+  return { x: raw.x * k, y: raw.y * k };
+};
 
 /**
  * Per-second multiplicative decay of the inertia velocity. `< 1` so the fling
