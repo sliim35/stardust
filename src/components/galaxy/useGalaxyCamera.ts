@@ -19,7 +19,13 @@ import {
   stepFocus,
   zoomCamera,
 } from "#/lib/galaxy/focus";
-import { STAGE_W } from "#/lib/galaxy/place";
+import {
+  panCamera,
+  releaseVelocity,
+  stepInertia,
+  type Velocity,
+} from "#/lib/galaxy/pan";
+import { type Point, STAGE_W } from "#/lib/galaxy/place";
 import type { GalaxySky } from "#/lib/galaxy/types";
 
 /**
@@ -44,8 +50,17 @@ import type { GalaxySky } from "#/lib/galaxy/types";
  * point stays put. Wheel/touch listeners are attached natively (non-passive) so
  * the gesture can `preventDefault` page scroll / browser pinch-zoom.
  *
+ * Drag-to-pan (#109) also folds into the same loop: a pointer-down grabs the sky
+ * (cancelling any in-flight focus + pausing the idle drift), each move retargets
+ * via the pure `panCamera` (world-space delta from `screenToStage`, clamped to the
+ * galaxy bounds so you can't pan into the void), and on release the motion eases
+ * out with `stepInertia` velocity decay (not a hard stop) — the same RAF advances
+ * the fling target each frame. The idle sine drift resumes a short idle after the
+ * interaction (drag + inertia) settles.
+ *
  * Under `prefers-reduced-motion` the parallax/idle drift is pinned static and a
- * focus / zoom *snaps* (drives `t = 1`) instead of easing (design spec §A11y).
+ * focus / zoom / pan *snaps* (drives `t = 1`) instead of easing, with NO inertia
+ * fling on release (design spec §A11y).
  */
 
 type CameraRefs = {
@@ -53,13 +68,12 @@ type CameraRefs = {
   l2: RefObject<HTMLDivElement | null>;
   l3: RefObject<HTMLDivElement | null>;
   cam: RefObject<HTMLDivElement | null>;
-  /** The scene root — hosts the native (non-passive) wheel/touch zoom listeners. */
+  /** The scene root — hosts the native wheel/touch zoom + pointer drag listeners. */
   stage: RefObject<HTMLDivElement | null>;
-  /** The contain-fit box — its client rect maps wheel/pinch px → stage space. */
+  /** The contain-fit box — its client rect maps wheel/pinch/drag px → stage space. */
   fit: RefObject<HTMLDivElement | null>;
   onPointerMove: (e: { clientX: number; clientY: number }) => void;
   onPointerLeave: () => void;
-  onPointerDown: () => void;
 };
 
 type Options = {
@@ -195,22 +209,107 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       pinchPrev = e.touches.length === 2 ? span(e.touches) : 0;
     };
 
+    // --- drag-to-pan + inertia (#109) --------------------------------------
+    // A single pointer grabs the sky; each move retargets the focus machine via
+    // the pure `panCamera` (world-space delta from `screenToStage`, clamped to the
+    // galaxy bounds). On release the leftover velocity becomes an eased inertia
+    // fling, stepped by the RAF below. Pointer Events unify mouse/touch/pen; a
+    // second pointer (pinch) aborts the drag so the zoom path owns two fingers.
+    // `interactUntil` keeps the idle drift paused through the drag + a short idle
+    // grace after it (and the whole fling), then it resumes.
+    const IDLE_GRACE_MS = 600;
+    let interactUntil = 0;
+    const bumpIdle = () => {
+      interactUntil = performance.now() + IDLE_GRACE_MS;
+    };
+    let inertia: Velocity = { x: 0, y: 0 };
+    const drag = {
+      id: -1, // active pointerId, -1 when not dragging
+      world: { x: 0, y: 0 }, // last pointer position in camera-world px
+      lastDelta: { x: 0, y: 0 }, // last world step (for release velocity)
+      lastMs: 0,
+    };
+    const toWorld = (client: { x: number; y: number }): Point | null => {
+      const rect = stageRect();
+      return rect
+        ? screenToStage(client, rect, focusState.current.target)
+        : null;
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0 && e.pointerType === "mouse") return; // left button only
+      if (drag.id !== -1) {
+        // A second finger went down → this is a pinch, not a pan: abort the drag.
+        drag.id = -1;
+        return;
+      }
+      const world = toWorld(e);
+      if (!world) return;
+      inertia = { x: 0, y: 0 }; // a fresh grab kills any in-flight fling
+      // Grabbing the camera cancels an in-flight focus ease (#111 AC3 / #109).
+      if (focusState.current.focusing)
+        focusState.current = cancelFocus(focusState.current);
+      drag.id = e.pointerId;
+      drag.world = world;
+      drag.lastDelta = { x: 0, y: 0 };
+      drag.lastMs = performance.now();
+      bumpIdle();
+      root?.setPointerCapture?.(e.pointerId);
+    };
+    const onPointerMoveDrag = (e: PointerEvent) => {
+      if (e.pointerId !== drag.id) return;
+      const world = toWorld(e);
+      if (!world) return;
+      // World-space delta the finger travelled this move; pan moves the camera
+      // the *opposite* way so the grabbed point stays under the finger.
+      const delta = { x: world.x - drag.world.x, y: world.y - drag.world.y };
+      focusState.current = panCamera(focusState.current, delta, reduce);
+      if (reduce) applyCamera(focusState.current.current); // no RAF — paint now
+      // Re-read the world point AFTER the pan retarget so the next delta is
+      // measured from where the grabbed point now sits (clamp-aware, no runaway).
+      drag.world = toWorld(e) ?? world;
+      drag.lastDelta = delta;
+      drag.lastMs = performance.now();
+      bumpIdle();
+    };
+    const endDrag = (e: PointerEvent) => {
+      if (e.pointerId !== drag.id) return;
+      drag.id = -1;
+      root?.releasePointerCapture?.(e.pointerId);
+      bumpIdle();
+      // Inertia: fling the leftover velocity (world px/s) from the last move.
+      // Reduced motion gets NO fling — it stops on release (snap path above).
+      if (reduce) return;
+      const dt = (performance.now() - drag.lastMs) / 1000;
+      inertia =
+        dt > 0 && dt < 0.1
+          ? releaseVelocity(drag.lastDelta, dt)
+          : { x: 0, y: 0 };
+    };
+
     const root = stage.current;
     root?.addEventListener("wheel", onWheel, { passive: false });
     root?.addEventListener("touchstart", onTouchStart); // passive (default): onTouchStart never preventDefaults
     root?.addEventListener("touchmove", onTouchMove, { passive: false });
     root?.addEventListener("touchend", onTouchEnd);
     root?.addEventListener("touchcancel", onTouchEnd);
+    root?.addEventListener("pointerdown", onPointerDown);
+    root?.addEventListener("pointermove", onPointerMoveDrag);
+    root?.addEventListener("pointerup", endDrag);
+    root?.addEventListener("pointercancel", endDrag);
     const detachZoom = () => {
       root?.removeEventListener("wheel", onWheel);
       root?.removeEventListener("touchstart", onTouchStart);
       root?.removeEventListener("touchmove", onTouchMove);
       root?.removeEventListener("touchend", onTouchEnd);
       root?.removeEventListener("touchcancel", onTouchEnd);
+      root?.removeEventListener("pointerdown", onPointerDown);
+      root?.removeEventListener("pointermove", onPointerMoveDrag);
+      root?.removeEventListener("pointerup", endDrag);
+      root?.removeEventListener("pointercancel", endDrag);
     };
 
     if (reduce) {
-      // Static parallax; focus + zoom requests above snap. No RAF to run.
+      // Static parallax; focus + zoom + pan requests above snap. No RAF, no fling.
       return () => {
         unsubscribe?.();
         window.removeEventListener("keydown", onKeyDown);
@@ -226,17 +325,23 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     const els = { l1, l2, l3 } as const;
     let raf = 0;
 
+    let prevMs = performance.now();
     const frame = (ms: number) => {
       const t = ms * 0.001;
+      const dt = Math.min((ms - prevMs) / 1000, 0.1); // clamp tab-switch hitches
+      prevMs = ms;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      // Idle sine drift when the pointer is away; the pointer takes over on move.
-      const px = pointer.current.active
-        ? pointer.current.x
-        : vw * (0.5 + Math.sin(t * 0.16) * 0.12);
-      const py = pointer.current.active
-        ? pointer.current.y
-        : vh * (0.5 + Math.cos(t * 0.12) * 0.1);
+      // Idle sine drift only when the pointer is away AND no recent interaction
+      // (drag/inertia) — a drag/fling pauses the drift, which resumes a short idle
+      // (`IDLE_GRACE_MS`) after the interaction settles (#109 AC4).
+      const idle = !pointer.current.active && ms > interactUntil;
+      const px = idle
+        ? vw * (0.5 + Math.sin(t * 0.16) * 0.12)
+        : pointer.current.x;
+      const py = idle
+        ? vh * (0.5 + Math.cos(t * 0.12) * 0.1)
+        : pointer.current.y;
       const tgt = parallaxOffsets({ x: px, y: py }, { w: vw, h: vh });
 
       for (const key of ["l1", "l2", "l3"] as const) {
@@ -247,7 +352,18 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
           el.style.transform = `translate3d(${cur[key].x}px, ${cur[key].y}px, 0)`;
       }
 
-      // Step the focus ease (intro settle, then any requested focus/back) and
+      // Inertia fling (#109): decay the release velocity (eased, not a hard stop)
+      // and drive the pan target by velocity·dt each frame, clamped to bounds.
+      if (inertia.x !== 0 || inertia.y !== 0) {
+        inertia = stepInertia(inertia, dt);
+        focusState.current = panCamera(focusState.current, {
+          x: inertia.x * dt,
+          y: inertia.y * dt,
+        });
+        bumpIdle();
+      }
+
+      // Step the focus ease (intro settle, then any requested focus/back/pan) and
       // paint the camera. lerpCamera factor matches the prior intro feel.
       focusState.current = stepFocus(focusState.current, 0.05);
       applyCamera(focusState.current.current);
@@ -274,12 +390,6 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     },
     onPointerLeave: () => {
       pointer.current.active = false;
-    },
-    // A user grabbing the camera cancels any in-flight focus ease (#111 AC3).
-    // Drag-to-pan proper is #109; this is the minimal interrupt hook it extends.
-    onPointerDown: () => {
-      if (focusState.current.focusing)
-        focusState.current = cancelFocus(focusState.current);
     },
   };
 };

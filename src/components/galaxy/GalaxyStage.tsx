@@ -104,7 +104,6 @@ export const GalaxyStage = () => {
       style={paletteAccentVars(palette) as CSSProperties}
       onPointerMove={cam.onPointerMove}
       onPointerLeave={cam.onPointerLeave}
-      onPointerDown={cam.onPointerDown}
     >
       {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
           the farthest/slowest parallax plane). Decorative. */}
