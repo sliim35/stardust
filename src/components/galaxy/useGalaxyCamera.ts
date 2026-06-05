@@ -1,16 +1,38 @@
 import { type RefObject, useEffect, useRef } from "react";
-import { type Camera, lerpCamera, parallaxOffsets } from "#/lib/galaxy/camera";
-import { GALAXY_CENTER } from "#/lib/galaxy/place";
+import {
+  type Camera,
+  cameraTransform,
+  parallaxOffsets,
+} from "#/lib/galaxy/camera";
+import {
+  back,
+  cancelFocus,
+  createFocus,
+  DEFAULT_FRAMING,
+  type FocusController,
+  type FocusState,
+  focusCamera,
+  resolveFocusTarget,
+  stepFocus,
+} from "#/lib/galaxy/focus";
+import type { GalaxySky } from "#/lib/galaxy/types";
 
 /**
- * Drives the eased camera + 3-layer parallax (#4 AC5) imperatively via refs, so
- * the RAF loop never re-renders React. The scene drifts gently opposite the
- * pointer (and on a slow idle sine when the pointer is away); the nearest layer
- * moves most. The camera eases a small intro settle on load — a visible "no
- * snap" demonstration — and `lerpCamera` is the same pure easing proven in
- * `camera.test.ts`.
+ * Drives the eased camera + 3-layer parallax (#4 AC5) and the focus-on-star move
+ * (#111) imperatively via refs, so the RAF loop never re-renders React. The scene
+ * drifts gently opposite the pointer (and on a slow idle sine when the pointer is
+ * away); the nearest layer moves most.
  *
- * Under `prefers-reduced-motion` everything is pinned static (design spec §A11y).
+ * Focus (#111) is the pure `FocusState` machine from `lib/galaxy/focus` stepped
+ * here each frame — this hook owns RAF + key/pointer events, the lib owns the
+ * numbers. A `FocusController` lets other features (#5 deep-link, #113 search)
+ * request a focus *by star id*; the id is resolved against the live sky via
+ * `getSky()`. The ease is interruptible: a new focus retargets in flight, and a
+ * user pointer-drag cancels it (drag-to-pan lands in #109). `Escape` returns to
+ * the prior framing (or the zoomed-out default).
+ *
+ * Under `prefers-reduced-motion` the parallax/idle drift is pinned static and a
+ * focus *snaps* (drives `t = 1`) instead of easing (design spec §A11y).
  */
 
 type CameraRefs = {
@@ -20,14 +42,30 @@ type CameraRefs = {
   cam: RefObject<HTMLDivElement | null>;
   onPointerMove: (e: { clientX: number; clientY: number }) => void;
   onPointerLeave: () => void;
+  onPointerDown: () => void;
 };
 
-export const useGalaxyCamera = (): CameraRefs => {
+type Options = {
+  /** The focus-by-id seam other features call (#5/#113). */
+  focus?: FocusController;
+  /** Reads the current sky so a focus request resolves its star's position live. */
+  getSky?: () => GalaxySky;
+};
+
+export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
   const l1 = useRef<HTMLDivElement>(null);
   const l2 = useRef<HTMLDivElement>(null);
   const l3 = useRef<HTMLDivElement>(null);
   const cam = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: 0, y: 0, active: false });
+
+  // Keep the latest controller/getSky without re-subscribing the RAF effect.
+  const optsRef = useRef(options);
+  optsRef.current = options;
+
+  // The focus machine lives in a ref: stepped by RAF (or snapped under reduce),
+  // never via React state, so a focus move costs zero re-renders.
+  const focusState = useRef<FocusState>(createFocus(DEFAULT_FRAMING));
 
   useEffect(() => {
     // Read once at mount. A *mid-session* OS toggle of reduced-motion is not
@@ -38,20 +76,60 @@ export const useGalaxyCamera = (): CameraRefs => {
     ).matches;
 
     const applyCamera = (c: Camera) => {
-      if (cam.current) cam.current.style.transform = `scale(${c.zoom})`;
+      if (cam.current) cam.current.style.transform = cameraTransform(c);
     };
 
-    const target: Camera = {
-      cx: GALAXY_CENTER.x,
-      cy: GALAXY_CENTER.y,
-      zoom: 1,
+    // Intro settle on load — a visible "no snap" demonstration (eases 1.06 → 1.0).
+    // `focusing` stays false: the RAF eases any current→target gap regardless of
+    // the flag, so the settle still animates, but it is NOT a focus move — a stray
+    // pointer-down during the first second must not `cancelFocus` and strand the
+    // zoom mid-settle (the flag only guards real star-focus interrupts).
+    if (!reduce) {
+      focusState.current = {
+        ...createFocus({ ...DEFAULT_FRAMING, zoom: 1.06 }),
+        target: { ...DEFAULT_FRAMING },
+      };
+    }
+    applyCamera(focusState.current.current);
+
+    // --- focus-by-id seam (#5/#113) ----------------------------------------
+    const requestFocus = (id: string, zoom?: number) => {
+      const sky = optsRef.current.getSky?.();
+      const target = sky ? resolveFocusTarget(sky, id, zoom) : null;
+      if (!target) return; // unknown id degrades gracefully (no throw, no move)
+      focusState.current = focusCamera(focusState.current, target);
+      if (reduce) {
+        // No RAF under reduced motion: snap to the target immediately.
+        focusState.current = stepFocus(focusState.current, 1, true);
+        applyCamera(focusState.current.current);
+      }
     };
+    const requestBack = () => {
+      focusState.current = back(focusState.current);
+      if (reduce) {
+        focusState.current = stepFocus(focusState.current, 1, true);
+        applyCamera(focusState.current.current);
+      }
+    };
+    const unsubscribe = optsRef.current.focus?.subscribe((req) => {
+      if (req.kind === "focus") requestFocus(req.id, req.zoom);
+      else requestBack();
+    });
+
+    // ESC / "back" — return to the prior framing (or zoomed-out default).
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") requestBack();
+    };
+    window.addEventListener("keydown", onKeyDown);
+
     if (reduce) {
-      applyCamera(target);
-      return;
+      // Static parallax; focus requests above snap. No RAF to run.
+      return () => {
+        unsubscribe?.();
+        window.removeEventListener("keydown", onKeyDown);
+      };
     }
 
-    let camCur: Camera = { ...target, zoom: 1.06 }; // settle 1.06 → 1.0 on load
     const cur = {
       l1: { x: 0, y: 0 },
       l2: { x: 0, y: 0 },
@@ -81,12 +159,18 @@ export const useGalaxyCamera = (): CameraRefs => {
           el.style.transform = `translate3d(${cur[key].x}px, ${cur[key].y}px, 0)`;
       }
 
-      camCur = lerpCamera(camCur, target, 0.05);
-      applyCamera(camCur);
+      // Step the focus ease (intro settle, then any requested focus/back) and
+      // paint the camera. lerpCamera factor matches the prior intro feel.
+      focusState.current = stepFocus(focusState.current, 0.05);
+      applyCamera(focusState.current.current);
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      unsubscribe?.();
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   return {
@@ -99,6 +183,12 @@ export const useGalaxyCamera = (): CameraRefs => {
     },
     onPointerLeave: () => {
       pointer.current.active = false;
+    },
+    // A user grabbing the camera cancels any in-flight focus ease (#111 AC3).
+    // Drag-to-pan proper is #109; this is the minimal interrupt hook it extends.
+    onPointerDown: () => {
+      if (focusState.current.focusing)
+        focusState.current = cancelFocus(focusState.current);
     },
   };
 };
