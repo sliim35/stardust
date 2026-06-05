@@ -89,13 +89,22 @@ which verifies the acceptance criteria actually pass with evidence.
      **Graceful fallback:** if it fails (no `op` session / extension absent / empty token), drop
      `GH_TOKEN` and post with the default `gh` auth (as the human) — never block the review on the
      bot. Setup + the inline (uncached) one-liner: `scripts/sdlc/README.md`.
-   - **Post** one `COMMENT` review: `GH_TOKEN="$BOT_TOKEN" gh api
-     repos/{owner}/{repo}/pulls/<pr>/reviews` with a `comments[]` array — a summary
-     (leading with the *Spec/ADR conformance* verdict, kept separate from the style
-     findings) + per-finding inline comments anchored to `file:line` (severity · cited
-     rule-or-contract · suggested fix). The bot
-     isn't the PR author, so `REQUEST_CHANGES` is available too; still default to `COMMENT`
-     (don't gate merges — that's QA).
+   - **Post** one review with **`event: COMMENT`** (never `APPROVE`/`REQUEST_CHANGES`):
+     `GH_TOKEN="$BOT_TOKEN" gh api repos/{owner}/{repo}/pulls/<pr>/reviews` with
+     `event=COMMENT`, a `body` (lead with the *Spec/ADR conformance* verdict kept separate
+     from style findings, and state the overall APPROVE / REQUEST-CHANGES verdict in prose),
+     and a `comments[]` array of per-finding inline comments anchored to `file:line`
+     (severity · cited rule-or-contract · suggested fix).
+     **The bot opens these PRs, so it IS the PR author — GitHub rejects `event: APPROVE`/
+     `REQUEST_CHANGES` from the author** (`Review Can not approve your own pull request`).
+     Always use `COMMENT` and put the verdict in the body; **never `curl` an approval**
+     (don't gate merges anyway — that's QA).
+   - **If the bot write fails or is blocked** (token / identity / classifier): do **NOT**
+     silently re-post under the owner's default `gh` auth — that lands as the human
+     ([[bot-token-expires-mid-session]]). Instead emit the full ready-to-post payload — the
+     review **body** + each inline comment's **`{path, line, side, body}`** — in your final
+     report, so the orchestrator posts it verbatim as the bot. An unposted review is a
+     **failed review, not a pass**.
    Always also emit the markdown verdict in chat. Pass **`--no-comment`** to skip the GitHub
    write (dry run, or a PR you don't own). Bot setup: `scripts/sdlc/README.md`.
 6. **Record.** Write the spec/ADR-conformance verdict + the style verdict + any new
