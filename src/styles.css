@@ -517,6 +517,10 @@ body {
 .mem-star[data-kind="egg"] .mem-star__body {
   animation: memEgg 5.5s ease-in-out infinite;
 }
+/* Mom's star (deep) — a soft, slow breathe (interaction spec §2). */
+.mem-star[data-kind="deep"] .mem-star__body {
+  animation: memDeepPulse 4.8s ease-in-out infinite;
+}
 .mem-star[data-igniting] .mem-star__body {
   animation: memIgnite 1.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
@@ -560,6 +564,14 @@ body {
   );
   opacity: 0.28;
   transition: opacity 0.25s ease;
+}
+/* Mom's star (deep): the cross-flare is toned right down to a soft warm presence
+   (interaction spec §2 — soft pulse, not a strong targeting cross). */
+.mem-star[data-kind="deep"] .mem-star__flare-h {
+  opacity: 0.2;
+}
+.mem-star[data-kind="deep"] .mem-star__flare-v {
+  opacity: 0.12;
 }
 .mem-star__hot {
   width: var(--hot);
@@ -722,6 +734,18 @@ body {
     opacity: 0.95;
   }
 }
+/* Mom's star — a slow, gentle breathe (opacity + a hair of scale). */
+@keyframes memDeepPulse {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
 @keyframes memIgnite {
   0% {
     opacity: 0;
@@ -773,6 +797,7 @@ body {
   }
   .mem-star__body,
   .mem-star[data-kind="egg"] .mem-star__body,
+  .mem-star[data-kind="deep"] .mem-star__body,
   .mem-star[data-igniting] .mem-star__body {
     animation: none;
   }

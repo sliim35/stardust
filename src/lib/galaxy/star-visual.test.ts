@@ -43,6 +43,13 @@ describe("bloomSizing", () => {
     expect(bloomSizing(star({ egg: true, brightness: 0.9 })).bloom).toBe(15);
   });
 
+  it("blooms Mom's deep star biggest — boosted over a same-brightness plain star", () => {
+    const deep = bloomSizing(star({ deep: true, brightness: 1 }));
+    const plain = bloomSizing(star({ brightness: 1 }));
+    expect(deep.bloom).toBeGreaterThan(plain.bloom);
+    expect(deep.bloom).toBeCloseTo((13 + 11) * 1.2, 6); // 24 * 1.2
+  });
+
   it("never lets the core pixel fall below 2px", () => {
     expect(bloomSizing(star({ brightness: 0 })).core).toBe(2);
     expect(bloomSizing(star({ brightness: 1 })).core).toBe(4);
@@ -78,6 +85,12 @@ describe("twinkleParams", () => {
     const t = twinkleParams(star());
     expect(t.kind).toBe("twinkle");
     expect(t.period).toBeGreaterThanOrEqual(1.4);
+  });
+
+  it("gives Mom's deep star a soft, slow pulse (not a busy twinkle)", () => {
+    const t = twinkleParams(star({ deep: true }));
+    expect(t.kind).toBe("deep");
+    expect(t.period).toBeGreaterThan(3);
   });
 });
 
