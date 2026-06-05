@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import type { GalaxySky, MemoryStar } from "#/lib/galaxy/types";
 
@@ -154,5 +155,103 @@ describe("createInMemoryStore", () => {
     expect(createInMemoryStore().getSky()).toEqual(
       createInMemoryStore().getSky(),
     );
+  });
+});
+
+describe("createInMemoryStore — universe seam (ADR-0008)", () => {
+  it("exposes getUniverse, skyFor and starsForView", () => {
+    const store = createInMemoryStore();
+    expect(typeof store.getUniverse).toBe("function");
+    expect(typeof store.skyFor).toBe("function");
+    expect(typeof store.starsForView).toBe("function");
+  });
+
+  it("getUniverse derives the local group with a home galaxy", () => {
+    const u = createInMemoryStore().getUniverse?.();
+    expect(u?.localGroup.galaxies.some((g) => g.id === HOME_GALAXY_ID)).toBe(
+      true,
+    );
+  });
+
+  it("getUniverse defaults every home-galaxy star to a home placement", () => {
+    const u = createInMemoryStore().getUniverse?.();
+    const home = u?.localGroup.galaxies.find((g) => g.id === HOME_GALAXY_ID);
+    expect((home?.stars ?? []).length).toBeGreaterThan(0);
+    for (const s of home?.stars ?? []) {
+      expect(s.placement?.tier).toBe("galaxy");
+      expect(s.placement?.parentId).toBe(HOME_GALAXY_ID);
+    }
+  });
+
+  it("getUniverse reflects an added home star", () => {
+    const store = createInMemoryStore();
+    store.addStar(sampleStar({ id: "fresh-home" }));
+    const home = store
+      .getUniverse?.()
+      ?.localGroup.galaxies.find((g) => g.id === HOME_GALAXY_ID);
+    expect((home?.stars ?? []).some((s) => s.id === "fresh-home")).toBe(true);
+  });
+
+  it("skyFor('home') equals getSky() — the flat contract is the home projection", () => {
+    const store = createInMemoryStore();
+    expect(store.skyFor?.(HOME_GALAXY_ID)).toEqual(store.getSky());
+  });
+
+  it("starsForView('galaxy','home') returns the seeded home stars", () => {
+    const store = createInMemoryStore();
+    const viewIds = (store.starsForView?.("galaxy", HOME_GALAXY_ID) ?? [])
+      .map((s) => s.id)
+      .sort();
+    const skyIds = store
+      .getSky()
+      .stars.map((s) => s.id)
+      .sort();
+    expect(viewIds).toEqual(skyIds);
+  });
+
+  it("a newly added star surfaces in its placement's view", () => {
+    const store = createInMemoryStore();
+    store.addStar(
+      sampleStar({
+        id: "sys-star",
+        placement: { tier: "solarSystem", parentId: "sys-x", r: 0.5, angle: 1 },
+      }),
+    );
+    const ids = (store.starsForView?.("solarSystem", "sys-x") ?? []).map(
+      (s) => s.id,
+    );
+    expect(ids).toContain("sys-star");
+  });
+
+  it("adding a star never reshuffles others across the universe views (the core invariant)", () => {
+    const store = createInMemoryStore();
+    const snapshot = () =>
+      (store.starsForView?.("galaxy", HOME_GALAXY_ID) ?? []).map((s) => ({
+        id: s.id,
+        r: s.r,
+        angle: s.angle,
+      }));
+    const before = snapshot();
+    // add a star in a DIFFERENT view…
+    store.addStar(
+      sampleStar({
+        id: "elsewhere",
+        placement: { tier: "localGroup", r: 0.1, angle: 0.1 },
+      }),
+    );
+    // …and one in the SAME (home) view
+    store.addStar(
+      sampleStar({
+        id: "home-extra",
+        placement: { tier: "galaxy", parentId: "home", r: 0.9, angle: 2 },
+      }),
+    );
+    const afterById = new Map(snapshot().map((s) => [s.id, s]));
+    for (const prev of before) {
+      const now = afterById.get(prev.id);
+      expect(now).toBeDefined();
+      expect(now?.r).toBe(prev.r);
+      expect(now?.angle).toBe(prev.angle);
+    }
   });
 });
