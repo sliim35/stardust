@@ -13,16 +13,21 @@
  */
 
 import { type Camera, focusOn, lerpCamera } from "#/lib/galaxy/camera";
-import { polarToXY } from "#/lib/galaxy/place";
+import { GALAXY_CENTER, polarToXY } from "#/lib/galaxy/place";
 import type { GalaxySky } from "#/lib/galaxy/types";
 
 /**
  * The zoomed-out "home" framing — galaxy centered at neutral zoom. ESC/back eases
  * here when there is no prior framing to restore (e.g. a deep-link that landed
- * straight on a star). Zoom is deliberately below the `focusOn` default (1.8) so
- * "back" always reads as a zoom-out.
+ * straight on a star). Center is derived from `GALAXY_CENTER` (one source of
+ * truth for the disk center); zoom is deliberately below the `focusOn` default
+ * (1.8) so "back" always reads as a zoom-out.
  */
-export const DEFAULT_FRAMING: Camera = { cx: 640, cy: 400, zoom: 1 };
+export const DEFAULT_FRAMING = {
+  cx: GALAXY_CENTER.x,
+  cy: GALAXY_CENTER.y,
+  zoom: 1,
+} as const satisfies Camera;
 
 /** Sub-pixel / sub-zoom slop under which a move is considered settled. */
 const ARRIVE_EPSILON = 0.01;
@@ -157,17 +162,14 @@ export const createFocusController = (): FocusController => {
     for (const fn of subscribers) fn(req);
   };
   return {
-    focusStar(id, zoom) {
+    focusStar: (id, zoom) =>
       emit(
         zoom === undefined
           ? { kind: "focus", id }
           : { kind: "focus", id, zoom },
-      );
-    },
-    back() {
-      emit({ kind: "back" });
-    },
-    subscribe(fn) {
+      ),
+    back: () => emit({ kind: "back" }),
+    subscribe: (fn) => {
       subscribers.add(fn);
       return () => {
         subscribers.delete(fn);
