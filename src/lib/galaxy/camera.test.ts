@@ -9,10 +9,6 @@ import {
   parallaxOffsets,
   type StageRect,
   screenToStage,
-  wheelZoomFactor,
-  ZOOM_MAX,
-  ZOOM_MIN,
-  zoomToCursor,
 } from "#/lib/galaxy/camera";
 
 describe("lerp (eased interpolation — never snaps)", () => {
@@ -102,48 +98,6 @@ describe("cameraTransform (Camera → stage CSS transform)", () => {
   });
 });
 
-describe("zoomToCursor", () => {
-  const cam: Camera = { cx: 640, cy: 400, zoom: 1 };
-
-  it("clamps zoom to [ZOOM_MIN, ZOOM_MAX]", () => {
-    expect(zoomToCursor(cam, { x: 640, y: 400 }, 100).zoom).toBe(ZOOM_MAX);
-    expect(zoomToCursor(cam, { x: 640, y: 400 }, 0.001).zoom).toBe(ZOOM_MIN);
-  });
-
-  it("eases the center toward the cursor when zooming in", () => {
-    const next = zoomToCursor(cam, { x: 800, y: 400 }, 2);
-    expect(next.zoom).toBe(2);
-    expect(next.cx).toBeGreaterThan(cam.cx); // moved toward the cursor
-    expect(next.cx).toBeLessThan(800);
-  });
-
-  // --- #110 zoom-to-cursor: the anchored-point-stays-put invariant ----------
-  // The whole gesture is correct iff the stage point under the cursor maps to
-  // the SAME screen pixel before and after the zoom. `screenToStage` is the
-  // inverse used to find that anchor, so we assert the round trip here.
-  it("keeps the point under the cursor fixed on screen across a zoom (round trip)", () => {
-    const rect: StageRect = { left: 0, top: 0, scale: 1 };
-    const client = { x: 900, y: 520 }; // an off-center cursor
-    const before = screenToStage(client, rect, cam);
-    const next = zoomToCursor(cam, before, 2.5);
-    const after = screenToStage(client, rect, next);
-    expect(after.x).toBeCloseTo(before.x, 6);
-    expect(after.y).toBeCloseTo(before.y, 6);
-  });
-
-  it("no jitter at the clamp edge: a further zoom-in at ZOOM_MAX is a no-op", () => {
-    const maxed: Camera = { cx: 700, cy: 420, zoom: ZOOM_MAX };
-    const next = zoomToCursor(maxed, { x: 900, y: 500 }, 1.4);
-    expect(next).toEqual(maxed); // zoom clamped → k=0 → center unchanged
-  });
-
-  it("no jitter at the clamp edge: a further zoom-out at ZOOM_MIN is a no-op", () => {
-    const minned: Camera = { cx: 700, cy: 420, zoom: ZOOM_MIN };
-    const next = zoomToCursor(minned, { x: 200, y: 100 }, 0.6);
-    expect(next).toEqual(minned);
-  });
-});
-
 describe("screenToStage (client px → camera world point under the cursor)", () => {
   const cam: Camera = { cx: 640, cy: 400, zoom: 1 };
 
@@ -177,23 +131,5 @@ describe("screenToStage (client px → camera world point under the cursor)", ()
     const off = screenToStage({ x: 740, y: 400 }, rect, zoomed);
     expect(off.x).toBeCloseTo(700 + 100 / 2, 6);
     expect(off.y).toBeCloseTo(450, 6);
-  });
-});
-
-describe("wheelZoomFactor (wheel delta → multiplicative zoom factor)", () => {
-  it("returns a factor > 1 when scrolling up (deltaY < 0, zoom in)", () => {
-    expect(wheelZoomFactor(-100)).toBeGreaterThan(1);
-  });
-
-  it("returns a factor < 1 when scrolling down (deltaY > 0, zoom out)", () => {
-    expect(wheelZoomFactor(100)).toBeLessThan(1);
-  });
-
-  it("is multiplicatively symmetric (up then down by the same delta is identity)", () => {
-    expect(wheelZoomFactor(-120) * wheelZoomFactor(120)).toBeCloseTo(1, 6);
-  });
-
-  it("returns 1 for a zero delta", () => {
-    expect(wheelZoomFactor(0)).toBe(1);
   });
 });

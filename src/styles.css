@@ -207,15 +207,11 @@ body {
   inset: 0;
   z-index: 1;
   overflow: hidden;
+  /* Guided, not free (interaction spec 2026-06-05): the stage is no longer
+     draggable (#109 retired) nor free-zoomable (#110 retired), so there is no
+     `grab`/`grabbing` cursor. `touch-action: none` is kept — the later tier-zoom
+     wave owns the scroll/touch gesture and will preventDefault on it. */
   touch-action: none;
-  /* #138: the whole stage is draggable (pan). `grab` at rest, `grabbing` only
-     while a pointer drag is in progress — driven by the data-dragging attr the
-     drag in useGalaxyCamera sets on pointer-down and clears on release/abort.
-     NOT `:active`, which would also fire on a plain click that isn't a pan. */
-  cursor: grab;
-}
-.galaxy-stage[data-dragging] {
-  cursor: grabbing;
 }
 
 /* Layer A — full-bleed space (#76): nebula tint + L1 deep starfield, carrying
