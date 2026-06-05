@@ -14,6 +14,12 @@
  * exactly like stars.
  */
 
+import {
+  HOME_MILKY_WAY_ID,
+  localGroupNeighbours,
+  REAL_OBJECTS,
+  realObjectsForView,
+} from "#/lib/galaxy/realdata";
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import { buildSeedSky } from "#/lib/galaxy/seed";
 import type {
@@ -21,16 +27,25 @@ import type {
   LocalGroup,
   MemoryStar,
   PlanetNode,
+  RealObject,
   SolarSystemNode,
   Sun,
   Tier,
 } from "#/lib/galaxy/types";
 
-/** The id of the one curated, memory-bearing galaxy — today's seeded sky (ADR-0008 §3). */
-export const HOME_GALAXY_ID = "home";
+/**
+ * The id of the one curated, memory-bearing, descendable galaxy — today's seeded
+ * sky (ADR-0008 §3) AND the real Milky Way in the dataset (ADR-0010). The scene
+ * graph and `realdata.ts` share this id so the two layers register exactly.
+ */
+export const HOME_GALAXY_ID = HOME_MILKY_WAY_ID;
+
+// The real-object selector is the data seam wave-2 rendering reads; re-export it
+// here so callers reach scenery (real + procedural) through one module (ADR-0010 §4).
+export { realObjectsForView };
 
 // Counts per tier are intentionally small + fixed (KISS); tune visually later (#112).
-const GALAXIES_PER_GROUP = 7;
+// (The Local Group is no longer counted — it's the REAL set: home + 4 neighbours.)
 const SYSTEMS_PER_GALAXY = 5;
 const PLANETS_PER_SYSTEM = 4;
 
@@ -162,16 +177,25 @@ const homeGalaxyNode = (placement: GalaxyNode["placement"]): GalaxyNode => {
   };
 };
 
-const proceduralGalaxyNode = (i: number): GalaxyNode => {
-  const id = `g${i}`;
-  const seed = hashStr(id);
+/**
+ * Adapt one real Local-Group neighbour (`realdata.ts`) into the `GalaxyNode` shape
+ * the renderer + store already consume (ADR-0010 §4 — the adapter that flips the
+ * scenery source PRNG→data). The real object owns the *position* (`placement`) +
+ * identity; the node's scene-graph-only fields (`seed`/`backdrop`/`blackHole`) are
+ * derived deterministically from the id via the SHARED `mulberry32`/`hashStr` (no
+ * new PRNG, #45 R1). Neighbours are Layer-A scenery — memory-empty (`stars: []`).
+ * The galaxy's real morphology (`arms`/`barAngle`/`tilt`) is read for rendering via
+ * `realObjectsForView`; the node keeps the existing shape unchanged.
+ */
+const realNeighbourNode = (real: RealObject): GalaxyNode => {
+  const seed = hashStr(real.id);
   const rng = mulberry32(seed);
   return {
-    id,
+    id: real.id,
     seed,
     backdrop: {
       seed,
-      branches: 2 + Math.floor(rng() * 4),
+      branches: real.arms ?? 2 + Math.floor(rng() * 4),
       spin: rng() < 0.5 ? 1 : -1,
       randomnessPower: 2.2,
       palette: "ice",
@@ -181,30 +205,32 @@ const proceduralGalaxyNode = (i: number): GalaxyNode => {
     solarSystems: [],
     placement: {
       tier: "localGroup",
-      r: 0.2 + rng() * 0.7,
-      angle: rng() * Math.PI * 2,
+      r: real.placement.r,
+      angle: real.placement.angle,
     },
   };
 };
 
 /**
- * Derive the local group from the universe seed. Pure + memoized: the home galaxy
- * is the curated seeded sky; the rest are procedural + memory-empty (v1, ADR-0008 §3).
+ * Derive the local group. Pure + memoized: the home galaxy is the curated seeded
+ * sky (Layer B lives here), and the neighbours are now the REAL Local Group read
+ * from `realdata.ts` (ADR-0010) — the home Milky Way + exactly the 4 named
+ * neighbours (LMC, SMC, M31, M33). The procedural `g1…g6` decoys are dropped.
  */
 export const buildLocalGroup = (seed: number): LocalGroup => {
   const cached = localGroupCache.get(seed);
   if (cached) return cached;
-  const rng = mulberry32(seed);
+  // The home Milky Way's authored placement (centered) comes from the dataset too,
+  // so Layer A owns every Local-Group position (no seed-randomized home anymore).
+  const home = REAL_OBJECTS.find((o) => o.id === HOME_MILKY_WAY_ID)
+    ?.placement ?? {
+    r: 0,
+    angle: 0,
+  };
   const galaxies: GalaxyNode[] = [
-    homeGalaxyNode({
-      tier: "localGroup",
-      r: 0.2 + rng() * 0.5,
-      angle: rng() * Math.PI * 2,
-    }),
+    homeGalaxyNode({ tier: "localGroup", r: home.r, angle: home.angle }),
+    ...localGroupNeighbours().map(realNeighbourNode),
   ];
-  for (let i = 1; i < GALAXIES_PER_GROUP; i++) {
-    galaxies.push(proceduralGalaxyNode(i));
-  }
   const built: LocalGroup = { seed, galaxies };
   localGroupCache.set(seed, built);
   return built;

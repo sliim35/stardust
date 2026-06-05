@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildSeedSky, MOODS, placeStar } from "#/lib/galaxy/seed";
+import { en } from "#/lib/i18n/messages/en";
 
 describe("buildSeedSky", () => {
   it("seeds a backdrop and at least 3 stars spanning at least 2 moods", () => {
@@ -46,6 +47,48 @@ describe("buildSeedSky", () => {
       expect(Number.isFinite(s.angle)).toBe(true);
       expect(s.brightness).toBeGreaterThanOrEqual(0);
       expect(s.brightness).toBeLessThanOrEqual(1);
+    }
+  });
+
+  // ── Layer-B mood constellations (ADR-0010 §1/§4-④, #146) ─────────────────────
+  it("groups the seed corpus into at least 2 mood constellations of >= 2 stars", () => {
+    const stars = buildSeedSky().stars;
+    const groups = new Map<string, number>();
+    for (const s of stars) {
+      if (s.group) groups.set(s.group, (groups.get(s.group) ?? 0) + 1);
+    }
+    expect(groups.size).toBeGreaterThanOrEqual(2);
+    for (const [, n] of groups) expect(n).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps Mom's gold star (irina) UNGROUPED and standalone (ADR-0010 §1)", () => {
+    const irina = buildSeedSky().stars.find((s) => s.id === "irina");
+    expect(irina).toBeDefined();
+    expect(irina?.group).toBeUndefined();
+  });
+
+  it("keeps the egg ungrouped too (the hidden dedication stands alone)", () => {
+    const egg = buildSeedSky().stars.find((s) => s.id === "egg");
+    expect(egg?.group).toBeUndefined();
+  });
+
+  it("makes Mom's star the biggest + brightest of the whole sky", () => {
+    const stars = buildSeedSky().stars;
+    const irina = stars.find((s) => s.id === "irina");
+    expect(irina?.brightness).toBe(Math.max(...stars.map((s) => s.brightness)));
+    for (const s of stars) {
+      if (s.id === "irina") continue;
+      expect(irina?.brightness).toBeGreaterThanOrEqual(s.brightness);
+    }
+  });
+
+  // ── i18n content (ADR-0010 §4 — no inline user-facing strings) ───────────────
+  it("resolves each seeded memory star's name + text from the i18n catalog (en source)", () => {
+    for (const s of buildSeedSky().stars) {
+      const copy = en.memoryStars[s.id as keyof typeof en.memoryStars];
+      expect(copy, `catalog entry for "${s.id}"`).toBeDefined();
+      expect(s.text).toBe(copy.text);
+      if (s.name !== undefined) expect(s.name).toBe(copy.name);
     }
   });
 });

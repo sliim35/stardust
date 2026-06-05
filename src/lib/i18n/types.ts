@@ -39,4 +39,88 @@ export type Messages = {
     greeting: string;
     clickLines: readonly string[];
   };
+  /**
+   * Layer-A real-object lore (ADR-0010 §4). One entry per `RealObject.loreKey`:
+   * `name` (the display name), `sublabel` (catalogue + real distance, mono), and
+   * `line` (ASTRO's curated, factual lore line — the post-v1 ASTRO-AI swap-seam).
+   * Keys are compile-locked to the dataset via `LoreKey = keyof Messages["lore"]`.
+   */
+  lore: {
+    milkyWay: LoreEntry;
+    sol: LoreEntry;
+    sgrA: LoreEntry;
+    orionArm: LoreEntry;
+    pillars: LoreEntry;
+    crab: LoreEntry;
+    orion: LoreEntry;
+    lmc: LoreEntry;
+    smc: LoreEntry;
+    andromeda: LoreEntry;
+    triangulum: LoreEntry;
+    m32: LoreEntry;
+    m110: LoreEntry;
+  };
+  /**
+   * ASTRO's guided-journey narration (ADR-0010 §4, interaction spec §1). HARDCODED,
+   * hand-curated for v1 — NOT generated; this is exactly the seam the post-v1
+   * ASTRO-AI replaces. `onArrival` fires when a tier settles; `descend` / `ascend`
+   * fire as the camera eases between tiers.
+   */
+  astroNarration: {
+    onArrival: {
+      localGroup: string;
+      galaxy: string;
+      solarSystem: string;
+    };
+    descend: {
+      toGalaxy: string;
+      toSolarSystem: string;
+    };
+    ascend: {
+      toGalaxy: string;
+      toLocalGroup: string;
+    };
+  };
+  /**
+   * Layer-B memory-star copy — the seeded/fake memory corpus (`seed.ts`). One entry
+   * per seed star id: `name` (hover title) + `text` (the memory). Keys mirror the
+   * seed-corpus ids so `buildSeedSky` resolves them with no inline strings.
+   */
+  memoryStars: {
+    s01: MemoryStarCopy;
+    s02: MemoryStarCopy;
+    s03: MemoryStarCopy;
+    s04: MemoryStarCopy;
+    s05: MemoryStarCopy;
+    s06: MemoryStarCopy;
+    irina: MemoryStarCopy;
+    egg: MemoryStarCopy;
+  };
+  /**
+   * Mood-constellation labels (Layer B — the one-word MOOD caption beside a group).
+   * Keyed by `Mood` + `memory` (Mom's gold standalone star).
+   */
+  moods: {
+    joyful: string;
+    tender: string;
+    grieving: string;
+    wistful: string;
+    peaceful: string;
+    nostalgic: string;
+    wonder: string;
+    memory: string;
+  };
+};
+
+/** A real-object lore entry — name + mono sublabel + ASTRO's lore line. */
+export type LoreEntry = {
+  name: string;
+  sublabel: string;
+  line: string;
+};
+
+/** A seeded memory star's user-facing copy — hover title + the memory text. */
+export type MemoryStarCopy = {
+  name: string;
+  text: string;
 };

@@ -20,6 +20,16 @@ import type {
   MemoryStar,
   Mood,
 } from "#/lib/galaxy/types";
+import { en } from "#/lib/i18n/messages/en";
+
+/**
+ * Seed memory-star copy comes from the i18n catalog (ADR-0010 §4 — no inline
+ * user-facing strings). `buildSeedSky` resolves each star's `name`/`text` from the
+ * `en` source-of-truth corpus by id; the locale-aware swap is a render-layer concern
+ * (en+ru parity is compile-enforced in `i18n/types.ts`). Resolving from `en` here
+ * keeps `buildSeedSky` a pure, SSR-safe, locale-agnostic function (no React/router).
+ */
+const COPY = en.memoryStars;
 
 /**
  * Feeling → color + the angular sector of the disk it occupies, so same-mood stars
@@ -64,48 +74,61 @@ export const placeStar = (
   return { r, angle };
 };
 
+// ── mood constellations (Layer B — ADR-0010 §1/§4-④, #146) ─────────────────────
+// Same-`group` seed stars connect into one constellation (in `createdAt` order). The
+// names are owner-facing constellation captions — but they are NOT user-visible copy
+// here; the group is a stable membership key consumed by the overlay (spec §3) which
+// reads the mood label from the i18n `moods` catalog. Mom's star + the egg stay
+// ungrouped (standalone), per ADR-0010 §1.
+export const CONSTELLATIONS = {
+  brightDays: "bright-days",
+  quietAche: "quiet-ache",
+} as const;
+
 // ── the curated seed corpus (subset of the prototype's 36) ─────────────────────
+// `copyKey` indexes the i18n `memoryStars` catalog — no inline name/text here
+// (ADR-0010 §4). `group` assigns the star into a mood constellation (or none).
 type SeedSpec = {
   mood: Mood;
-  name: string;
-  text: string;
+  copyKey: keyof typeof COPY;
   who?: string;
+  group?: string;
 };
 
 const SEED = [
   {
     mood: "joyful",
-    name: "kitchen radio",
+    copyKey: "s01",
     who: "marco",
-    text: "dad dancing badly in the kitchen while the radio played something from before i was born.",
+    group: CONSTELLATIONS.brightDays,
   },
   {
     mood: "tender",
-    name: "his steady hands",
+    copyKey: "s02",
     who: "lena",
-    text: "the way grandfather's hands shook pouring tea, and never once spilled a drop.",
+    group: CONSTELLATIONS.quietAche,
   },
   {
     mood: "grieving",
-    name: "the voicemail",
-    text: "i cannot delete the voicemail. i never play it. i just keep it there.",
+    copyKey: "s03",
+    group: CONSTELLATIONS.quietAche,
   },
   {
     mood: "wistful",
-    name: "the old number",
-    text: "i still know the phone number of a house we left behind twenty years ago.",
+    copyKey: "s04",
+    group: CONSTELLATIONS.quietAche,
   },
   {
     mood: "peaceful",
-    name: "rain on tin",
+    copyKey: "s05",
     who: "ana",
-    text: "rain on the tin roof of the cabin, and nothing in the world that needed doing.",
+    group: CONSTELLATIONS.brightDays,
   },
   {
     mood: "wonder",
-    name: "saturn, actually",
+    copyKey: "s06",
     who: "ken",
-    text: "the night dad aimed the telescope and i actually saw the rings of saturn, real.",
+    group: CONSTELLATIONS.brightDays,
   },
 ] as const satisfies readonly SeedSpec[];
 
@@ -113,36 +136,37 @@ const SEED = [
 const SEED_EPOCH = 1748000000000;
 
 // ── the two special stars (fixed homes; not derived from the SEED loop) ────────
-// Irina — the deep "fly-home" story star. (r, angle) precomputed from the
-// prototype's Sol marker so the meaning is preserved without stage geometry here.
+// Both stay UNGROUPED (standalone) per ADR-0010 §1 — Mom's gold dedication star
+// never joins a mood constellation, and the egg is the hidden quiet one. Their
+// `name`/`text` resolve from the i18n catalog by id (no inline copy). Irina is the
+// biggest + brightest of the whole sky (brightness 1, the unique max — #146).
 const DEEP_STAR = {
   id: "irina",
+  copyKey: "irina",
   deep: true,
-  name: "for mom",
   who: null,
   mood: "nostalgic",
   color: "#f5d6a0",
-  text: "a whole life, lived right here on the third stone from this star. follow her home.",
   r: 0.366,
   angle: 0.423,
   brightness: 1,
   createdAt: 1700000000000,
-} as const satisfies MemoryStar;
+} as const;
 
 // The egg — quiet, in a lower-right inter-arm pocket, a touch brighter than its
 // neighbours. Reveals its dedication only on click; the UI just honors the flag.
 const EGG_STAR = {
   id: "egg",
+  copyKey: "egg",
   egg: true,
   who: null,
   mood: "joyful",
   color: "#f7dca8",
-  text: "for the one who taught me to look up. the gold was always hers; the rest is the universe she lived in.",
   r: 0.95,
   angle: 1.52,
   brightness: 0.92,
   createdAt: 0,
-} as const satisfies MemoryStar;
+} as const;
 
 /** Build the initial sky from the seed corpus. Stable ids → stable positions forever. */
 export const buildSeedSky = (): GalaxySky => {
@@ -152,17 +176,27 @@ export const buildSeedSky = (): GalaxySky => {
     const rng = mulberry32(hashStr(id) ^ 0x9e3779b9);
     return {
       id,
-      text: s.text,
-      name: s.name,
+      text: COPY[s.copyKey].text,
+      name: COPY[s.copyKey].name,
       mood: s.mood,
       who: s.who ?? null,
       color: MOODS[s.mood].color,
       r,
       angle,
+      // Cap below 1 so Mom's star (brightness 1) is the unique brightest (#146).
       brightness: 0.55 + rng() * 0.4,
       createdAt: SEED_EPOCH + i * 3600000,
+      group: s.group,
     };
   });
-  stars.push({ ...DEEP_STAR }, { ...EGG_STAR });
+  // The two special stars resolve their copy from the catalog and stay ungrouped.
+  for (const spec of [DEEP_STAR, EGG_STAR] as const) {
+    const { copyKey, ...rest } = spec;
+    stars.push({
+      ...rest,
+      name: COPY[copyKey].name,
+      text: COPY[copyKey].text,
+    });
+  }
   return { backdrop: { ...DEFAULT_BACKDROP }, stars };
 };
