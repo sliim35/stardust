@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createFocusController } from "#/lib/galaxy/focus";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { BackdropTint } from "./BackdropTint";
@@ -78,7 +79,11 @@ export const GalaxyStage = () => {
   );
 
   const scale = useStageFit();
-  const cam = useGalaxyCamera();
+  // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
+  // #113 search) call to ease the camera onto a star by id. The camera hook
+  // resolves the id against the live sky (`skyRef`) and drives the eased move.
+  const [focus] = useState(() => createFocusController());
+  const cam = useGalaxyCamera({ focus, getSky: () => skyRef.current });
 
   return (
     <div
@@ -88,6 +93,7 @@ export const GalaxyStage = () => {
       style={paletteAccentVars(palette) as CSSProperties}
       onPointerMove={cam.onPointerMove}
       onPointerLeave={cam.onPointerLeave}
+      onPointerDown={cam.onPointerDown}
     >
       {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
           the farthest/slowest parallax plane). Decorative. */}

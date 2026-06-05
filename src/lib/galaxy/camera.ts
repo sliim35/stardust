@@ -9,7 +9,7 @@
  * flatten parallax.
  */
 
-import type { Point } from "#/lib/galaxy/place";
+import { GALAXY_CENTER, type Point } from "#/lib/galaxy/place";
 import { clamp } from "#/lib/galaxy/rng";
 
 export type Vec = { x: number; y: number };
@@ -33,6 +33,20 @@ export const lerpCamera = (cur: Camera, target: Camera, t: number): Camera => ({
   cy: lerp(cur.cy, target.cy, t),
   zoom: lerp(cur.zoom, target.zoom, t),
 });
+
+/**
+ * A `Camera` → CSS `transform` for `.galaxy-stage__camera` (`transform-origin:
+ * center center`, i.e. the stage center `GALAXY_CENTER`). `scale(zoom)` then a
+ * `translate` that slides the focused world point `(cx, cy)` to the stage center,
+ * so the resting home framing (`GALAXY_CENTER`, zoom 1) is the identity. The
+ * translate is rounded to whole pixels to dodge the SSR/CSSOM sub-pixel rounding
+ * mismatch (memory: round inline transform floats — CSSOM rounds, React doesn't).
+ */
+export const cameraTransform = (cam: Camera): string => {
+  const dx = Math.round(GALAXY_CENTER.x - cam.cx);
+  const dy = Math.round(GALAXY_CENTER.y - cam.cy);
+  return `scale(${cam.zoom}) translate(${dx}px, ${dy}px)`;
+};
 
 // NOTE: focusOn + zoomToCursor (and ZOOM_MIN/MAX) have no caller in #4 yet —
 // they're pure, tested, and intentionally pre-landed for #5's selection / `?star=`

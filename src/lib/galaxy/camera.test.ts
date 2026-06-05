@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type Camera,
+  cameraTransform,
   focusOn,
   lerp,
   lerpCamera,
@@ -73,6 +74,28 @@ describe("parallaxOffsets", () => {
       l2: { x: 0, y: 0 },
       l3: { x: 0, y: 0 },
     });
+  });
+});
+
+describe("cameraTransform (Camera → stage CSS transform)", () => {
+  it("is the identity transform at the resting home framing", () => {
+    // origin is stage center (640,400): centering the center at zoom 1 is a no-op
+    expect(cameraTransform({ cx: 640, cy: 400, zoom: 1 })).toBe(
+      "scale(1) translate(0px, 0px)",
+    );
+  });
+
+  it("translates so the focused point lands at stage center, then scales", () => {
+    // origin center (640,400): translate by (640-cx, 400-cy) under scale(zoom)
+    expect(cameraTransform({ cx: 760, cy: 440, zoom: 1.8 })).toBe(
+      "scale(1.8) translate(-120px, -40px)",
+    );
+  });
+
+  it("rounds the translate to whole pixels (SSR/CSSOM sub-pixel safety)", () => {
+    expect(cameraTransform({ cx: 700.4, cy: 399.6, zoom: 1.5 })).toBe(
+      "scale(1.5) translate(-60px, 0px)",
+    );
   });
 });
 
