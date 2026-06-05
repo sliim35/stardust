@@ -19,6 +19,10 @@ export const en = {
     breadcrumbSolEarth: " › SOL › EARTH",
     countLabel: "{count} memories, still growing",
   },
+  // Accessibility labels for interactive galaxy elements (not visible copy).
+  a11y: {
+    memoryStar: "Open memory",
+  },
   // ASTRO loading screen (#79) — the source-of-truth copy, now localized (#103).
   loader: {
     thinking: "thinking",

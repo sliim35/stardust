@@ -9,14 +9,19 @@ import { createFocusController } from "#/lib/galaxy/focus";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
+import type { MemoryStar, Tier } from "#/lib/galaxy/types";
+import { getMessages, useLocale } from "#/lib/i18n";
 import { BackdropTint } from "./BackdropTint";
+import { CardHost } from "./CardHost";
 import { ChromeOverlay } from "./ChromeOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { MemoryStarLayer } from "./MemoryStarLayer";
 import { useGalaxyCamera } from "./useGalaxyCamera";
+import { useObjectClick } from "./useObjectClick";
 import { usePalette } from "./usePalette";
 import { useStageFit } from "./useStageFit";
+import { useTierNav } from "./useTierNav";
 
 /** Mirrors the `memIgnite` CSS animation duration (1.5s) — one ignite number. */
 const IGNITE_MS = 1500;
@@ -95,6 +100,12 @@ export const GalaxyStage = () => {
   const [focus] = useState(() => createFocusController());
   const cam = useGalaxyCamera({ focus, getSky: () => skyRef.current });
 
+  // The guided-navigation spine (slice E, #153): scroll steps the tier-zoom state
+  // (the eased camera move arrives with slice F / #125; here the state + the
+  // wheel-debounce land), and `nav.diveTo` is the gateway-dive sink for clicks.
+  const nav = useTierNav();
+  const a11yLabel = getMessages(useLocale()).a11y.memoryStar;
+
   return (
     <div
       className="galaxy-stage"
@@ -104,37 +115,80 @@ export const GalaxyStage = () => {
       style={paletteAccentVars(palette) as CSSProperties}
       onPointerMove={cam.onPointerMove}
       onPointerLeave={cam.onPointerLeave}
+      onWheel={nav.onWheel}
     >
-      {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
-          the farthest/slowest parallax plane). Decorative. */}
-      <div className="galaxy-space" ref={cam.l1} aria-hidden="true">
-        <BackdropTint palette={palette} />
-        <DeepStarfield />
-      </div>
-      {/* Layer B — the contain-fit stage (UNCHANGED): disk glow (L2, transparent)
-          + memory stars (L3), scaled by --stage-scale and centered. */}
-      <div
-        className="galaxy-stage__fit"
-        ref={cam.fit}
-        style={{ "--stage-scale": scale } as CSSProperties}
-      >
-        <div className="galaxy-stage__camera" ref={cam.cam}>
-          <div className="galaxy-l2-wrap" ref={cam.l2}>
-            <GalaxyBackdrop backdrop={backdrop} />
-          </div>
-          <div className="galaxy-l3-wrap" ref={cam.l3}>
-            <MemoryStarLayer stars={sky.stars} ignitingIds={ignitingIds} />
+      {/* The card host provides `openCard` to the interactive layers it wraps and
+          renders the one open card over a fixed full-viewport overlay (no DOM in
+          the camera tree). Clicks become cards here for the first time (slice E). */}
+      <CardHost>
+        {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
+            the farthest/slowest parallax plane). Decorative. */}
+        <div
+          className="absolute inset-0 [will-change:transform]"
+          ref={cam.l1}
+          aria-hidden="true"
+        >
+          <BackdropTint palette={palette} />
+          <DeepStarfield />
+        </div>
+        {/* Layer B — the contain-fit stage: disk glow (L2, transparent) + memory
+            stars (L3), scaled by --stage-scale and centered. */}
+        <div
+          className="galaxy-stage__fit"
+          ref={cam.fit}
+          style={{ "--stage-scale": scale } as CSSProperties}
+        >
+          <div className="galaxy-stage__camera" ref={cam.cam}>
+            <div className="galaxy-l2-wrap" ref={cam.l2}>
+              <GalaxyBackdrop backdrop={backdrop} />
+            </div>
+            <div className="galaxy-l3-wrap" ref={cam.l3}>
+              <InteractiveStars
+                stars={sky.stars}
+                ignitingIds={ignitingIds}
+                diveTo={nav.diveTo}
+                a11yLabel={a11yLabel}
+              />
+            </div>
           </div>
         </div>
-      </div>
-      {/* Layer C — viewport-fixed chrome overlay (title · breadcrumb · live count
-          · ASTRO · palette), pinned at fixed px so it never scales with the
-          stage. See ChromeOverlay for the why. */}
-      <ChromeOverlay
-        count={sky.stars.length}
-        palette={palette}
-        onPaletteChange={setPalette}
-      />
+        {/* Layer C — viewport-fixed chrome overlay (title · breadcrumb · live count
+            · ASTRO · palette), pinned at fixed px so it never scales with the
+            stage. See ChromeOverlay for the why. */}
+        <ChromeOverlay
+          count={sky.stars.length}
+          palette={palette}
+          onPaletteChange={setPalette}
+        />
+      </CardHost>
     </div>
+  );
+};
+
+/**
+ * The L3 memory layer made interactive — a child of `<CardHost>` so it can read the
+ * card context via `useObjectClick`. Memory-star clicks resolve to a memory card; a
+ * gateway dive would route through `diveTo` (the real-object layer adopts this hook
+ * when slice I / #112 lands).
+ */
+const InteractiveStars = ({
+  stars,
+  ignitingIds,
+  diveTo,
+  a11yLabel,
+}: {
+  stars: readonly MemoryStar[];
+  ignitingIds: ReadonlySet<string>;
+  diveTo: (id: string, tier: Tier) => void;
+  a11yLabel: string;
+}) => {
+  const onSelect = useObjectClick(diveTo);
+  return (
+    <MemoryStarLayer
+      stars={stars}
+      ignitingIds={ignitingIds}
+      onSelect={onSelect}
+      a11yLabel={a11yLabel}
+    />
   );
 };

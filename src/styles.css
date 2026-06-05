@@ -214,13 +214,6 @@ body {
   touch-action: none;
 }
 
-/* Layer A — full-bleed space (#76): nebula tint + L1 deep starfield, carrying
-   the cam.l1 (farthest, slowest) parallax. Full-viewport, decorative. */
-.galaxy-space {
-  position: absolute;
-  inset: 0;
-  will-change: transform;
-}
 /* The nebula tint lifted out of the L2 canvas (#76): full-viewport radial haze
    washes anchored on the disk center, each fading to transparent — so the field
    is seamless to all four edges with no confined-rect border.

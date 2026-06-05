@@ -23,6 +23,11 @@ export type Messages = {
     /** Carries the `{count}` placeholder — see `interpolate` in `index.ts`. */
     countLabel: string;
   };
+  /** Accessibility labels for interactive galaxy elements (not visible copy). */
+  a11y: {
+    /** aria-label for an unnamed memory star's click target. */
+    memoryStar: string;
+  };
   /** ASTRO loading screen (#79), localized in #103. */
   loader: {
     /** The italic word above the progress track (followed by animated dots). */
