@@ -424,6 +424,51 @@ body {
   }
 }
 
+/* --- Cards (#146/#5) — the soft-glass lore + memory panel (interaction spec §4).
+   One component, two skins (data-skin="lore|memory"). A dim scrim catches the
+   click-to-dismiss; the panel opens in place, centred. The per-instance
+   --card-accent is set inline from the object colour (lore: the real colour; memory:
+   the agent-owned mood colour — never recoloured). Reduced motion → instant
+   (data-reduced-motion on the panel kills the entrance + the @media gate below). */
+/* The card's soft-glass *look* (blur · hairline · left-only accent · drop shadow ·
+   the FIELD LOG/mood eyebrows · the name/sublabel/body · the close ×) is Tailwind
+   utilities reading the @theme tokens on Card.tsx / CardHost.tsx (#75/#151/#152 — DOM
+   chrome is Tailwind, this file is canvas-stage-only). Only the *animation side* stays
+   here: the entrance @keyframes + the reduced-motion gate, targeting the kept
+   `.galaxy-card` / `.galaxy-card-backdrop` class names (the loader precedent — those
+   classNames remain on the elements alongside the utilities, and double as the
+   unit-test querySelector hooks). The card reads as a window cut into the void: a
+   subtle accent hairline + a thin left-only accent, NOT a boxed glowing ring. */
+.galaxy-card-backdrop {
+  animation: galaxy-card-scrim-in 0.24s ease-out both;
+}
+.galaxy-card {
+  animation: galaxy-card-in 0.28s ease-out both;
+}
+.galaxy-card[data-reduced-motion="true"],
+.galaxy-card[data-reduced-motion="true"] ~ * {
+  animation: none;
+}
+
+@keyframes galaxy-card-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes galaxy-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* L2 — the disk (static base + live overlay canvases). */
 .galaxy-l2,
 .galaxy-l2-wrap {
@@ -752,6 +797,14 @@ body {
   }
   .galaxy-astro__bubble-dismiss {
     transition: none;
+  }
+  /* Cards (#146/#5) open instantly — no scrim fade or panel slide/scale (spec §4).
+     Belt-and-braces with the JS `data-reduced-motion` flag so it's instant from the
+     very first paint, before the hook resolves. (The close ×'s hover transition is
+     killed by the `motion-reduce:transition-none` utility on the button itself.) */
+  .galaxy-card-backdrop,
+  .galaxy-card {
+    animation: none;
   }
 }
 

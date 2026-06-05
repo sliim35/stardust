@@ -174,4 +174,9 @@ export const en = {
     wonder: "WONDER",
     memory: "MEMORY",
   },
+  // Card chrome (#146/#5) — the soft-glass panel's own labels; object copy is elsewhere.
+  card: {
+    fieldLog: "FIELD LOG",
+    close: "Close",
+  },
 } as const satisfies Messages;
