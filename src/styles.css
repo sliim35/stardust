@@ -70,7 +70,7 @@
   --text-eyebrow: 10px; /* mono sub/breadcrumb */
   --text-eyebrow--letter-spacing: 0.2em;
   --text-count: 11px; /* live-count line */
-  --text-title: 28px; /* "For Mom" — Fraunces upright display */
+  --text-title: 28px; /* "for mom" — Fraunces serif-italic dedication (memory voice) */
 
   /* spacing → p-*, gap-*, m-* utilities (handoff scale) */
   --spacing-gutter: 60px;
@@ -342,6 +342,10 @@ body {
    the read-panel surface: dark translucent bg, backdrop blur, 1px accent border,
    serif italic body. It still rides inside .galaxy-astro, so it inherits the
    z-index and the ≤720px hide (the bubble is tied to ASTRO's visibility). */
+/* ASTRO's panel is a WINDOW CUT INTO THE VOID, not a boxed callout (owner critique
+   #2a). Amber is rare/earned — it must never out-shout Sol — so the bright accent
+   ring + amber glow are gone. The panel reads as a quoted passage: a faint hairline,
+   soft blur over the void, and a single 2px LEFT-only accent rule. No box-shadow ring. */
 .galaxy-astro__bubble {
   position: absolute;
   /* Sit well clear above the (un-bobbing) sprite frame — a roomier gap so the
@@ -351,38 +355,43 @@ body {
   right: 0;
   width: max-content;
   /* A more substantial panel for the larger ≥16px body — the future AI-chat
-     surface (Fix 1): wider + more padding so the bigger text breathes. */
+     surface (Fix 1): wider + more padding so the bigger text breathes. The extra
+     left padding gives the 2px accent rule room (the quoted-passage feel). */
   max-width: 340px;
-  padding: 16px 38px 16px 20px; /* extra right padding clears the dismiss × */
+  padding: 14px 38px 14px 22px; /* extra right padding clears the dismiss × */
   background: var(--color-surface);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1px solid var(--color-accent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* A faint hairline all round — the window frame; the accent lives only on the
+     left edge (a 2px quoted-passage rule), so amber is spent once, not as a ring. */
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-left: 2px solid var(--color-accent);
   border-radius: var(--radius);
-  box-shadow: 0 0 22px var(--color-accent-soft);
   animation: astro-bubble-in 0.32s ease-out both;
 }
-/* A subtle connector — a short soft-glow stem dropping from the bubble toward the
+/* A subtle connector — a short neutral stem dropping from the bubble toward the
    corner, NOT a literal ▽ tail (the sprite now bobs under a fixed bubble, so a tail
-   that points at an exact figure position would drift off-target). It reads as a
-   gentle tether to ASTRO's corner without tracking the bob. */
+   that points at an exact figure position would drift off-target). Neutral (not
+   amber) so the warm thread is spent only on Sol + the single left rule (#7). */
 .galaxy-astro__bubble::after {
   content: "";
   position: absolute;
   top: 100%;
   right: 22px;
-  width: 2px;
-  height: 26px; /* longer stem to span the wider bubble↔sprite gap (Fix 2) */
-  background: linear-gradient(var(--color-accent), transparent);
-  opacity: 0.7;
+  width: 1px;
+  height: 26px; /* stem spanning the bubble↔sprite gap (Fix 2) */
+  background: linear-gradient(rgb(255 255 255 / 0.3), transparent);
 }
+/* ASTRO speaks in the MEMORY VOICE (owner critique #2b): serif italic, warm. The
+   copy itself is lower-case (the catalog). */
 .galaxy-astro__bubble-text {
   display: block;
   margin: 0;
-  font-family: var(--font-sans);
-  font-style: normal;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
   font-size: 16px; /* readable body for the AI-chat surface (Fix 1, ≥16px) */
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--color-text);
 }
 .galaxy-astro__bubble-dismiss {
@@ -501,45 +510,10 @@ body {
   /* Smooth upscaling — soft glow, not pixel-art (matches the disk). */
   image-rendering: auto;
 }
-/* A 2-line feature label (serif name + mono distance sublabel), anchored on the
-   object's stage point. A subtle dark radial backing keeps it legible over the
-   bright soft-glow cosmos (design-spec a11y: text-shadow alone is not enough). */
-.galaxy-feature-label {
-  position: absolute;
-  transform: translate(-50%, calc(-50% - 28px));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  white-space: nowrap;
-  pointer-events: none;
-  text-align: center;
-  padding: 4px 10px;
-  border-radius: var(--radius);
-  background: radial-gradient(
-    ellipse at center,
-    rgb(4 5 13 / 0.72) 0%,
-    rgb(4 5 13 / 0) 75%
-  );
-}
-.galaxy-feature-label__name {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 14px;
-  color: var(--color-text);
-}
-.galaxy-feature-label__sub {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-dim-2);
-}
-/* The Orion Arm reads as an arm annotation, not a point object — softer + dimmer. */
-.galaxy-feature-label[data-kind="armLabel"] .galaxy-feature-label__name {
-  font-style: italic;
-  color: var(--color-dim);
-}
+/* The 2-line feature labels (serif name + mono distance sublabel) are DOM chrome:
+   they live in GalaxyFeatureLayer.tsx as Tailwind utilities reading the @theme
+   tokens (the #75 styling boundary — owner critique). No label CSS here; this file
+   stays canvas-stage-only. */
 
 /* L3 — memory stars (nearest plane). */
 .galaxy-l3-wrap {
@@ -714,8 +688,10 @@ body {
 }
 .galaxy-chrome__for {
   font-family: var(--font-serif);
-  font-style: normal;
-  font-weight: 600;
+  /* The dedication is the memory voice — lower-case serif ITALIC (owner critique:
+     the system never uses title-case; the catalog copy is already "for mom"). */
+  font-style: italic;
+  font-weight: 500;
   font-variation-settings: "opsz" 56, "SOFT" 100, "WONK" 0;
   font-size: 28px;
   /* The dedication rides the single accent thread (spec §3 conflict table +
@@ -724,30 +700,41 @@ body {
   text-shadow: 0 0 18px var(--color-accent-soft);
 }
 .galaxy-chrome__sub {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 3px;
   text-transform: uppercase;
   color: var(--color-dim-2);
 }
+/* Breadcrumb: LOCAL GROUP › MILKY WAY › SOL (ADR-0010 — no Earth tier). The current
+   tier (MILKY WAY) is bright; ancestor/descendant (.is-dim) recede; the › seps are
+   the faintest. The base colour is the bright/current tier — accent kept OUT of the
+   breadcrumb (amber budget) → it reads as text-bright, not warm. */
 .galaxy-chrome__breadcrumb {
   position: absolute;
   right: max(28px, env(safe-area-inset-right));
   top: max(24px, env(safe-area-inset-top));
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 2px;
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 .galaxy-chrome__breadcrumb .is-dim {
   color: var(--color-dim-3);
 }
+.galaxy-chrome__sep {
+  color: var(--color-dim-3);
+}
+/* The live count lives in the bottom-LEFT caption slot (owner critique #6 — not
+   orphaned dead-centre): bottom-left = caption, bottom-right = astronaut + scale. */
 .galaxy-chrome__count {
   position: absolute;
-  left: 50%;
+  left: max(28px, env(safe-area-inset-left));
   bottom: max(26px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 1px;
   color: var(--color-dim-2);

@@ -12,11 +12,15 @@ export const en = {
       "A growing galaxy of memories — each star is a memory someone shared.",
   },
   chrome: {
-    forMom: "For Mom",
+    // The dedication is the memory voice — lower-case serif italic (styled in CSS).
+    forMom: "for mom",
     subtitle: "A QUIET PLACE IN THE MILKY WAY",
     srOnly: "Memory Galaxy — a sky of stars, each one a memory.",
+    // Breadcrumb tiers, outer → inner (ADR-0010: no Earth tier). MilkyWay is the
+    // current/bright tier; LocalGroup + Sol are dim ancestor/descendant.
+    breadcrumbLocalGroup: "LOCAL GROUP",
     breadcrumbMilkyWay: "MILKY WAY",
-    breadcrumbSolEarth: " › SOL › EARTH",
+    breadcrumbSol: "SOL",
     countLabel: "{count} memories, still growing",
   },
   // ASTRO loading screen (#79) — the source-of-truth copy, now localized (#103).
@@ -24,16 +28,17 @@ export const en = {
     thinking: "thinking",
     label: "gathering her stars",
   },
-  // ASTRO narration (#72) — the source-of-truth copy, now localized (#103).
+  // ASTRO narration (#72), now in the memory voice — serif italic, lower-case, warm
+  // (owner critique #2b; rendered serif-italic by .galaxy-astro__bubble-text).
   astro: {
     greeting:
-      "Every star here is a memory someone left behind. The pulsing one is hers — but add your own, and I'll find its place.",
+      "every star here is a memory someone left behind. the pulsing one is hers — but add your own, and i'll find its place.",
     clickLines: [
-      "Every light you see used to be someone's warmth.",
-      "I've been here a long time. So have they.",
-      "Add a star. I'll find it a good place in the sky.",
-      "Some stars pulse a little brighter. Those are the ones most loved.",
-      "The sky keeps growing. It always does.",
+      "every light you see used to be someone's warmth.",
+      "i've been here a long time. so have they.",
+      "add a star. i'll find it a good place in the sky.",
+      "some stars pulse a little brighter. those are the ones most loved.",
+      "the sky keeps growing. it always does.",
     ],
   },
   // Layer-A real-object lore (ADR-0010 §4, #146). Facts verbatim from the design

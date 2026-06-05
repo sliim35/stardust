@@ -5,12 +5,13 @@ import type { Messages } from "#/lib/i18n/types";
  * table). `as const satisfies Messages` enforces parity with `en.ts` (AC4/AC9).
  *
  * Notes from the spec §7 flags, resolved by the owner:
- * - `forMom`: "Маме" (the warmer/shorter dedication register) over "Для мамы".
- * - `breadcrumbSolEarth`: "СОЛНЦЕ › ЗЕМЛЯ" — SOL rendered as the natural Russian
- *   "Солнце" (Sun); leading " › " separator + spacing kept identical to en.
+ * - `forMom`: "маме" — the warmer/shorter dedication register, lower-case (the
+ *   memory voice — owner critique; "Для мамы"/title-case rejected).
+ * - breadcrumb: "МЕСТНАЯ ГРУППА › МЛЕЧНЫЙ ПУТЬ › СОЛНЦЕ" (ADR-0010: no Earth tier);
+ *   SOL is the natural Russian "Солнце" (Sun). Separators are added by the component.
  * - `countLabel`: genitive-plural form (no ICU plurals — story §Out-of-scope).
- * - `astro.*`: ASTRO narration (#72), AI-generated Russian matching ASTRO's
- *   wistful, first-person, sentence-case voice. Folded into #103.
+ * - `astro.*`: ASTRO narration (#72), AI-generated Russian in ASTRO's wistful,
+ *   first-person MEMORY voice — lower-case, warm (owner critique #2b). Folded into #103.
  */
 export const ru = {
   meta: {
@@ -19,27 +20,30 @@ export const ru = {
       "Растущая галактика воспоминаний — каждая звезда хранит чьё-то воспоминание.",
   },
   chrome: {
-    forMom: "Маме",
+    forMom: "маме",
     subtitle: "ТИХИЙ УГОЛОК В МЛЕЧНОМ ПУТИ",
     srOnly:
       "Галактика воспоминаний — небо из звёзд, и каждая — чьё-то воспоминание.",
+    // Тиры хлебных крошек, снаружи → внутрь (ADR-0010: тира «Земля» нет).
+    breadcrumbLocalGroup: "МЕСТНАЯ ГРУППА",
     breadcrumbMilkyWay: "МЛЕЧНЫЙ ПУТЬ",
-    breadcrumbSolEarth: " › СОЛНЦЕ › ЗЕМЛЯ",
+    breadcrumbSol: "СОЛНЦЕ",
     countLabel: "{count} воспоминаний и продолжает расти",
   },
   loader: {
     thinking: "думаю",
     label: "собираю её звёзды",
   },
+  // Голос воспоминаний — строчные буквы, тёплый тон (owner critique #2b).
   astro: {
     greeting:
-      "Каждая звезда здесь — чьё-то оставленное воспоминание. Та, что мерцает, — её, но добавь свою, и я найду ей место.",
+      "каждая звезда здесь — чьё-то оставленное воспоминание. та, что мерцает, — её, но добавь свою, и я найду ей место.",
     clickLines: [
-      "Каждый огонёк, что ты видишь, когда-то был чьим-то теплом.",
-      "Я здесь уже очень давно. И они тоже.",
-      "Добавь звезду. Я найду ей хорошее место на небе.",
-      "Некоторые звёзды мерцают чуть ярче. Это те, кого любили больше всего.",
-      "Небо продолжает расти. Так было всегда.",
+      "каждый огонёк, что ты видишь, когда-то был чьим-то теплом.",
+      "я здесь уже очень давно. и они тоже.",
+      "добавь звезду. я найду ей хорошее место на небе.",
+      "некоторые звёзды мерцают чуть ярче. это те, кого любили больше всего.",
+      "небо продолжает расти. так было всегда.",
     ],
   },
   // Layer-A real-object lore (#146) — переведено по смыслу, факты сохранены.

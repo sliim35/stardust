@@ -14,11 +14,14 @@
  * unchanged.
  *
  * Soft-glow chrome, NOT pixel-art (the style rule: DOM chrome = soft glow). The
- * panel is a glass surface — `--color-surface` translucent bg, `backdrop-filter:
- * blur`, a 1px amber accent border, serif italic body — with a ▽ tail pointing
- * down at ASTRO. It docks above the sprite inside `.galaxy-astro`, so it inherits
- * ASTRO's stage scale, `z-index`, and the ≤720px hide (the bubble is tied to
- * ASTRO's visibility).
+ * panel is a WINDOW CUT INTO THE VOID, not a boxed amber callout (owner critique
+ * #2a): `--color-surface` translucent bg + soft `backdrop-filter: blur`, a faint
+ * hairline, and a single 2px LEFT-only accent rule (a quoted-passage feel) — amber
+ * is spent once, never as a glowing ring that out-shouts Sol. The body is the memory
+ * voice — serif italic, lower-case (#2b). A neutral stem tethers it toward ASTRO's
+ * corner. It docks above the sprite inside `.galaxy-astro`, so it inherits ASTRO's
+ * stage scale, `z-index`, and the ≤720px hide (the bubble is tied to ASTRO's
+ * visibility).
  *
  * Draw-only: the copy + the line-rotation rule live in the pure, unit-tested
  * `#/lib/galaxy/astro-voice` (the lib-pure rule). Entrance animation + the tail +

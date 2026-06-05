@@ -5,6 +5,7 @@ import {
   type RealDrawSpec,
   realDrawSpec,
   realScreenPos,
+  visibleFeatureLabels,
 } from "#/lib/galaxy/real-visual";
 import type { RealObject } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
@@ -27,6 +28,18 @@ import { getMessages, useLocale } from "#/lib/i18n";
  * **i18n (ADR-0010 §2):** the on-stage feature labels (name + mono sublabel) come
  * from the `lore` catalog via `getMessages(useLocale())` — no inline strings; the
  * full ASTRO lore line is the lore card's (a later slice).
+ *
+ * **DOM-chrome styling (owner critique — the styling boundary, #75):** the feature
+ * labels are DOM chrome, so they're styled with **Tailwind utilities + design tokens**
+ * (`font-serif`, `font-mono`, `text-*`/`text-dim-2` colour tokens) inline here — NOT
+ * bespoke `galaxy-feature-label__*` CSS classes. `src/styles.css` stays canvas-stage
+ * only (the `.galaxy-features` / `__canvas` wrapper rules remain — those position the
+ * canvas, which is the stage, not chrome).
+ *
+ * **Label deconfliction (owner critique #1):** the on-stage labels run through
+ * `visibleFeatureLabels`, which suppresses the soft `Orion Arm` arm caption whenever a
+ * real POI label (Sol, a nebula, Sgr A*) sits within `ARM_LABEL_SUPPRESS_PX` — so the
+ * "Sol · her home" lockup, the emotional anchor, always reads cleanly.
  *
  * **SSR-safe:** the canvas paints client-side in an effect (never during SSR);
  * positions/colours derive purely from the data + locale, so labels hydrate
@@ -143,23 +156,45 @@ export const GalaxyFeatureLayer = () => {
   return (
     <div className="galaxy-features" aria-hidden="true">
       <canvas ref={ref} className="galaxy-features__canvas" />
-      {homeViewObjects().map((obj) => {
+      {visibleFeatureLabels(homeViewObjects()).map((obj) => {
         const { x, y } = realScreenPos(obj);
         const lore = m.lore[obj.loreKey];
+        const isArm = obj.kind === "armLabel";
+        // Sgr A* (marker) sits dead-centre in the brightest core bloom, so its label
+        // floats higher to clear the bulge falloff + gets a denser dark backing — the
+        // "GALACTIC CENTER · 26,000 LY" line was washed out by the core (critique #5).
+        const isCore = obj.kind === "marker";
         return (
           <span
             key={obj.id}
-            className="galaxy-feature-label"
-            data-kind={obj.kind}
+            // DOM chrome → Tailwind utilities + tokens (#75). The dark radial backing
+            // (per-label craft, like the per-instance --star-color the spec blesses —
+            // NOT a static token) + the data-driven position are inline `style`, so
+            // they render reliably without a bespoke CSS class.
+            className={`absolute flex -translate-x-1/2 flex-col items-center gap-0.5 whitespace-nowrap rounded-sm px-2.5 py-1 text-center pointer-events-none ${
+              isCore
+                ? "-translate-y-[calc(50%+64px)]"
+                : "-translate-y-[calc(50%+28px)]"
+            }`}
             style={
               {
                 left: `${Math.round(x)}px`,
                 top: `${Math.round(y)}px`,
+                background: isCore
+                  ? "radial-gradient(ellipse at center, rgb(4 5 13 / 0.88) 0%, rgb(4 5 13 / 0) 72%)"
+                  : "radial-gradient(ellipse at center, rgb(4 5 13 / 0.72) 0%, rgb(4 5 13 / 0) 75%)",
               } as CSSProperties
             }
           >
-            <em className="galaxy-feature-label__name">{lore.name}</em>
-            <span className="galaxy-feature-label__sub">{lore.sublabel}</span>
+            {/* The arm caption reads as a soft annotation, not a point object → dimmer. */}
+            <em
+              className={`font-serif text-[14px] italic ${isArm ? "text-dim" : "text-text"}`}
+            >
+              {lore.name}
+            </em>
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-dim-2">
+              {lore.sublabel}
+            </span>
           </span>
         );
       })}

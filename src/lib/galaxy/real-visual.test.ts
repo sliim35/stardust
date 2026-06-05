@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { polarToXY } from "#/lib/galaxy/place";
 import {
+  ARM_LABEL_SUPPRESS_PX,
   homeViewObjects,
   realDrawSpec,
   realScreenPos,
+  visibleFeatureLabels,
 } from "#/lib/galaxy/real-visual";
 import { HOME_MILKY_WAY_ID, REAL_OBJECTS, SOL_ID } from "#/lib/galaxy/realdata";
 import type { RealObject } from "#/lib/galaxy/types";
@@ -106,5 +108,61 @@ describe("homeViewObjects — what the home Milky-Way tier renders", () => {
 
   it("is byte-stable across reads (SSR-safe — same source list)", () => {
     expect(homeViewObjects()).toEqual(homeViewObjects());
+  });
+});
+
+describe("visibleFeatureLabels — arm-caption deconfliction (owner critique #1)", () => {
+  // Tiny fixtures so the rule is tested in isolation from the real placement.
+  const armLabel = (id: string, r: number, angle: number): RealObject => ({
+    ...find("orionArm"),
+    id,
+    placement: { r, angle },
+  });
+  const poi = (id: string, r: number, angle: number): RealObject => ({
+    ...find(SOL_ID),
+    id,
+    placement: { r, angle },
+  });
+
+  it("keeps every non-arm POI label (only arm captions are ever suppressed)", () => {
+    const pois = homeViewObjects().filter((o) => o.kind !== "armLabel");
+    const visible = visibleFeatureLabels(homeViewObjects()).map((o) => o.id);
+    for (const p of pois) expect(visible).toContain(p.id);
+  });
+
+  it("suppresses an arm caption when a POI label sits within the threshold", () => {
+    const arm = armLabel("armX", 0.5, 0);
+    // A POI a few px away (well inside ARM_LABEL_SUPPRESS_PX).
+    const near = poi("near", 0.51, 0);
+    const visible = visibleFeatureLabels([arm, near]).map((o) => o.id);
+    expect(visible).not.toContain("armX");
+    expect(visible).toContain("near");
+  });
+
+  it("keeps an arm caption when no POI is within the threshold", () => {
+    const arm = armLabel("armX", 0.5, 0);
+    const far = poi("far", 0.5, Math.PI); // opposite side of the disk
+    const aArm = realScreenPos(arm);
+    const aFar = realScreenPos(far);
+    expect(Math.hypot(aArm.x - aFar.x, aArm.y - aFar.y)).toBeGreaterThan(
+      ARM_LABEL_SUPPRESS_PX,
+    );
+    const visible = visibleFeatureLabels([arm, far]).map((o) => o.id);
+    expect(visible).toContain("armX");
+  });
+
+  it("renders the Orion Arm caption in the real home view (nudged clear of Sol)", () => {
+    // The data nudge (#1) must leave the Orion Arm > threshold from every POI, so
+    // it survives its own suppression rule and reads cleanly on the real stage.
+    const visible = visibleFeatureLabels(homeViewObjects()).map((o) => o.id);
+    expect(visible).toContain("orionArm");
+  });
+
+  it("keeps the Orion Arm caption clear of Sol's lockup (≥ threshold px)", () => {
+    const arm = realScreenPos(find("orionArm"));
+    const sol = realScreenPos(find(SOL_ID));
+    expect(Math.hypot(arm.x - sol.x, arm.y - sol.y)).toBeGreaterThanOrEqual(
+      ARM_LABEL_SUPPRESS_PX,
+    );
   });
 });

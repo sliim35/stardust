@@ -81,7 +81,11 @@ export const GalaxyStage = () => {
     };
   }, [store]);
 
-  const [palette, setPalette] = usePalette();
+  // The persisted/default palette tints the sky (disk/haze/core + chrome accent
+  // vars). Its in-view switcher was dropped from the HD-2D main view (owner critique
+  // #4); `usePalette` still resolves the persisted/default sky, so only the setter is
+  // currently unused — read just the value.
+  const [palette] = usePalette();
   // Override only the backdrop tint with the picked theme (#44); memoized so the
   // disk redraws on theme/seed change, not on every ignite re-render.
   const backdrop = useMemo(
@@ -133,13 +137,9 @@ export const GalaxyStage = () => {
         </div>
       </div>
       {/* Layer C — viewport-fixed chrome overlay (title · breadcrumb · live count
-          · ASTRO · palette), pinned at fixed px so it never scales with the
-          stage. See ChromeOverlay for the why. */}
-      <ChromeOverlay
-        count={sky.stars.length}
-        palette={palette}
-        onPaletteChange={setPalette}
-      />
+          · ASTRO), pinned at fixed px so it never scales with the stage. The
+          palette dots were dropped (owner critique #4). See ChromeOverlay. */}
+      <ChromeOverlay count={sky.stars.length} />
     </div>
   );
 };

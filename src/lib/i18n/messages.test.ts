@@ -60,13 +60,16 @@ describe("catalog parity + non-empty values (guards AC4 beyond the type check)",
 
 describe("owner-confirmed final strings (the authoritative table)", () => {
   it("carries the exact en chrome + meta strings (source of truth)", () => {
-    expect(en.chrome.forMom).toBe("For Mom");
+    // "for mom" is the memory voice — lower-case (owner critique; no title-case).
+    expect(en.chrome.forMom).toBe("for mom");
     expect(en.chrome.subtitle).toBe("A QUIET PLACE IN THE MILKY WAY");
     expect(en.chrome.srOnly).toBe(
       "Memory Galaxy — a sky of stars, each one a memory.",
     );
+    // Breadcrumb tiers — LOCAL GROUP › MILKY WAY › SOL (ADR-0010: no Earth tier).
+    expect(en.chrome.breadcrumbLocalGroup).toBe("LOCAL GROUP");
     expect(en.chrome.breadcrumbMilkyWay).toBe("MILKY WAY");
-    expect(en.chrome.breadcrumbSolEarth).toBe(" › SOL › EARTH");
+    expect(en.chrome.breadcrumbSol).toBe("SOL");
     expect(en.chrome.countLabel).toBe("{count} memories, still growing");
     expect(en.meta.title).toBe("Memory Galaxy");
     expect(en.meta.description).toBe(
@@ -75,13 +78,14 @@ describe("owner-confirmed final strings (the authoritative table)", () => {
   });
 
   it("carries the exact owner-confirmed ru translations", () => {
-    expect(ru.chrome.forMom).toBe("Маме");
+    expect(ru.chrome.forMom).toBe("маме");
     expect(ru.chrome.subtitle).toBe("ТИХИЙ УГОЛОК В МЛЕЧНОМ ПУТИ");
     expect(ru.chrome.srOnly).toBe(
       "Галактика воспоминаний — небо из звёзд, и каждая — чьё-то воспоминание.",
     );
+    expect(ru.chrome.breadcrumbLocalGroup).toBe("МЕСТНАЯ ГРУППА");
     expect(ru.chrome.breadcrumbMilkyWay).toBe("МЛЕЧНЫЙ ПУТЬ");
-    expect(ru.chrome.breadcrumbSolEarth).toBe(" › СОЛНЦЕ › ЗЕМЛЯ");
+    expect(ru.chrome.breadcrumbSol).toBe("СОЛНЦЕ");
     expect(ru.chrome.countLabel).toBe(
       "{count} воспоминаний и продолжает расти",
     );
@@ -92,30 +96,30 @@ describe("owner-confirmed final strings (the authoritative table)", () => {
   });
 });
 
-describe("ASTRO narration catalog (#72 copy, localized — #103 fold-in)", () => {
-  it("carries the exact en greeting + click set (source of truth)", () => {
+describe("ASTRO narration catalog (#72 copy, the memory voice — owner critique #2b)", () => {
+  it("carries the exact en greeting + click set (lower-case memory voice)", () => {
     expect(en.astro.greeting).toBe(
-      "Every star here is a memory someone left behind. The pulsing one is hers — but add your own, and I'll find its place.",
+      "every star here is a memory someone left behind. the pulsing one is hers — but add your own, and i'll find its place.",
     );
     expect(en.astro.clickLines).toEqual([
-      "Every light you see used to be someone's warmth.",
-      "I've been here a long time. So have they.",
-      "Add a star. I'll find it a good place in the sky.",
-      "Some stars pulse a little brighter. Those are the ones most loved.",
-      "The sky keeps growing. It always does.",
+      "every light you see used to be someone's warmth.",
+      "i've been here a long time. so have they.",
+      "add a star. i'll find it a good place in the sky.",
+      "some stars pulse a little brighter. those are the ones most loved.",
+      "the sky keeps growing. it always does.",
     ]);
   });
 
-  it("carries the AI-generated ru narration", () => {
+  it("carries the AI-generated ru narration (lower-case memory voice)", () => {
     expect(ru.astro.greeting).toBe(
-      "Каждая звезда здесь — чьё-то оставленное воспоминание. Та, что мерцает, — её, но добавь свою, и я найду ей место.",
+      "каждая звезда здесь — чьё-то оставленное воспоминание. та, что мерцает, — её, но добавь свою, и я найду ей место.",
     );
     expect(ru.astro.clickLines).toEqual([
-      "Каждый огонёк, что ты видишь, когда-то был чьим-то теплом.",
-      "Я здесь уже очень давно. И они тоже.",
-      "Добавь звезду. Я найду ей хорошее место на небе.",
-      "Некоторые звёзды мерцают чуть ярче. Это те, кого любили больше всего.",
-      "Небо продолжает расти. Так было всегда.",
+      "каждый огонёк, что ты видишь, когда-то был чьим-то теплом.",
+      "я здесь уже очень давно. и они тоже.",
+      "добавь звезду. я найду ей хорошее место на небе.",
+      "некоторые звёзды мерцают чуть ярче. это те, кого любили больше всего.",
+      "небо продолжает расти. так было всегда.",
     ]);
   });
 
@@ -123,15 +127,16 @@ describe("ASTRO narration catalog (#72 copy, localized — #103 fold-in)", () =>
     expect(ru.astro.clickLines.length).toBe(en.astro.clickLines.length);
   });
 
-  it("keeps every line distinct, sentence-case, and never the greeting (both locales)", () => {
+  it("keeps every line distinct, lower-case (memory voice), and never the greeting (both locales)", () => {
     for (const loc of [en, ru]) {
       const { greeting, clickLines } = loc.astro;
-      expect(greeting[0]).toBe(greeting[0].toUpperCase());
+      // Memory voice: the line opens lower-case (owner critique #2b).
+      expect(greeting[0]).toBe(greeting[0].toLowerCase());
       expect(new Set(clickLines).size).toBe(clickLines.length);
       expect(clickLines).not.toContain(greeting);
       for (const line of clickLines) {
         expect(line.trim().length).toBeGreaterThan(0);
-        expect(line[0]).toBe(line[0].toUpperCase());
+        expect(line[0]).toBe(line[0].toLowerCase());
       }
     }
   });

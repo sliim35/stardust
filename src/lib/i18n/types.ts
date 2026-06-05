@@ -18,8 +18,14 @@ export type Messages = {
     forMom: string;
     subtitle: string;
     srOnly: string;
+    /**
+     * Breadcrumb tiers (ADR-0010 — there is NO Earth tier). The current tier
+     * (`MilkyWay`) renders bright; the ancestor (`LocalGroup`) + descendant (`Sol`)
+     * render dim. The ` › ` separators are added by the component, not the catalog.
+     */
+    breadcrumbLocalGroup: string;
     breadcrumbMilkyWay: string;
-    breadcrumbSolEarth: string;
+    breadcrumbSol: string;
     /** Carries the `{count}` placeholder — see `interpolate` in `index.ts`. */
     countLabel: string;
   };

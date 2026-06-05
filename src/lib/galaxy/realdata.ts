@@ -183,7 +183,11 @@ const REAL_OBJECTS_DATA = [
     tier: "galaxy",
     parentId: HOME_MILKY_WAY_ID,
     realDistance: { value: 27000, unit: "ly" },
-    placement: { r: 0.46, angle: 0.62 },
+    // Nudged out ALONG the arm (was r:0.46/angle:0.62) so its caption clears Sol's
+    // "her home" lockup by > ARM_LABEL_SUPPRESS_PX (owner critique #1): the arm is a
+    // feathered annotation, not a point, so sliding it down-arm reads true to the
+    // morphology while deconflicting the four-block mush right of centre.
+    placement: { r: 0.82, angle: 0.98 },
     shape: "marker",
     size: 0.5,
     brightness: 0.4,

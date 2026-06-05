@@ -107,3 +107,34 @@ export const realDrawSpec = (obj: RealObject): RealDrawSpec => ({
  */
 export const homeViewObjects = (): readonly RealObject[] =>
   realObjectsForView("galaxy", HOME_MILKY_WAY_ID);
+
+/**
+ * Label-collision guard (owner critique #1): an arm caption (`Orion Arm`) is a soft
+ * annotation, never an anchor — so it yields to a real POI label (Sol, a nebula,
+ * Sgr A*) whenever one sits this close, in stage px. At Sol — the emotional anchor
+ * ("her home") — this keeps the four-block mush from forming: the POI lockup always
+ * wins, the arm caption steps aside. ~120px ≈ the height of a 2-line POI label plus
+ * its breathing room on the 1280×800 stage.
+ */
+export const ARM_LABEL_SUPPRESS_PX = 120;
+
+/**
+ * Which feature labels actually render, after arm-caption deconfliction (#1). Pure +
+ * order-stable: every non-arm POI label always shows; an `armLabel` is dropped iff a
+ * non-arm POI label is within `ARM_LABEL_SUPPRESS_PX` of it (so the POI's lockup reads
+ * cleanly). SSR-safe — derives purely from each object's own placement.
+ */
+export const visibleFeatureLabels = (
+  objects: readonly RealObject[],
+): readonly RealObject[] => {
+  const pois = objects
+    .filter((o) => o.kind !== "armLabel")
+    .map((o) => realScreenPos(o));
+  return objects.filter((o) => {
+    if (o.kind !== "armLabel") return true;
+    const a = realScreenPos(o);
+    return !pois.some(
+      (p) => Math.hypot(a.x - p.x, a.y - p.y) <= ARM_LABEL_SUPPRESS_PX,
+    );
+  });
+};
