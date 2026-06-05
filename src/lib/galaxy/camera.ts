@@ -48,9 +48,6 @@ export const cameraTransform = (cam: Camera): string => {
   return `scale(${cam.zoom}) translate(${dx}px, ${dy}px)`;
 };
 
-// NOTE: focusOn + zoomToCursor (and ZOOM_MIN/MAX) have no caller in #4 yet —
-// they're pure, tested, and intentionally pre-landed for #5's selection / `?star=`
-// zoom (review F4). Strip if strict YAGNI is preferred over staging for #5.
 /** Target camera centered on a stage position (selection / `?star=` deep-link). */
 export const focusOn = (pos: Point, zoom = 1.8): Camera => ({
   cx: pos.x,
@@ -85,6 +82,10 @@ export const parallaxOffsets = (
  * Zoom toward a stage-space cursor by `factor`, clamped. The point under the
  * cursor stays put: the center eases toward the cursor in proportion to the
  * actual (post-clamp) zoom change.
+ *
+ * No-jitter at the clamp edge (#110): when `zoom` is already pinned at `min`/`max`
+ * a further push leaves `zoom === cam.zoom`, so `k = 0` and the center is a
+ * verbatim no-op — the gesture can't nudge the framing at the bounds.
  */
 export const zoomToCursor = (
   cam: Camera,
@@ -101,3 +102,44 @@ export const zoomToCursor = (
     zoom,
   };
 };
+
+/**
+ * The contain-fit rect of the logical stage in client space (#110): the
+ * top-left of `.galaxy-stage__fit` and its uniform `scale` (`useStageFit`). Used
+ * to invert a wheel/pinch client point back into camera-world coordinates.
+ */
+export type StageRect = { left: number; top: number; scale: number };
+
+/**
+ * Invert a client-space point (wheel / pinch midpoint) into the camera's world
+ * space — the anchor `zoomToCursor` expects, so the point under the cursor stays
+ * fixed on screen across a zoom. Two inversions, matching the DOM stack:
+ *   1. undo the contain-fit (`.galaxy-stage__fit` `scale`) → logical stage px,
+ *   2. undo the camera transform (`scale(zoom)` about `GALAXY_CENTER`, then the
+ *      `(cx, cy)` recenter) → world px.
+ * The logical stage center always shows the camera center, so a fit-local offset
+ * `d` from `GALAXY_CENTER` maps to `d / zoom` world px from `(cx, cy)`.
+ */
+export const screenToStage = (
+  client: Point,
+  rect: StageRect,
+  cam: Camera,
+): Point => {
+  const fitX = (client.x - rect.left) / rect.scale;
+  const fitY = (client.y - rect.top) / rect.scale;
+  return {
+    x: cam.cx + (fitX - GALAXY_CENTER.x) / cam.zoom,
+    y: cam.cy + (fitY - GALAXY_CENTER.y) / cam.zoom,
+  };
+};
+
+/**
+ * A wheel `deltaY` → a multiplicative zoom factor (#110). Scrolling up
+ * (`deltaY < 0`) zooms in (`> 1`); down zooms out (`< 1`). Exponential so the
+ * factor is multiplicatively symmetric — an up tick then an equal down tick is
+ * the identity — and so trackpad momentum feels smooth rather than linear-steppy.
+ * `WHEEL_ZOOM_SENS` is gentle; the eased target loop carries the actual motion.
+ */
+export const WHEEL_ZOOM_SENS = 0.0015;
+export const wheelZoomFactor = (deltaY: number): number =>
+  Math.exp(-deltaY * WHEEL_ZOOM_SENS);
