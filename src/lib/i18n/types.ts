@@ -128,6 +128,18 @@ export type Messages = {
     /** Dismiss-button accessible name (aria-label / sr-only). */
     close: string;
   };
+  /**
+   * The bottom-left scale net (interaction spec §5.3, #112) — the display-only
+   * concentric range rings. The ring distance labels are formatted from authored
+   * values (`scale-net.ts` `formatRingLabel`), not the catalog; only the net's own
+   * accessible name lives here. `label` is the region's `aria-label` — it's a
+   * decorative orientation device, so it gets one short SR-only name, not per-ring
+   * announcements.
+   */
+  scaleNet: {
+    /** The scale net region's accessible name (aria-label). */
+    label: string;
+  };
 };
 
 /** A real-object lore entry — name + mono sublabel + ASTRO's lore line. */
