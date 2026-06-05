@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { polarToXY } from "#/lib/galaxy/place";
 import {
   ARM_LABEL_SUPPRESS_PX,
+  homeFeatureObjects,
   homeViewObjects,
   realDrawSpec,
   realScreenPos,
@@ -108,6 +109,12 @@ describe("homeViewObjects — what the home Milky-Way tier renders", () => {
 
   it("is byte-stable across reads (SSR-safe — same source list)", () => {
     expect(homeViewObjects()).toEqual(homeViewObjects());
+  });
+});
+
+describe("homeFeatureObjects — v1 memory-first render (owner: hide non-Sol features)", () => {
+  it("renders only Sol among the real features (nebulae / Sgr A* / Orion Arm hidden)", () => {
+    expect(homeFeatureObjects().map((o) => o.id)).toEqual([SOL_ID]);
   });
 });
 

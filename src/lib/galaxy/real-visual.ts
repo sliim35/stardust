@@ -18,7 +18,11 @@
  */
 
 import { type Point, polarToXY } from "#/lib/galaxy/place";
-import { HOME_MILKY_WAY_ID, realObjectsForView } from "#/lib/galaxy/realdata";
+import {
+  HOME_MILKY_WAY_ID,
+  realObjectsForView,
+  SOL_ID,
+} from "#/lib/galaxy/realdata";
 import type { RealObject, RealShape } from "#/lib/galaxy/types";
 
 /** Which soft-glow primitive the renderer paints for an object. */
@@ -107,6 +111,16 @@ export const realDrawSpec = (obj: RealObject): RealDrawSpec => ({
  */
 export const homeViewObjects = (): readonly RealObject[] =>
   realObjectsForView("galaxy", HOME_MILKY_WAY_ID);
+
+/**
+ * What the home Milky-Way tier actually **renders** in v1 (owner directive — the scene
+ * is **memory-first**): only **Sol** (her home — the warm anchor) shows among the real
+ * features; the nebulae, Sgr A*, and the Orion-Arm caption are **hidden** so the memory
+ * stars are the hero. The full set stays in `homeViewObjects` / `realdata` (the
+ * Local-Group tier or a later pass can surface it) — a render filter, not a deletion.
+ */
+export const homeFeatureObjects = (): readonly RealObject[] =>
+  homeViewObjects().filter((o) => o.id === SOL_ID);
 
 /**
  * Label-collision guard (owner critique #1): an arm caption (`Orion Arm`) is a soft

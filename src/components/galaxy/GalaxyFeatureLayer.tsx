@@ -1,7 +1,7 @@
 import { type CSSProperties, useEffect, useRef } from "react";
 import { STAGE_H, STAGE_W } from "#/lib/galaxy/place";
 import {
-  homeViewObjects,
+  homeFeatureObjects,
   type RealDrawSpec,
   realDrawSpec,
   realScreenPos,
@@ -149,14 +149,14 @@ export const GalaxyFeatureLayer = () => {
     ctx.imageSmoothingEnabled = true;
     ctx.clearRect(0, 0, STAGE_W, STAGE_H);
     ctx.globalCompositeOperation = "lighter";
-    for (const obj of homeViewObjects()) paintObject(ctx, obj);
+    for (const obj of homeFeatureObjects()) paintObject(ctx, obj);
     ctx.globalCompositeOperation = "source-over";
   }, []);
 
   return (
     <div className="galaxy-features" aria-hidden="true">
       <canvas ref={ref} className="galaxy-features__canvas" />
-      {visibleFeatureLabels(homeViewObjects()).map((obj) => {
+      {visibleFeatureLabels(homeFeatureObjects()).map((obj) => {
         const { x, y } = realScreenPos(obj);
         const lore = m.lore[obj.loreKey];
         const isArm = obj.kind === "armLabel";
