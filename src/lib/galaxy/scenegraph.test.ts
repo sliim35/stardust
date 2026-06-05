@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { HOME_MILKY_WAY_ID, localGroupNeighbours } from "#/lib/galaxy/realdata";
 import {
   buildGalaxy,
   buildLocalGroup,
   buildSolarSystem,
   HOME_GALAXY_ID,
   homeGalaxyOf,
+  realObjectsForView,
   starsForView,
 } from "#/lib/galaxy/scenegraph";
 import { buildSeedSky } from "#/lib/galaxy/seed";
@@ -91,6 +93,69 @@ describe("buildLocalGroup", () => {
       expect(s?.placement?.tier).toBe("galaxy");
       expect(s?.placement?.parentId).toBe(HOME_GALAXY_ID);
     }
+  });
+
+  // ── ADR-0010: the Local Group is now the REAL Local Group (no procedural g#) ──
+  it("seats the home galaxy plus EXACTLY the 4 real neighbours (no more)", () => {
+    const galaxies = buildLocalGroup(UNIVERSE_SEED).galaxies;
+    expect(galaxies).toHaveLength(1 + localGroupNeighbours().length);
+    expect(localGroupNeighbours()).toHaveLength(4);
+  });
+
+  it("drops every procedural g# galaxy (zero g1…g6 ids)", () => {
+    const ids = buildLocalGroup(UNIVERSE_SEED).galaxies.map((g) => g.id);
+    for (const id of ids) expect(id).not.toMatch(/^g\d+$/);
+  });
+
+  it("includes exactly the real neighbour ids (LMC, SMC, M31, M33) beside home", () => {
+    const ids = buildLocalGroup(UNIVERSE_SEED)
+      .galaxies.map((g) => g.id)
+      .filter((id) => id !== HOME_GALAXY_ID);
+    expect(ids.sort()).toEqual(["andromeda", "lmc", "smc", "triangulum"]);
+  });
+
+  it("uses the SAME home id in the scene graph and the real dataset", () => {
+    expect(HOME_GALAXY_ID).toBe(HOME_MILKY_WAY_ID);
+    expect(
+      buildLocalGroup(UNIVERSE_SEED).galaxies.some(
+        (g) => g.id === HOME_MILKY_WAY_ID,
+      ),
+    ).toBe(true);
+  });
+
+  it("carries each real neighbour's curated placement onto its GalaxyNode", () => {
+    const galaxies = buildLocalGroup(UNIVERSE_SEED).galaxies;
+    for (const real of localGroupNeighbours()) {
+      const node = galaxies.find((g) => g.id === real.id);
+      expect(node, `node for ${real.id}`).toBeDefined();
+      expect(node?.placement.tier).toBe("localGroup");
+      expect(node?.placement.r).toBe(real.placement.r);
+      expect(node?.placement.angle).toBe(real.placement.angle);
+    }
+  });
+
+  it("keeps the real neighbours memory-empty (Layer A is not memories)", () => {
+    const galaxies = buildLocalGroup(UNIVERSE_SEED).galaxies;
+    for (const real of localGroupNeighbours()) {
+      const node = galaxies.find((g) => g.id === real.id);
+      expect(node?.stars).toEqual([]);
+    }
+  });
+});
+
+describe("realObjectsForView (re-exported selector for wave-2 rendering)", () => {
+  it("re-exports the realdata selector — localGroup view = home + 4 neighbours", () => {
+    const ids = realObjectsForView("localGroup").map((o) => o.id);
+    expect(ids.sort()).toEqual(
+      ["andromeda", "lmc", "smc", "triangulum", HOME_MILKY_WAY_ID].sort(),
+    );
+  });
+
+  it("returns the Milky-Way interior real objects for (galaxy, home)", () => {
+    const ids = realObjectsForView("galaxy", HOME_GALAXY_ID).map((o) => o.id);
+    expect(ids.sort()).toEqual(
+      ["crab", "orion", "orionArm", "pillars", "sgra", "sol"].sort(),
+    );
   });
 });
 

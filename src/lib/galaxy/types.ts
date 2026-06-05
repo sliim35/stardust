@@ -10,6 +10,16 @@
  * belong to the renderer (#4).
  */
 
+import type { Messages } from "#/lib/i18n/types";
+
+/**
+ * The i18n catalog key for a real object's lore entry (name + sublabel + ASTRO's
+ * lore line). Derived from the `lore` namespace of `Messages` so the data module's
+ * `loreKey`s stay compile-locked to the en+ru catalog — a missing/typo'd key fails
+ * to type-check (ADR-0010 §4: "no inline user-facing strings").
+ */
+export type LoreKey = keyof Messages["lore"];
+
 export type Mood =
   | "joyful"
   | "tender"
@@ -61,6 +71,10 @@ export type MemoryStar = {
   who?: string | null; // opt-in attribution; null/absent = anonymous (brief §6)
   egg?: boolean; // the hidden dedication star (reveal on click)
   deep?: boolean; // the "fly-home" deep-story star (separate from the egg)
+  // Mood-constellation membership (Layer B — ADR-0010 §1/§4-④, spec §3). Same-group
+  // stars connect in `createdAt` order; absent/undefined = standalone (Mom's gold
+  // star, the egg). Additive + optional → fully back-compat with today's flat stars.
+  group?: string;
   // Where this star lives in the universe (ADR-0008 §2). Optional for back-compat:
   // a star without `placement` defaults to the home galaxy (`tier:'galaxy', parentId:'home'`).
   placement?: Placement;
@@ -151,4 +165,65 @@ export type GalaxyStore = {
   homeNode?(): GalaxyNode; // the Local Group's focused/home tier-2 node, with live stars
   skyFor?(nodeId: string): GalaxySky; // a per-galaxy `GalaxySky` projection
   starsForView?(tier: Tier, parentId?: string): MemoryStar[]; // stars placed in one view
+};
+
+// ── Layer A — the curated real-astronomy dataset (ADR-0010 §4) ─────────────────
+// The real *setting* the visitor lands in: the real Milky Way + its real Local-Group
+// neighbours + real labelled deep-space features, at their real light-year distances.
+// Authored as a static `as const` list (`realdata.ts`) — SSR-safe, no module-scope
+// `Math.random()` / `Date.now()`. Real objects are NOT memories (Layer B); they carry
+// their own positions/colours/lore and never recolor or anchor a Memory Star.
+
+/** What sort of real object this is — drives which silhouette/feature the renderer draws. */
+export type RealKind = "galaxy" | "nebula" | "star" | "marker" | "armLabel";
+
+/** Real morphology (spec §5.1a) → which silhouette the renderer draws. */
+export type RealShape =
+  | "barred-spiral"
+  | "spiral"
+  | "magellanic"
+  | "irregular"
+  | "dwarf-spheroidal"
+  | "nebula"
+  | "star"
+  | "marker";
+
+/**
+ * The *real* distance — the published heliocentric figure, rounded to display
+ * precision (spec §5.1). Decoupled from `placement`: it powers the lore card + the
+ * scale-net labels, not the render position. (No `AU` in v1 — the Solar-System tier
+ * is deferred to #127; the unit union extends there.)
+ */
+export type RealDistance = {
+  value: number;
+  unit: "ly" | "Mly";
+};
+
+/**
+ * A real object in Layer A. The `(r, angle)` placement is **hand-authored
+ * close-to-real** — ordered by real distance, recognizable, NOT a survey-accurate
+ * projection (ADR-0010 §4-②, no `logScale` engine). `loreKey` is the i18n seam:
+ * the ASTRO lore line + name/sublabel copy live in the catalog (en+ru), never inline.
+ * `gateway:true` ONLY on the home Milky Way + Sol.
+ */
+export type RealObject = {
+  id: string; // stable, deep-linkable
+  kind: RealKind;
+  name: string; // dev/debug label — user-facing copy is in `loreKey`'s catalog entry
+  catalogue?: string; // e.g. "M31"
+  tier: Tier;
+  parentId?: string;
+  realDistance: RealDistance;
+  placement: { r: number; angle: number }; // polar render position (0..1, radians)
+  shape: RealShape;
+  size: number; // 0..1 relative silhouette scale
+  brightness: number; // 0..1
+  color: string; // hex; cool palette — gold (#f5d6a0) reserved for chrome/Sol
+  loreKey: LoreKey; // i18n catalog key → name + sublabel + ASTRO lore line (en+ru)
+  gateway?: boolean; // descendable — ONLY the home Milky Way + Sol
+  // galaxy extras
+  arms?: number;
+  barAngle?: number; // radians
+  tilt?: number; // disk inclination, radians
+  satellites?: readonly RealObject[]; // M31 → optional M32 / M110
 };
