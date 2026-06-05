@@ -44,28 +44,75 @@ export type BackdropGeometry = {
   bulge: BackdropPoint[]; // bright rounded core cloud
 };
 
+/**
+ * Where a disk sits on the stage (ADR-0011 §1). The disk-polar → stage projection
+ * scales by `r`, rotates by `pa` (position angle, radians), foreshortens the y axis
+ * by `tilt`, and offsets to `(cx, cy)`. This lets the *same* generator paint the
+ * home Milky Way and every Local-Group neighbour — one renderer, not two (the proof:
+ * `docs/design/proofs/2026-06-06-neighbour-in-scene-proof.png`).
+ */
+export type DiskPlacement = {
+  cx: number; // disk centre x (stage px)
+  cy: number; // disk centre y (stage px)
+  r: number; // disk radius (stage px) — was the locked GALAXY_R
+  tilt: number; // y-axis foreshortening (disk inclination)
+  pa: number; // position angle — rotates the whole disk in-plane (radians)
+};
+
+/**
+ * The default placement — the home Milky Way, derived from the locked stage
+ * constants (`GALAXY_CENTER` / `GALAXY_R` / `DISK_TILT`, no rotation). **With this
+ * default the projection reduces EXACTLY to the pre-I-1 `toStage` (pa:0 ⇒
+ * cos(θ+0)=cos θ), so the default render is byte-identical to today** (ADR-0011 §1,
+ * the byte-identical invariant — no MW pixel, seed, or test moves).
+ */
+export const MW_PLACEMENT: DiskPlacement = {
+  cx: GALAXY_CENTER.x,
+  cy: GALAXY_CENTER.y,
+  r: GALAXY_R,
+  tilt: DISK_TILT,
+  pa: 0,
+};
+
 const TAU = Math.PI * 2;
 const ARM_WIND = 1.8; // log-spiral winding: theta = base + ln(r/startR) * ARM_WIND
 const START_R = 0.12; // inner radius where the arms begin
 
-/** Disk-polar (rNorm 0..1, theta rad) → stage pixels, foreshortened by the tilt. */
-const toStage = (rNorm: number, theta: number): { x: number; y: number } => {
-  const rr = rNorm * GALAXY_R;
+/**
+ * Disk-polar (rNorm 0..1, theta rad) → stage pixels for one placement: scale by `r`,
+ * rotate the in-plane angle by `pa`, foreshorten y by `tilt`, offset to `(cx, cy)`.
+ * At `MW_PLACEMENT` (pa:0) this is the original `GALAXY_CENTER ± cos/sin·rNorm·GALAXY_R`
+ * verbatim — the byte-identical default (ADR-0011 §1).
+ */
+const toStage = (
+  rNorm: number,
+  theta: number,
+  place: DiskPlacement,
+): { x: number; y: number } => {
+  const rr = rNorm * place.r;
+  const a = theta + place.pa;
   return {
-    x: GALAXY_CENTER.x + Math.cos(theta) * rr,
-    y: GALAXY_CENTER.y + Math.sin(theta) * rr * DISK_TILT,
+    x: place.cx + Math.cos(a) * rr,
+    y: place.cy + Math.sin(a) * rr * place.tilt,
   };
 };
 
-const pointAt = (
+/**
+ * Project one disk-polar point into a placed, stage-clamped `BackdropPoint`. Exported
+ * so the `shape`→recipe map (`galaxy-render.ts`, ADR-0011 §1) reuses the *same*
+ * projection + `Math.round` quantization + stage clamp + RNG-driven size as the
+ * spiral generator — one renderer, not two. Pure + SSR-safe (`mulberry32`-fed `rng`).
+ */
+export const pointAt = (
   rNorm: number,
   theta: number,
   rng: () => number,
   alpha: number,
   warm: number,
   bigChance: number,
+  place: DiskPlacement,
 ): BackdropPoint => {
-  const p = toStage(rNorm, theta);
+  const p = toStage(rNorm, theta, place);
   return {
     x: clamp(Math.round(p.x), 0, STAGE_W),
     y: clamp(Math.round(p.y), 0, STAGE_H),
@@ -78,6 +125,7 @@ const pointAt = (
 
 export const buildBackdropGeometry = (
   backdrop: GalaxyBackdrop,
+  place: DiskPlacement = MW_PLACEMENT,
 ): BackdropGeometry => {
   const { seed, branches, spin, randomnessPower } = backdrop;
 
@@ -120,6 +168,7 @@ export const buildBackdropGeometry = (
           (0.42 + armRng() * 0.48) * fade,
           0.35 + armRng() * 0.6,
           0.12,
+          place,
         ),
       );
     }
@@ -139,6 +188,7 @@ export const buildBackdropGeometry = (
         0.5 + bulgeRng() * 0.45,
         0.6 + bulgeRng() * 0.4,
         0.4,
+        place,
       ),
     );
   }

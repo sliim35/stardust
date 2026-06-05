@@ -7,6 +7,7 @@ import {
 } from "react";
 import { createFocusController } from "#/lib/galaxy/focus";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
+import { localGroupNeighbours } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import type { MemoryStar, Tier } from "#/lib/galaxy/types";
@@ -92,6 +93,12 @@ export const GalaxyStage = () => {
     () => ({ ...sky.backdrop, palette }),
     [sky.backdrop, palette],
   );
+  // The 4 real Local-Group neighbours (ADR-0011 §1, I-1): painted on the L2 disk
+  // canvas alongside the home Milky Way via the same soft-glow renderer. Stable
+  // identity (the curated dataset never changes) so the disk redraws only on a real
+  // input change, not on every ignite re-render. Tier framing / depth bands are
+  // I-2 / I-3 / I-4 — here they sit at their authored data placements.
+  const neighbours = useMemo(() => localGroupNeighbours(), []);
 
   const scale = useStageFit();
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
@@ -140,7 +147,7 @@ export const GalaxyStage = () => {
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
             <div className="galaxy-l2-wrap" ref={cam.l2}>
-              <GalaxyBackdrop backdrop={backdrop} />
+              <GalaxyBackdrop backdrop={backdrop} neighbours={neighbours} />
             </div>
             <div className="galaxy-l3-wrap" ref={cam.l3}>
               <InteractiveStars
