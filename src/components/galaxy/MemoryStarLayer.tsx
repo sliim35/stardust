@@ -14,9 +14,18 @@ import { MemoryStarView } from "./MemoryStarView";
 type Props = {
   stars: readonly MemoryStar[];
   ignitingIds?: ReadonlySet<string>;
+  /** Slice E (#153): when set, each star is an accessible click target. */
+  onSelect?: (star: MemoryStar) => void;
+  /** i18n fallback aria-label for unnamed stars. */
+  a11yLabel?: string;
 };
 
-export const MemoryStarLayer = ({ stars, ignitingIds }: Props) => {
+export const MemoryStarLayer = ({
+  stars,
+  ignitingIds,
+  onSelect,
+  a11yLabel,
+}: Props) => {
   const positions = layoutStars(stars);
   const ordered = [...stars].sort((a, b) => a.createdAt - b.createdAt);
 
@@ -28,6 +37,8 @@ export const MemoryStarLayer = ({ stars, ignitingIds }: Props) => {
           star={star}
           position={positions[star.id]}
           igniting={ignitingIds?.has(star.id)}
+          onSelect={onSelect}
+          a11yLabel={a11yLabel}
         />
       ))}
     </div>

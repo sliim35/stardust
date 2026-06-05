@@ -22,9 +22,23 @@ import type { MemoryStar } from "#/lib/galaxy/types";
  * SSR-safe and hydrates without mismatch.
  */
 
-type Props = { star: MemoryStar; position: Point; igniting?: boolean };
+type Props = {
+  star: MemoryStar;
+  position: Point;
+  igniting?: boolean;
+  /** When set, the star becomes an accessible click target (slice E, #153). */
+  onSelect?: (star: MemoryStar) => void;
+  /** i18n fallback aria-label for unnamed stars (the egg). */
+  a11yLabel?: string;
+};
 
-export const MemoryStarView = ({ star, position, igniting = false }: Props) => {
+export const MemoryStarView = ({
+  star,
+  position,
+  igniting = false,
+  onSelect,
+  a11yLabel,
+}: Props) => {
   const color = starColor(star);
   const sz = bloomSizing(star);
   const tw = twinkleParams(star);
@@ -64,6 +78,14 @@ export const MemoryStarView = ({ star, position, igniting = false }: Props) => {
         <span className="mem-star__hot" />
         <span className="mem-star__core" />
       </span>
+      {onSelect && (
+        <button
+          type="button"
+          className="mem-star__hit"
+          aria-label={star.name ?? a11yLabel}
+          onClick={() => onSelect(star)}
+        />
+      )}
       {label !== null && (
         <span className="mem-star__label" aria-hidden="true">
           {star.name && <em className="mem-star__name">{star.name}</em>}
