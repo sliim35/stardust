@@ -197,7 +197,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
 
     const root = stage.current;
     root?.addEventListener("wheel", onWheel, { passive: false });
-    root?.addEventListener("touchstart", onTouchStart, { passive: false });
+    root?.addEventListener("touchstart", onTouchStart); // passive (default): onTouchStart never preventDefaults
     root?.addEventListener("touchmove", onTouchMove, { passive: false });
     root?.addEventListener("touchend", onTouchEnd);
     root?.addEventListener("touchcancel", onTouchEnd);
