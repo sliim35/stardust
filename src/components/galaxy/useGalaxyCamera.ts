@@ -235,11 +235,21 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
         ? screenToStage(client, rect, focusState.current.target)
         : null;
     };
+    // #138: the cursor reads `grab` at rest and `grabbing` while a pan is in
+    // flight. Drive it off a `data-dragging` attr on the stage root (CSS:
+    // `.galaxy-stage[data-dragging] { cursor: grabbing }` in styles.css) rather
+    // than `:active`, which would also fire on a plain click that never pans.
+    const setDragging = (on: boolean) => {
+      if (!root) return;
+      if (on) root.setAttribute("data-dragging", "");
+      else root.removeAttribute("data-dragging");
+    };
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0 && e.pointerType === "mouse") return; // left button only
       if (drag.id !== -1) {
         // A second finger went down → this is a pinch, not a pan: abort the drag.
         drag.id = -1;
+        setDragging(false);
         return;
       }
       const world = toWorld(e);
@@ -253,6 +263,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       drag.lastDelta = { x: 0, y: 0 };
       drag.lastMs = performance.now();
       bumpIdle();
+      setDragging(true);
       root?.setPointerCapture?.(e.pointerId);
     };
     const onPointerMoveDrag = (e: PointerEvent) => {
@@ -274,6 +285,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     const endDrag = (e: PointerEvent) => {
       if (e.pointerId !== drag.id) return;
       drag.id = -1;
+      setDragging(false); // back to `grab` (before the reduce early-return below)
       root?.releasePointerCapture?.(e.pointerId);
       bumpIdle();
       // Inertia: fling the leftover velocity (world px/s) from the last move.

@@ -208,6 +208,14 @@ body {
   z-index: 1;
   overflow: hidden;
   touch-action: none;
+  /* #138: the whole stage is draggable (pan). `grab` at rest, `grabbing` only
+     while a pointer drag is in progress — driven by the data-dragging attr the
+     drag in useGalaxyCamera sets on pointer-down and clears on release/abort.
+     NOT `:active`, which would also fire on a plain click that isn't a pan. */
+  cursor: grab;
+}
+.galaxy-stage[data-dragging] {
+  cursor: grabbing;
 }
 
 /* Layer A — full-bleed space (#76): nebula tint + L1 deep starfield, carrying
@@ -217,16 +225,20 @@ body {
   inset: 0;
   will-change: transform;
 }
-/* The nebula tint lifted out of the L2 canvas (#76): full-viewport radial
+/* The nebula tint lifted out of the L2 canvas (#76): full-viewport radial haze
    washes anchored on the disk center, each fading to transparent — so the field
    is seamless to all four edges with no confined-rect border.
 
-   Anchor = 50% 50% (NOT 38%). The bulge cluster is drawn at GALAXY_CENTER
-   (640,400) = stage center, and .galaxy-stage__fit centers the stage in the
-   viewport — so the bright core lands at viewport 50% 50%. These washes are
-   full-viewport, so they MUST anchor there to sit on the bulge; the earlier
-   38% (a viewport fraction mistaken for "disk center") split the core into two
-   offset glows ("two suns"). Keep this aligned with .galaxy / .galaxy__core.
+   #137 removed the central core wash (the `9% 11% at 50% 50%` --tint-core-*
+   gradient that used to lead this stack). The tint host is full-viewport and
+   pinned to viewport-center — it is NOT inside the camera-transformed stage — so
+   that core glow floated disconnected from the disk on pan/zoom (#109/#110).
+   The bright centre now comes solely from the L2 bulge point-cloud (GalaxyBackdrop),
+   which moves WITH the camera. Only the haze washes (`--tint-haze-near/far`) stay.
+
+   Anchor = 50% 50%: the bulge cluster is drawn at GALAXY_CENTER (640,400) = stage
+   center, and .galaxy-stage__fit centers the stage in the viewport — so the haze
+   sits on the bulge at viewport center. Keep this aligned with .galaxy / .galaxy__core.
 
    #94: the chrome layout (absolute/inset/size/pointer-events) moved to Tailwind
    utilities on BackdropTint.tsx; the multi-stop gradient is a Tailwind-managed
@@ -238,12 +250,6 @@ body {
    switch re-tints it together with the disk glow. */
 @utility backdrop-tint-gradient {
   background:
-    radial-gradient(
-      9% 11% at 50% 50%,
-      color-mix(in srgb, var(--tint-core-hot) 55%, transparent) 0%,
-      color-mix(in srgb, var(--tint-core-warm) 18%, transparent) 48%,
-      transparent 100%
-    ),
     radial-gradient(
       28% 32% at 50% 50%,
       color-mix(in srgb, var(--tint-haze-near) 14%, transparent) 0%,
