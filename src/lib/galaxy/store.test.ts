@@ -197,6 +197,47 @@ describe("createInMemoryStore — universe seam (ADR-0008)", () => {
     expect(store.skyFor?.(HOME_GALAXY_ID)).toEqual(store.getSky());
   });
 
+  it("skyFor('home') stays equal to getSky() after a star is added (#126 AC1 — stage parity)", () => {
+    // The stage reads its GalaxySky via skyFor('home') instead of getSky(); the two
+    // must remain byte-identical so routing through the projection is render-invisible.
+    const store = createInMemoryStore();
+    store.addStar(sampleStar({ id: "parity-1" }));
+    expect(store.skyFor?.(HOME_GALAXY_ID)).toEqual(store.getSky());
+  });
+
+  it("homeNode() is the live home GalaxyNode of the Local Group (#126 AC2)", () => {
+    const store = createInMemoryStore();
+    const home = store.homeNode?.();
+    expect(home?.id).toBe(HOME_GALAXY_ID);
+    expect(home?.placement.tier).toBe("localGroup");
+    // it IS the home node the universe read exposes
+    const fromUniverse = store
+      .getUniverse?.()
+      ?.localGroup.galaxies.find((g) => g.id === HOME_GALAXY_ID);
+    expect(home).toEqual(fromUniverse);
+  });
+
+  it("homeNode() carries the live seeded stars with home placement (#126 AC3)", () => {
+    const store = createInMemoryStore();
+    const skyIds = store
+      .getSky()
+      .stars.map((s) => s.id)
+      .sort();
+    const home = store.homeNode?.();
+    expect((home?.stars ?? []).map((s) => s.id).sort()).toEqual(skyIds);
+    for (const s of home?.stars ?? []) {
+      expect(s.placement?.tier).toBe("galaxy");
+      expect(s.placement?.parentId).toBe(HOME_GALAXY_ID);
+    }
+  });
+
+  it("homeNode() reflects an added home star (live, not frozen)", () => {
+    const store = createInMemoryStore();
+    store.addStar(sampleStar({ id: "fresh-home-node" }));
+    const ids = (store.homeNode?.()?.stars ?? []).map((s) => s.id);
+    expect(ids).toContain("fresh-home-node");
+  });
+
   it("starsForView('galaxy','home') returns the seeded home stars", () => {
     const store = createInMemoryStore();
     const viewIds = (store.starsForView?.("galaxy", HOME_GALAXY_ID) ?? [])

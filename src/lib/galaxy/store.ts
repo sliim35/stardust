@@ -12,10 +12,12 @@ import {
   buildLocalGroup,
   starsForView as filterStarsForView,
   HOME_GALAXY_ID,
+  homeGalaxyOf,
   withHomePlacement,
 } from "#/lib/galaxy/scenegraph";
 import { buildSeedSky } from "#/lib/galaxy/seed";
 import type {
+  GalaxyNode,
   GalaxySky,
   GalaxyStore,
   MemoryStar,
@@ -48,6 +50,23 @@ export const createInMemoryStore = (initial?: GalaxySky): GalaxyStore => {
     stars: sky.stars.map((s) => ({ ...s })),
   });
 
+  // The full derived scene graph with live home stars merged in (ADR-0008 §5).
+  // Closure-local so `getUniverse`/`homeNode` share one source of truth without a
+  // `this` binding (a destructured `store.homeNode` would otherwise lose `this`).
+  const buildUniverse = (): Universe => {
+    const localGroup = buildLocalGroup(universeSeed);
+    const liveHomeStars = snapshot().stars.map(withHomePlacement);
+    return {
+      seed: universeSeed,
+      localGroup: {
+        ...localGroup,
+        galaxies: localGroup.galaxies.map((g) =>
+          g.id === HOME_GALAXY_ID ? { ...g, stars: liveHomeStars } : g,
+        ),
+      },
+    };
+  };
+
   return {
     getSky() {
       return snapshot();
@@ -70,17 +89,15 @@ export const createInMemoryStore = (initial?: GalaxySky): GalaxyStore => {
     // Scenery is *derived* on demand (memoized in scenegraph.ts); only the live
     // Memory Stars come from this store. The home galaxy's stars are the live sky.
     getUniverse(): Universe {
-      const localGroup = buildLocalGroup(universeSeed);
-      const liveHomeStars = snapshot().stars.map(withHomePlacement);
-      return {
-        seed: universeSeed,
-        localGroup: {
-          ...localGroup,
-          galaxies: localGroup.galaxies.map((g) =>
-            g.id === HOME_GALAXY_ID ? { ...g, stars: liveHomeStars } : g,
-          ),
-        },
-      };
+      return buildUniverse();
+    },
+
+    // The Local Group's focused/home tier-2 node (ADR-0008 §3, #126 AC2) — the
+    // curated galaxy you land on entering the group. Resolved from the same live
+    // universe read so its stars carry home placement and reflect appends (one
+    // source of truth for the live-stars merge — no second projection to drift).
+    homeNode(): GalaxyNode {
+      return homeGalaxyOf(buildUniverse().localGroup);
     },
 
     skyFor(nodeId: string): GalaxySky {

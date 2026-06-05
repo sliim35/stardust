@@ -4,6 +4,7 @@ import {
   buildLocalGroup,
   buildSolarSystem,
   HOME_GALAXY_ID,
+  homeGalaxyOf,
   starsForView,
 } from "#/lib/galaxy/scenegraph";
 import { buildSeedSky } from "#/lib/galaxy/seed";
@@ -73,6 +74,53 @@ describe("buildLocalGroup", () => {
       expect(s.placement?.r).toBe(s.r);
       expect(s.placement?.angle).toBe(s.angle);
     }
+  });
+
+  it("seats the seeded Irina + egg memory stars on the home galaxy (#126 AC3)", () => {
+    const home = buildLocalGroup(UNIVERSE_SEED).galaxies.find(
+      (g) => g.id === HOME_GALAXY_ID,
+    );
+    const byId = new Map((home?.stars ?? []).map((s) => [s.id, s]));
+    // The two special seed stars must live on home, each with a home placement.
+    for (const id of ["irina", "egg"]) {
+      const s = byId.get(id);
+      expect(
+        s,
+        `seeded star "${id}" should live on the home galaxy`,
+      ).toBeDefined();
+      expect(s?.placement?.tier).toBe("galaxy");
+      expect(s?.placement?.parentId).toBe(HOME_GALAXY_ID);
+    }
+  });
+});
+
+describe("homeGalaxyOf (#126 — home is the Local Group's focused/home node)", () => {
+  it("resolves the home GalaxyNode from a Local Group", () => {
+    const lg = buildLocalGroup(UNIVERSE_SEED);
+    expect(homeGalaxyOf(lg).id).toBe(HOME_GALAXY_ID);
+  });
+
+  it("returns the exact home node held by the group (not a copy)", () => {
+    const lg = buildLocalGroup(UNIVERSE_SEED);
+    const direct = lg.galaxies.find((g) => g.id === HOME_GALAXY_ID);
+    expect(homeGalaxyOf(lg)).toBe(direct);
+  });
+
+  it("carries the seeded sky as its backdrop + stars (the tier-2 home projection)", () => {
+    const home = homeGalaxyOf(buildLocalGroup(UNIVERSE_SEED));
+    const sky = buildSeedSky();
+    expect(home.backdrop).toEqual(sky.backdrop);
+    const ids = new Set(home.stars.map((s) => s.id));
+    for (const s of sky.stars) expect(ids.has(s.id)).toBe(true);
+  });
+
+  it("throws if a group somehow has no home galaxy (invariant guard)", () => {
+    const lg = buildLocalGroup(UNIVERSE_SEED);
+    const homeless = {
+      ...lg,
+      galaxies: lg.galaxies.filter((g) => g.id !== HOME_GALAXY_ID),
+    };
+    expect(() => homeGalaxyOf(homeless)).toThrow();
   });
 });
 
