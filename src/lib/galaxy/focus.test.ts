@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Camera } from "#/lib/galaxy/camera";
-import { ZOOM_MIN } from "#/lib/galaxy/camera";
+import { ZOOM_MAX, ZOOM_MIN } from "#/lib/galaxy/camera";
 import {
   back,
   cancelFocus,
@@ -12,6 +12,7 @@ import {
   isArrived,
   resolveFocusTarget,
   stepFocus,
+  zoomCamera,
 } from "#/lib/galaxy/focus";
 import { polarToXY } from "#/lib/galaxy/place";
 import type { GalaxySky, MemoryStar } from "#/lib/galaxy/types";
@@ -129,6 +130,67 @@ describe("cancelFocus — a user drag cancels the in-flight ease", () => {
     const s1 = focusCamera(s0, cam(760, 440, 1.8));
     const cancelled = cancelFocus(stepFocus(s1, 0.3));
     expect(cancelled.prior).toEqual(DEFAULT_FRAMING);
+  });
+});
+
+describe("zoomCamera (#110 wheel/pinch) — retarget the eased move, anchored", () => {
+  it("retargets toward an anchored zoom and drives the RAF (focusing=true)", () => {
+    const s0 = createFocus(cam(640, 400, 1));
+    const z = zoomCamera(s0, { x: 800, y: 400 }, 2);
+    expect(z.target.zoom).toBe(2); // anchored zoom-in
+    expect(z.target.cx).toBeGreaterThan(640); // center eased toward the cursor
+    expect(z.target.cx).toBeLessThan(800);
+    expect(z.focusing).toBe(true);
+  });
+
+  it("eases through the loop — current never snaps on a zoom", () => {
+    const s0 = createFocus(cam(640, 400, 1));
+    const z = zoomCamera(s0, { x: 800, y: 400 }, 2);
+    expect(z.current).toEqual(cam(640, 400, 1)); // RAF eases current→target later
+  });
+
+  it("compounds repeated ticks off the TARGET so the ease is smooth (no jitter)", () => {
+    const s0 = createFocus(cam(640, 400, 1));
+    const a = zoomCamera(s0, { x: 800, y: 400 }, 1.2); // tick 1 (mid-ease)
+    const b = zoomCamera(a, { x: 800, y: 400 }, 1.2); // tick 2 before tick 1 settled
+    expect(b.target.zoom).toBeCloseTo(1.2 * 1.2, 6); // off target, not current
+  });
+
+  it("clamps the target zoom to [ZOOM_MIN, ZOOM_MAX]", () => {
+    const s0 = createFocus(cam(640, 400, 1));
+    expect(zoomCamera(s0, { x: 640, y: 400 }, 100).target.zoom).toBe(ZOOM_MAX);
+    expect(zoomCamera(s0, { x: 640, y: 400 }, 0.001).target.zoom).toBe(
+      ZOOM_MIN,
+    );
+  });
+
+  it("no jitter at the clamp edge: zooming past ZOOM_MAX leaves the target unchanged", () => {
+    const s0 = createFocus(cam(700, 420, ZOOM_MAX));
+    const z = zoomCamera(s0, { x: 900, y: 500 }, 1.4);
+    expect(z.target).toEqual(cam(700, 420, ZOOM_MAX)); // k=0 → no recenter
+  });
+
+  it("preserves prior so ESC/back is unaffected by a zoom", () => {
+    const focused = focusCamera(
+      createFocus(DEFAULT_FRAMING),
+      cam(760, 440, 1.8),
+    );
+    const z = zoomCamera(focused, { x: 800, y: 400 }, 1.3);
+    expect(z.prior).toEqual(DEFAULT_FRAMING); // zoom must not clobber the back target
+  });
+
+  it("snaps under reduced motion (current lands on the anchored target)", () => {
+    const s0 = createFocus(cam(640, 400, 1));
+    const z = zoomCamera(s0, { x: 800, y: 400 }, 2, true);
+    expect(z.current).toEqual(z.target); // instant, no ease
+    expect(z.focusing).toBe(false);
+  });
+
+  it("is pure — does not mutate the prior state", () => {
+    const s0 = createFocus(cam(640, 400, 1));
+    zoomCamera(s0, { x: 800, y: 400 }, 2);
+    expect(s0.target).toEqual(cam(640, 400, 1));
+    expect(s0.focusing).toBe(false);
   });
 });
 

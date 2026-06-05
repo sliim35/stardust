@@ -12,8 +12,13 @@
  * so the append-only invariant holds: framing a star can't move any other star.
  */
 
-import { type Camera, focusOn, lerpCamera } from "#/lib/galaxy/camera";
-import { GALAXY_CENTER, polarToXY } from "#/lib/galaxy/place";
+import {
+  type Camera,
+  focusOn,
+  lerpCamera,
+  zoomToCursor,
+} from "#/lib/galaxy/camera";
+import { GALAXY_CENTER, type Point, polarToXY } from "#/lib/galaxy/place";
 import type { GalaxySky } from "#/lib/galaxy/types";
 
 /**
@@ -79,6 +84,32 @@ export const focusCamera = (state: FocusState, target: Camera): FocusState => ({
   // First focus records the resting framing; an interrupting focus preserves it.
   prior: state.focusing ? state.prior : { ...state.current },
 });
+
+/**
+ * Wheel / pinch zoom (#110): retarget the eased move toward an anchored zoom so
+ * the stage point under the cursor / pinch midpoint stays put. Composes — never
+ * forks — the pure `zoomToCursor` (clamped to `ZOOM_MIN/MAX`), anchored on the
+ * *target* so rapid ticks compound smoothly toward where the camera is heading
+ * rather than fighting the in-flight ease (no jitter). `prior` is preserved so a
+ * zoom never disturbs the ESC/back framing. Under reduced motion (`reduce`) the
+ * move snaps: `current` lands on the new target immediately, the existing
+ * reduced-motion pattern (no RAF). `anchor` is a camera-world `Point` — the
+ * component converts the client event via `camera.ts`'s `screenToStage`.
+ */
+export const zoomCamera = (
+  state: FocusState,
+  anchor: Point,
+  factor: number,
+  reduce = false,
+): FocusState => {
+  const target = zoomToCursor(state.target, anchor, factor);
+  return {
+    current: reduce ? { ...target } : { ...state.current },
+    target,
+    focusing: !reduce,
+    prior: state.prior,
+  };
+};
 
 /**
  * Cancel an in-flight ease because the user grabbed the camera (drag-to-pan, #109).

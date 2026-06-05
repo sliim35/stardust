@@ -3,6 +3,9 @@ import {
   type Camera,
   cameraTransform,
   parallaxOffsets,
+  type StageRect,
+  screenToStage,
+  wheelZoomFactor,
 } from "#/lib/galaxy/camera";
 import {
   back,
@@ -14,7 +17,9 @@ import {
   focusCamera,
   resolveFocusTarget,
   stepFocus,
+  zoomCamera,
 } from "#/lib/galaxy/focus";
+import { STAGE_W } from "#/lib/galaxy/place";
 import type { GalaxySky } from "#/lib/galaxy/types";
 
 /**
@@ -31,8 +36,16 @@ import type { GalaxySky } from "#/lib/galaxy/types";
  * user pointer-drag cancels it (drag-to-pan lands in #109). `Escape` returns to
  * the prior framing (or the zoomed-out default).
  *
+ * Zoom-to-cursor (#110) folds into the SAME eased loop: wheel + two-finger pinch
+ * retarget the focus machine via `zoomCamera` (pure `zoomToCursor`, anchored at
+ * the cursor / pinch midpoint, clamped), and the RAF eases `current → target` —
+ * no new easing math. Client coords are inverted to camera-world via
+ * `screenToStage` using the live contain-fit rect (`fit` ref), so the anchored
+ * point stays put. Wheel/touch listeners are attached natively (non-passive) so
+ * the gesture can `preventDefault` page scroll / browser pinch-zoom.
+ *
  * Under `prefers-reduced-motion` the parallax/idle drift is pinned static and a
- * focus *snaps* (drives `t = 1`) instead of easing (design spec §A11y).
+ * focus / zoom *snaps* (drives `t = 1`) instead of easing (design spec §A11y).
  */
 
 type CameraRefs = {
@@ -40,6 +53,10 @@ type CameraRefs = {
   l2: RefObject<HTMLDivElement | null>;
   l3: RefObject<HTMLDivElement | null>;
   cam: RefObject<HTMLDivElement | null>;
+  /** The scene root — hosts the native (non-passive) wheel/touch zoom listeners. */
+  stage: RefObject<HTMLDivElement | null>;
+  /** The contain-fit box — its client rect maps wheel/pinch px → stage space. */
+  fit: RefObject<HTMLDivElement | null>;
   onPointerMove: (e: { clientX: number; clientY: number }) => void;
   onPointerLeave: () => void;
   onPointerDown: () => void;
@@ -57,6 +74,8 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
   const l2 = useRef<HTMLDivElement>(null);
   const l3 = useRef<HTMLDivElement>(null);
   const cam = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const fit = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: 0, y: 0, active: false });
 
   // Keep the latest controller/getSky without re-subscribing the RAF effect.
@@ -122,11 +141,80 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     };
     window.addEventListener("keydown", onKeyDown);
 
+    // --- zoom-to-cursor (#110): wheel + two-finger pinch -------------------
+    // Both gestures retarget the focus machine via `zoomCamera`; the RAF eases
+    // current→target (under reduce we snap here, since there is no RAF). The
+    // anchor is converted client→world off the *target* camera so repeated ticks
+    // compound jitter-free toward where the camera is heading.
+    const stageRect = (): StageRect | null => {
+      const el = fit.current;
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { left: r.left, top: r.top, scale: r.width / STAGE_W };
+    };
+    const applyZoom = (client: { x: number; y: number }, factor: number) => {
+      if (factor === 1) return;
+      const rect = stageRect();
+      if (!rect) return;
+      const anchor = screenToStage(client, rect, focusState.current.target);
+      focusState.current = zoomCamera(
+        focusState.current,
+        anchor,
+        factor,
+        reduce,
+      );
+      if (reduce) applyCamera(focusState.current.current); // no RAF — paint now
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault(); // own the gesture: no page scroll while zooming
+      applyZoom({ x: e.clientX, y: e.clientY }, wheelZoomFactor(e.deltaY));
+    };
+
+    // Pinch: track the two-finger span; each move zooms by the span ratio,
+    // anchored at the midpoint. A single touch is left for pan (#109).
+    let pinchPrev = 0;
+    const span = (t: TouchList) =>
+      Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const mid = (t: TouchList) => ({
+      x: (t[0].clientX + t[1].clientX) / 2,
+      y: (t[0].clientY + t[1].clientY) / 2,
+    });
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) pinchPrev = span(e.touches);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || pinchPrev === 0) return;
+      e.preventDefault(); // own the pinch: no browser page-zoom
+      const next = span(e.touches);
+      applyZoom(mid(e.touches), next / pinchPrev);
+      pinchPrev = next;
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      // Re-arm the span when a finger lifts/lands so a 2→1→2 sequence is smooth.
+      pinchPrev = e.touches.length === 2 ? span(e.touches) : 0;
+    };
+
+    const root = stage.current;
+    root?.addEventListener("wheel", onWheel, { passive: false });
+    root?.addEventListener("touchstart", onTouchStart); // passive (default): onTouchStart never preventDefaults
+    root?.addEventListener("touchmove", onTouchMove, { passive: false });
+    root?.addEventListener("touchend", onTouchEnd);
+    root?.addEventListener("touchcancel", onTouchEnd);
+    const detachZoom = () => {
+      root?.removeEventListener("wheel", onWheel);
+      root?.removeEventListener("touchstart", onTouchStart);
+      root?.removeEventListener("touchmove", onTouchMove);
+      root?.removeEventListener("touchend", onTouchEnd);
+      root?.removeEventListener("touchcancel", onTouchEnd);
+    };
+
     if (reduce) {
-      // Static parallax; focus requests above snap. No RAF to run.
+      // Static parallax; focus + zoom requests above snap. No RAF to run.
       return () => {
         unsubscribe?.();
         window.removeEventListener("keydown", onKeyDown);
+        detachZoom();
       };
     }
 
@@ -170,6 +258,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       cancelAnimationFrame(raf);
       unsubscribe?.();
       window.removeEventListener("keydown", onKeyDown);
+      detachZoom();
     };
   }, []);
 
@@ -178,6 +267,8 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     l2,
     l3,
     cam,
+    stage,
+    fit,
     onPointerMove: (e) => {
       pointer.current = { x: e.clientX, y: e.clientY, active: true };
     },
