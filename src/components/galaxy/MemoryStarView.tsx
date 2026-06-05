@@ -81,7 +81,7 @@ export const MemoryStarView = ({
       {onSelect && (
         <button
           type="button"
-          className="mem-star__hit"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-0 bg-transparent p-0 [block-size:max(var(--bloom),24px)] [inline-size:max(var(--bloom),24px)] focus-visible:[outline:2px_solid_var(--star-color)] focus-visible:[outline-offset:2px]"
           aria-label={star.name ?? a11yLabel}
           onClick={() => onSelect(star)}
         />

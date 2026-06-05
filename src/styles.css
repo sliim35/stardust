@@ -214,13 +214,6 @@ body {
   touch-action: none;
 }
 
-/* Layer A — full-bleed space (#76): nebula tint + L1 deep starfield, carrying
-   the cam.l1 (farthest, slowest) parallax. Full-viewport, decorative. */
-.galaxy-space {
-  position: absolute;
-  inset: 0;
-  will-change: transform;
-}
 /* The nebula tint lifted out of the L2 canvas (#76): full-viewport radial haze
    washes anchored on the disk center, each fading to transparent — so the field
    is seamless to all four edges with no confined-rect border.
@@ -595,27 +588,6 @@ body {
 }
 .mem-star:hover .mem-star__flare-v {
   opacity: 0.6;
-}
-
-/* The transparent click/keyboard hit-area over a star's bloom (slice E, #153).
-   Pointer-only chrome — a plain rule (not a Tailwind utility) so it can sit
-   alongside the other .mem-star__* rules and read their --bloom/--star-color. */
-.mem-star__hit {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: max(var(--bloom), 24px);
-  height: max(var(--bloom), 24px);
-  transform: translate(-50%, -50%);
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 9999px;
-}
-.mem-star__hit:focus-visible {
-  outline: 2px solid var(--star-color);
-  outline-offset: 2px;
 }
 
 .mem-star__label {
