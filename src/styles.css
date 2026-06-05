@@ -430,121 +430,24 @@ body {
    --card-accent is set inline from the object colour (lore: the real colour; memory:
    the agent-owned mood colour — never recoloured). Reduced motion → instant
    (data-reduced-motion on the panel kills the entrance + the @media gate below). */
-/* The fixed full-viewport layer that centres the panel over the stage. */
-.galaxy-card-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 60; /* above the stage + chrome, below nothing in v1 */
-  display: grid;
-  place-items: center;
-  padding: var(--space-gutter, 60px);
-}
-/* The dim click-to-dismiss scrim behind the panel (decorative, aria-hidden). */
+/* The card's soft-glass *look* (blur · hairline · left-only accent · drop shadow ·
+   the FIELD LOG/mood eyebrows · the name/sublabel/body · the close ×) is Tailwind
+   utilities reading the @theme tokens on Card.tsx / CardHost.tsx (#75/#151/#152 — DOM
+   chrome is Tailwind, this file is canvas-stage-only). Only the *animation side* stays
+   here: the entrance @keyframes + the reduced-motion gate, targeting the kept
+   `.galaxy-card` / `.galaxy-card-backdrop` class names (the loader precedent — those
+   classNames remain on the elements alongside the utilities, and double as the
+   unit-test querySelector hooks). The card reads as a window cut into the void: a
+   subtle accent hairline + a thin left-only accent, NOT a boxed glowing ring. */
 .galaxy-card-backdrop {
-  position: absolute;
-  inset: 0;
-  /* A faint wash so the panel reads as foreground without hiding the sky. */
-  background: rgb(4 5 13 / 0.42);
   animation: galaxy-card-scrim-in 0.24s ease-out both;
 }
 .galaxy-card {
-  position: relative;
-  z-index: 1; /* sit above the scrim within the layer */
-  width: max-content;
-  max-width: min(420px, 100%);
-  padding: 22px 26px 24px;
-  /* Soft-glass: translucent dark fill + blur + an accent hairline + glow. */
-  background: var(--color-surface);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
-  border: 1px solid var(--card-accent, var(--color-accent));
-  border-radius: var(--radius);
-  box-shadow: 0 0 28px rgb(4 5 13 / 0.55),
-    0 0 18px color-mix(in srgb, var(--card-accent, var(--color-accent)) 22%, transparent);
   animation: galaxy-card-in 0.28s ease-out both;
-}
-.galaxy-card:focus {
-  outline: none; /* the panel is the focus target but draws no ring (chrome a11y) */
-}
-.galaxy-card:focus-visible {
-  outline: 2px solid var(--card-accent, var(--color-accent));
-  outline-offset: 3px;
 }
 .galaxy-card[data-reduced-motion="true"],
 .galaxy-card[data-reduced-motion="true"] ~ * {
   animation: none;
-}
-
-.galaxy-card__close {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-family: var(--font-mono);
-  font-size: 16px;
-  line-height: 1;
-  color: var(--color-dim-2);
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-.galaxy-card__close:hover {
-  color: var(--color-text);
-}
-.galaxy-card__close:focus-visible {
-  outline: 2px solid var(--card-accent, var(--color-accent));
-  outline-offset: 1px;
-  border-radius: var(--radius-snug);
-}
-
-.galaxy-card__eyebrow {
-  margin: 0 0 10px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--color-dim-2);
-}
-/* Memory skin — the mood word carries the agent's mood colour; the attribution
-   stays dim so the mood reads first. */
-.galaxy-card__eyebrow--mood .galaxy-card__mood {
-  color: var(--card-accent, var(--color-accent));
-}
-.galaxy-card__eyebrow--mood .galaxy-card__who {
-  color: var(--color-dim-2);
-}
-.galaxy-card__name {
-  margin: 0 0 6px;
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: 26px;
-  line-height: 1.15;
-  color: var(--color-text);
-}
-.galaxy-card__sublabel {
-  margin: 0 0 14px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--color-dim-2);
-}
-.galaxy-card__body {
-  margin: 0;
-  font-family: var(--font-serif);
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--color-dim);
-}
-/* The memory text is the heart of the card — slightly louder + italic. */
-.galaxy-card__body--memory {
-  font-style: italic;
-  color: var(--color-text);
 }
 
 @keyframes galaxy-card-scrim-in {
@@ -897,13 +800,11 @@ body {
   }
   /* Cards (#146/#5) open instantly — no scrim fade or panel slide/scale (spec §4).
      Belt-and-braces with the JS `data-reduced-motion` flag so it's instant from the
-     very first paint, before the hook resolves. */
+     very first paint, before the hook resolves. (The close ×'s hover transition is
+     killed by the `motion-reduce:transition-none` utility on the button itself.) */
   .galaxy-card-backdrop,
   .galaxy-card {
     animation: none;
-  }
-  .galaxy-card__close {
-    transition: none;
   }
 }
 

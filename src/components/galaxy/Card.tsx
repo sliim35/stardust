@@ -15,17 +15,27 @@ import { useReducedMotion } from "./useReducedMotion";
  * and is unit-testable without a router. `CardHost` does the `useLocale()` +
  * `useCard` wiring (the codebase's pure-leaf / thin-wrapper split).
  *
- * - **Lore skin** (Layer A — a real object): ASTRO's "FIELD LOG" eyebrow · the
- *   object name · its real-distance sublabel · the curated lore line. Copy is read
- *   from the `lore.<loreKey>` catalog entry — never inline.
- * - **Memory skin** (Layer B — a memory star): the mood eyebrow (in the mood label,
- *   tinted the agent-owned mood colour) · the name · the full memory text · opt-in
- *   attribution. The colour is rendered verbatim (the UI never recolours a star).
+ * - **Lore skin** (Layer A — a real object): ASTRO's "FIELD LOG" eyebrow (mono +
+ *   dim, *not* amber) · the object name · its real-distance sublabel · the curated
+ *   lore line. Copy is read from the `lore.<loreKey>` catalog entry — never inline.
+ * - **Memory skin** (Layer B — a memory star): the mood eyebrow (mono, uppercase,
+ *   tinted the agent-owned mood colour) · the name · the full memory text (serif
+ *   italic, warm) · opt-in attribution. The colour is rendered verbatim (the UI
+ *   never recolours a star).
  *
  * Opens in place; **dismissable** (close button + Escape); **keyboard-focusable**
  * (`role="dialog"`, `aria-modal`, takes focus on open). `prefers-reduced-motion` →
  * `data-reduced-motion` flips the entrance from eased to instant (CSS, the styles
- * convention). Soft-glass look (blur + accent border) lives in `styles.css`.
+ * convention).
+ *
+ * **Styling boundary (#75 / #151 / #152):** the soft-glass chrome is Tailwind
+ * utilities reading the `@theme` design tokens — *not* bespoke `.galaxy-card*` CSS.
+ * The card reads as a **window cut into the void**: a subtle hairline + blur + a
+ * thin **left-only** accent (a quoted passage) and a soft *drop* shadow — amber is
+ * rare/earned, so there is **no** boxed glowing accent ring. The per-instance
+ * `--card-accent` is the data-driven mood/object colour (like PaletteSwitcher's
+ * `--swatch`); the kept `.galaxy-card*` class names are animation + test hooks only
+ * (the `@keyframes` + reduced-motion gate live in `styles.css`, the loader precedent).
  */
 
 type Props = {
@@ -53,7 +63,9 @@ export const Card = ({ model, messages, onClose }: Props) => {
   return (
     <div
       ref={dialogRef}
-      className="galaxy-card"
+      // `galaxy-card` stays for the @keyframes entrance + reduced-motion gate +
+      // the unit-test querySelector hooks; all *styling* is the utilities below.
+      className="galaxy-card relative z-[1] w-max max-w-[min(420px,100%)] rounded border border-[color-mix(in_srgb,var(--card-accent)_28%,transparent)] border-l-2 border-l-(--card-accent) bg-surface px-[26px] pt-[22px] pb-[24px] shadow-[0_14px_46px_rgb(4_5_13/0.62)] backdrop-blur-[7px] focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-(--card-accent)"
       role="dialog"
       aria-modal="true"
       tabIndex={-1}
@@ -64,7 +76,7 @@ export const Card = ({ model, messages, onClose }: Props) => {
     >
       <button
         type="button"
-        className="galaxy-card__close"
+        className="absolute top-2 right-[10px] grid size-[22px] place-items-center border-0 bg-transparent p-0 font-mono text-[16px] leading-none text-dim-2 transition-colors duration-200 hover:text-text focus-visible:rounded-snug focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--card-accent) motion-reduce:transition-none"
         aria-label={messages.card.close}
         onClick={onClose}
       >
@@ -79,7 +91,11 @@ export const Card = ({ model, messages, onClose }: Props) => {
   );
 };
 
-/** Lore skin — ASTRO's FIELD LOG: name · real distance sublabel · lore line. */
+/**
+ * Lore skin — ASTRO's FIELD LOG: name · real distance sublabel · lore line.
+ * The "FIELD LOG" eyebrow is mono + **dim** (not amber): amber is earned, and a
+ * lore card is a quiet field note, not a memory.
+ */
 const LoreBody = ({
   model,
   messages,
@@ -90,15 +106,27 @@ const LoreBody = ({
   const lore = messages.lore[model.loreKey];
   return (
     <>
-      <p className="galaxy-card__eyebrow">{messages.card.fieldLog}</p>
-      <h2 className="galaxy-card__name">{lore.name}</h2>
-      <p className="galaxy-card__sublabel">{lore.sublabel}</p>
-      <p className="galaxy-card__body">{lore.line}</p>
+      <p className="m-0 mb-[10px] font-mono text-[10px] uppercase tracking-[0.22em] text-dim-2">
+        {messages.card.fieldLog}
+      </p>
+      <h2 className="m-0 mb-[6px] font-serif text-[26px] font-normal leading-[1.15] text-text">
+        {lore.name}
+      </h2>
+      <p className="m-0 mb-[14px] font-mono text-[11px] tracking-[0.06em] text-dim-2">
+        {lore.sublabel}
+      </p>
+      <p className="m-0 font-serif text-[16px] leading-[1.5] text-dim">
+        {lore.line}
+      </p>
     </>
   );
 };
 
-/** Memory skin — the mood eyebrow (mood-coloured) · name · the full memory text. */
+/**
+ * Memory skin — the mood eyebrow (mono, uppercase, in the agent-owned mood colour)
+ * · name · the full memory text. The memory text is the heart of the card: serif
+ * italic, lower-case, warm (loud enough to read first).
+ */
 const MemoryBody = ({
   model,
   messages,
@@ -107,13 +135,19 @@ const MemoryBody = ({
   messages: Messages;
 }) => (
   <>
-    <p className="galaxy-card__eyebrow galaxy-card__eyebrow--mood">
-      <span className="galaxy-card__mood">{messages.moods[model.mood]}</span>
-      {model.who ? (
-        <span className="galaxy-card__who"> · {model.who}</span>
-      ) : null}
+    <p className="m-0 mb-[10px] font-mono text-[10px] uppercase tracking-[0.22em]">
+      {/* The mood word carries the agent's mood colour (the earned accent); the
+          attribution stays dim so the mood reads first. */}
+      <span className="text-(--card-accent)">{messages.moods[model.mood]}</span>
+      {model.who ? <span className="text-dim-2"> · {model.who}</span> : null}
     </p>
-    {model.name && <h2 className="galaxy-card__name">{model.name}</h2>}
-    <p className="galaxy-card__body galaxy-card__body--memory">{model.text}</p>
+    {model.name && (
+      <h2 className="m-0 mb-[6px] font-serif text-[26px] font-normal leading-[1.15] text-text">
+        {model.name}
+      </h2>
+    )}
+    <p className="m-0 font-serif text-[16px] italic leading-[1.5] text-text">
+      {model.text}
+    </p>
   </>
 );
