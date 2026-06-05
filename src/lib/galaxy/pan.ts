@@ -44,12 +44,12 @@ const PAN_HALF_X = GALAXY_R;
 const PAN_HALF_Y = GALAXY_R * DISK_TILT;
 
 /** The zoom-1 pan box (widest). Higher zoom tightens it — see `panBoundsFor`. */
-export const PAN_BOUNDS: PanBounds = {
+export const PAN_BOUNDS = {
   minX: GALAXY_CENTER.x - PAN_HALF_X,
   maxX: GALAXY_CENTER.x + PAN_HALF_X,
   minY: GALAXY_CENTER.y - PAN_HALF_Y,
   maxY: GALAXY_CENTER.y + PAN_HALF_Y,
-};
+} as const satisfies PanBounds;
 
 /**
  * The pan box at a given `zoom`. As you zoom in the disk fills more of the screen,
