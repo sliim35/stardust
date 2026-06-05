@@ -33,8 +33,20 @@ green checks.
   as authoritative; auto-append distilled rules to the guide. Flag — never overwrite —
   anything that conflicts with a hand-written rule.
 - **Record:** verdict + learned rules into the story's *Code review* section; a
-  decision-log line; sync the issue. **Post the findings inline on the PR by default**
-  (one `COMMENT` review — summary + per-finding comments); pass `--no-comment` to skip the GitHub write.
+  decision-log line; sync the issue. **Post the findings as ONE PR review by default.**
+  - **Always submit `event: COMMENT`** with the verdict (APPROVE / REQUEST_CHANGES) stated
+    in the review **body** + per-finding inline comments. **Never `event: APPROVE` or
+    `REQUEST_CHANGES`, and never `curl` an approval:** the bot authors these PRs and GitHub
+    rejects a bot approving its own PR (`Review Can not approve your own pull request`).
+  - Post via the bot token through **`gh api repos/sliim35/stardust/pulls/<n>/reviews`**
+    (one batched call — `event=COMMENT`, `body`, `comments[]`); mint the token with
+    `scripts/sdlc/bot-token.sh` and **verify the bot identity before the write**
+    ([[bot-token-expires-mid-session]]).
+  - **If the write is blocked or fails, do NOT silently drop it** — return the
+    ready-to-post review **body + each inline comment's `{path, line, side, body}`** in your
+    final report so the orchestrator posts it verbatim. A review that never reaches the PR
+    is a failed review, not a pass.
+  - Pass `--no-comment` to skip the GitHub write entirely.
 
 ## Boundaries
 - You do not edit source code — only `docs/conventions/code-style.md`, the story's *Code
