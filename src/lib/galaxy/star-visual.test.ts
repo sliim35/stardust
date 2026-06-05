@@ -5,10 +5,14 @@ import {
   haloGradient,
   hoverLabelFor,
   MOOD_LABELS,
+  moodLabel,
+  resolveStarName,
   starColor,
   twinkleParams,
 } from "#/lib/galaxy/star-visual";
 import type { MemoryStar } from "#/lib/galaxy/types";
+import { en } from "#/lib/i18n/messages/en";
+import { ru } from "#/lib/i18n/messages/ru";
 
 const star = (over: Partial<MemoryStar> = {}): MemoryStar => ({
   id: "s01",
@@ -93,6 +97,60 @@ describe("hoverLabelFor", () => {
     expect(hoverLabelFor(star({ name: undefined, mood: "grieving" }))).toBe(
       MOOD_LABELS.grieving,
     );
+  });
+});
+
+describe("moodLabel — locale-aware mood caption (Layer B i18n)", () => {
+  it("resolves the mood label from the en catalog", () => {
+    expect(moodLabel("wonder", en.moods)).toBe("WONDER");
+    expect(moodLabel("grieving", en.moods)).toBe("GRIEF");
+  });
+
+  it("resolves the mood label from the ru catalog", () => {
+    expect(moodLabel("wonder", ru.moods)).toBe("ВОСХИЩЕНИЕ");
+    expect(moodLabel("grieving", ru.moods)).toBe("ГОРЕ");
+  });
+
+  it("falls back to the en MOOD_LABELS table when no catalog is passed", () => {
+    expect(moodLabel("grieving")).toBe(MOOD_LABELS.grieving);
+  });
+});
+
+describe("resolveStarName — locale-aware seed-star name (Layer B i18n)", () => {
+  it("resolves a known seed star's name from the en catalog", () => {
+    expect(resolveStarName(star({ id: "s01" }), en.memoryStars)).toBe(
+      "kitchen radio",
+    );
+  });
+
+  it("resolves the same seed star's name from the ru catalog", () => {
+    expect(resolveStarName(star({ id: "s01" }), ru.memoryStars)).toBe(
+      "радио на кухне",
+    );
+  });
+
+  it("falls back to the star's own name for an unknown (user-added) id", () => {
+    expect(
+      resolveStarName(
+        star({ id: "user-xyz", name: "their star" }),
+        en.memoryStars,
+      ),
+    ).toBe("their star");
+  });
+
+  it("returns null for the egg — it stays anonymous even with a catalog (AC6)", () => {
+    expect(
+      resolveStarName(star({ id: "egg", egg: true }), en.memoryStars),
+    ).toBeNull();
+  });
+
+  it("returns null for an unknown id with no own name", () => {
+    expect(
+      resolveStarName(
+        star({ id: "user-xyz", name: undefined }),
+        en.memoryStars,
+      ),
+    ).toBeNull();
   });
 });
 

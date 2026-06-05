@@ -13,8 +13,15 @@
 
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import type { MemoryStar, Mood } from "#/lib/galaxy/types";
+import type { Messages } from "#/lib/i18n/types";
 
-/** Short mood labels for hover/eyebrow text (design spec mood table). */
+/**
+ * Short mood labels for hover/eyebrow text (design spec mood table). The
+ * **en-default fallback** only — the locale-aware label resolves through the i18n
+ * `moods` catalog (`moodLabel(mood, m.moods)`). Kept so the pure helpers degrade
+ * to English when called without a catalog (tests, SSR placeholder), never inline
+ * in a component (ADR-0010 §2 / all-user-text-via-i18n).
+ */
 export const MOOD_LABELS = {
   joyful: "joy",
   tender: "love",
@@ -24,6 +31,48 @@ export const MOOD_LABELS = {
   nostalgic: "memory",
   wonder: "wonder",
 } as const satisfies Record<Mood, string>;
+
+/** The i18n `moods` catalog slice — `getMessages(locale).moods`. */
+type MoodCatalog = Messages["moods"];
+/**
+ * The i18n `memoryStars` catalog slice — `getMessages(locale).memoryStars`. The
+ * locale-aware seam (ADR-0010 §2): seeded-corpus stars relabel per locale; a live
+ * (agent-added) star keeps its own copy. The memory *text* resolver lives with the
+ * card slice that renders it — `MemoryStarView` only needs the display *name*.
+ */
+type MemoryStarCatalog = Messages["memoryStars"];
+
+/**
+ * The locale-aware mood caption (Layer B i18n consumption — ADR-0010 §2, the
+ * Wave-1-A hook). Resolves `mood` against the passed `moods` catalog
+ * (`getMessages(locale).moods`); falls back to the en `MOOD_LABELS` table when no
+ * catalog is supplied so pure callers (tests / SSR) stay English-safe. Pure — the
+ * component injects the catalog from `getMessages(useLocale())`, keeping this
+ * node-testable and React-free.
+ */
+export const moodLabel = (mood: Mood, catalog?: MoodCatalog): string =>
+  catalog?.[mood] ?? MOOD_LABELS[mood];
+
+/** True iff a star id is a seeded-corpus key with a catalog entry. */
+const isSeedKey = (
+  id: string,
+  catalog: MemoryStarCatalog,
+): id is keyof MemoryStarCatalog => id in catalog;
+
+/**
+ * The locale-aware display name for a star (Layer B i18n) — `null` for the egg,
+ * which stays anonymous (AC6), and `null` when no name resolves. Seeded-corpus
+ * stars resolve their `name` from the catalog; a user-added star keeps its own
+ * `name`. Pure; the locale-aware counterpart of `hoverLabelFor`'s name branch.
+ */
+export const resolveStarName = (
+  star: MemoryStar,
+  catalog: MemoryStarCatalog,
+): string | null => {
+  if (star.egg) return null;
+  if (isSeedKey(star.id, catalog)) return catalog[star.id].name;
+  return star.name ?? null;
+};
 
 export type BloomSizing = {
   bloom: number; // soft radial halo diameter (px)

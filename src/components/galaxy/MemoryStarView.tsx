@@ -4,11 +4,13 @@ import {
   bloomSizing,
   haloGradient,
   hoverLabelFor,
-  MOOD_LABELS,
+  moodLabel,
+  resolveStarName,
   starColor,
   twinkleParams,
 } from "#/lib/galaxy/star-visual";
 import type { MemoryStar } from "#/lib/galaxy/types";
+import { getMessages, useLocale } from "#/lib/i18n";
 
 /**
  * L3 — one memory star as DOM/CSS (not canvas): a soft halo, lens flares, a
@@ -18,17 +20,28 @@ import type { MemoryStar } from "#/lib/galaxy/types";
  * `data-igniting` so it plays `memIgnite` (#4 AC3 — the position invariant is
  * proven in `place.test.ts`).
  *
- * Pure and deterministic (every value derives from the star's data), so it is
- * SSR-safe and hydrates without mismatch.
+ * **i18n (ADR-0010 §2, the Wave-1-A hook):** the user-facing copy this view shows
+ * — the star's display `name` and the mood caption — is resolved per-locale via
+ * `getMessages(useLocale())` against the catalog (`resolveStarName` / `moodLabel`),
+ * NOT taken from the store-baked English. Seeded-corpus stars relabel in `ru`; a
+ * live (agent-added) star keeps its own copy. No inline user-facing string remains.
+ * (The memory *text* is the lore/memory card's surface — a later slice.)
+ *
+ * Pure and deterministic (every value derives from the star's data + locale), so
+ * it is SSR-safe and hydrates without mismatch (locale is a pure function of the URL).
  */
 
 type Props = { star: MemoryStar; position: Point; igniting?: boolean };
 
 export const MemoryStarView = ({ star, position, igniting = false }: Props) => {
+  const m = getMessages(useLocale());
   const color = starColor(star);
   const sz = bloomSizing(star);
   const tw = twinkleParams(star);
+  // The hover label decides *whether* a label shows (null for the egg, AC6); the
+  // displayed name itself comes from the locale-aware resolver.
   const label = hoverLabelFor(star);
+  const name = resolveStarName(star, m.memoryStars);
 
   const style = {
     // Round to whole stage pixels: crisper for pixel art, and avoids a
@@ -66,9 +79,9 @@ export const MemoryStarView = ({ star, position, igniting = false }: Props) => {
       </span>
       {label !== null && (
         <span className="mem-star__label" aria-hidden="true">
-          {star.name && <em className="mem-star__name">{star.name}</em>}
+          {name && <em className="mem-star__name">{name}</em>}
           <span className="mem-star__mood">
-            {MOOD_LABELS[star.mood]}
+            {moodLabel(star.mood, m.moods)}
             {star.who ? ` · ${star.who}` : ""}
           </span>
         </span>

@@ -13,6 +13,7 @@ import { BackdropTint } from "./BackdropTint";
 import { ChromeOverlay } from "./ChromeOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
+import { GalaxyFeatureLayer } from "./GalaxyFeatureLayer";
 import { MemoryStarLayer } from "./MemoryStarLayer";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { usePalette } from "./usePalette";
@@ -121,6 +122,10 @@ export const GalaxyStage = () => {
         <div className="galaxy-stage__camera" ref={cam.cam}>
           <div className="galaxy-l2-wrap" ref={cam.l2}>
             <GalaxyBackdrop backdrop={backdrop} />
+            {/* Layer A·features — real objects drawn by shape over the disk glow:
+                Sgr A*, the Orion Arm, Sol, and the 3 named nebulae (ADR-0010 §4,
+                #146). Rides with the disk plane so it parallaxes with the cosmos. */}
+            <GalaxyFeatureLayer />
           </div>
           <div className="galaxy-l3-wrap" ref={cam.l3}>
             <MemoryStarLayer stars={sky.stars} ignitingIds={ignitingIds} />

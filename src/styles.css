@@ -485,6 +485,62 @@ body {
   image-rendering: auto;
 }
 
+/* Layer A·features (#146) — real objects drawn by shape over the disk. A canvas
+   for the soft-glow silhouettes (Sgr A* · Sol · the 3 nebulae) plus DOM labels for
+   the named features. Sits inside the L2 plane, so it pans/parallaxes with the
+   disk. Decorative (aria-hidden); the label spans never capture the pointer. */
+.galaxy-features {
+  position: absolute;
+  inset: 0;
+}
+.galaxy-features__canvas {
+  position: absolute;
+  inset: 0;
+  width: 1280px;
+  height: 800px;
+  /* Smooth upscaling — soft glow, not pixel-art (matches the disk). */
+  image-rendering: auto;
+}
+/* A 2-line feature label (serif name + mono distance sublabel), anchored on the
+   object's stage point. A subtle dark radial backing keeps it legible over the
+   bright soft-glow cosmos (design-spec a11y: text-shadow alone is not enough). */
+.galaxy-feature-label {
+  position: absolute;
+  transform: translate(-50%, calc(-50% - 28px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  text-align: center;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: radial-gradient(
+    ellipse at center,
+    rgb(4 5 13 / 0.72) 0%,
+    rgb(4 5 13 / 0) 75%
+  );
+}
+.galaxy-feature-label__name {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--color-text);
+}
+.galaxy-feature-label__sub {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-dim-2);
+}
+/* The Orion Arm reads as an arm annotation, not a point object — softer + dimmer. */
+.galaxy-feature-label[data-kind="armLabel"] .galaxy-feature-label__name {
+  font-style: italic;
+  color: var(--color-dim);
+}
+
 /* L3 — memory stars (nearest plane). */
 .galaxy-l3-wrap {
   position: absolute;
