@@ -26,10 +26,15 @@ describe("buildSeedSky", () => {
     );
   });
 
-  it("includes the quiet egg star and the deep 'fly-home' star", () => {
+  it("includes the deep 'fly-home' star (Mom's lone gold star)", () => {
     const stars = buildSeedSky().stars;
-    expect(stars.some((s) => s.egg === true)).toBe(true);
     expect(stars.some((s) => s.deep === true)).toBe(true);
+  });
+
+  it("retires the hidden egg star — exactly ONE 'for mom' star remains", () => {
+    const stars = buildSeedSky().stars;
+    expect(stars.some((s) => s.id === "egg")).toBe(false);
+    expect(stars.some((s) => s.egg === true)).toBe(false);
   });
 
   it("colors seed memory stars from the mood map (agent palette)", () => {
@@ -65,11 +70,6 @@ describe("buildSeedSky", () => {
     const irina = buildSeedSky().stars.find((s) => s.id === "irina");
     expect(irina).toBeDefined();
     expect(irina?.group).toBeUndefined();
-  });
-
-  it("keeps the egg ungrouped too (the hidden dedication stands alone)", () => {
-    const egg = buildSeedSky().stars.find((s) => s.id === "egg");
-    expect(egg?.group).toBeUndefined();
   });
 
   it("makes Mom's star the biggest + brightest of the whole sky", () => {

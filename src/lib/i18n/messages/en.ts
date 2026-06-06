@@ -132,7 +132,7 @@ export const en = {
     },
   },
   // Layer-B seeded memory-star copy (#146). The fake/seed corpus + Mom's standalone
-  // gold star (`irina`) + the egg. Resolved by `buildSeedSky` — no inline strings.
+  // gold star (`irina`). Resolved by `buildSeedSky` — no inline strings.
   memoryStars: {
     s01: {
       name: "kitchen radio",
@@ -159,10 +159,6 @@ export const en = {
       text: "the night dad aimed the telescope and i actually saw the rings of saturn, real.",
     },
     irina: {
-      name: "for mom",
-      text: "a whole life, lived right here on the third stone from this star. follow her home.",
-    },
-    egg: {
       name: "for mom",
       text: "for the one who taught me to look up. the gold was always hers; the rest is the universe she lived in.",
     },

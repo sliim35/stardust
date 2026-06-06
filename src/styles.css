@@ -517,6 +517,10 @@ body {
 .mem-star[data-kind="egg"] .mem-star__body {
   animation: memEgg 5.5s ease-in-out infinite;
 }
+/* Mom's star (deep) — a soft, slow breathe (interaction spec §2). */
+.mem-star[data-kind="deep"] .mem-star__body {
+  animation: memDeepPulse 4.8s ease-in-out infinite;
+}
 .mem-star[data-igniting] .mem-star__body {
   animation: memIgnite 1.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
@@ -560,6 +564,27 @@ body {
   );
   opacity: 0.28;
   transition: opacity 0.25s ease;
+}
+/* Mom's 8-point soft lodestar (deep only): two soft diagonal flares at ±45°
+   complete the 8-point bloom (treatment §3). The cardinal flares keep their
+   DEFAULT opacities — Mom's reads via the extra soft diagonals + the visible
+   breathe, not a strong targeting cross. */
+.mem-star[data-kind="deep"] .mem-star__flare-d1,
+.mem-star[data-kind="deep"] .mem-star__flare-d2 {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 2px;
+  border-radius: 0;
+  width: calc(var(--flare-w) * 0.6);
+  opacity: 0.3;
+  background: linear-gradient(90deg, transparent, var(--star-color), transparent);
+}
+.mem-star__flare-d1 {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.mem-star__flare-d2 {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 .mem-star__hot {
   width: var(--hot);
@@ -722,6 +747,17 @@ body {
     opacity: 0.95;
   }
 }
+/* Mom's star — a slow, *visible* breathe: opacity-only (no scale), so the lodestar
+   reads as gently alive (treatment §8). */
+@keyframes memDeepPulse {
+  0%,
+  100% {
+    opacity: 0.62;
+  }
+  50% {
+    opacity: 1;
+  }
+}
 @keyframes memIgnite {
   0% {
     opacity: 0;
@@ -773,6 +809,7 @@ body {
   }
   .mem-star__body,
   .mem-star[data-kind="egg"] .mem-star__body,
+  .mem-star[data-kind="deep"] .mem-star__body,
   .mem-star[data-igniting] .mem-star__body {
     animation: none;
   }

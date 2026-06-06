@@ -75,6 +75,14 @@ export const MemoryStarView = ({
         <span className="mem-star__halo" />
         <span className="mem-star__flare-h" />
         <span className="mem-star__flare-v" />
+        {/* Mom's 8-point soft lodestar: the deep star adds two soft diagonal
+            flares to the 4 cardinal ones (treatment §3 — soft-glow, not pixel). */}
+        {star.deep && (
+          <>
+            <span className="mem-star__flare-d1" />
+            <span className="mem-star__flare-d2" />
+          </>
+        )}
         <span className="mem-star__hot" />
         <span className="mem-star__core" />
       </span>

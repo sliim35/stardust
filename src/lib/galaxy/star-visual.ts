@@ -36,7 +36,11 @@ export type BloomSizing = {
 /** Bloom / flare / core sizing for a star, optionally in its active (hover/selected) state. */
 export const bloomSizing = (star: MemoryStar, active = false): BloomSizing => {
   const b = star.brightness;
-  const bloom = (star.egg ? 15 : 13 + b * 11) * (active ? 1.3 : 1);
+  // Mom's star (the deep dedication star) reads unmistakably the biggest — a modest
+  // bump (b=1 → 30), the biggest lodestar but not a giant (treatment §4). The egg
+  // branch is retired dead code (the egg star no longer seeds).
+  const base = star.egg ? 15 : (13 + b * 11) * (star.deep ? 1.25 : 1);
+  const bloom = base * (active ? 1.3 : 1);
   const flareW = bloom * 2.5;
   return {
     bloom,
@@ -60,12 +64,15 @@ export const animSeed = (id: string): { twinkle: number; phase: number } => {
 export type TwinkleParams = {
   period: number; // seconds
   delay: number; // seconds
-  kind: "twinkle" | "egg";
+  kind: "twinkle" | "egg" | "deep";
 };
 
 /** Animation timing for a star — the slow egg pulse, or a calm derived twinkle. */
 export const twinkleParams = (star: MemoryStar): TwinkleParams => {
   if (star.egg) return { period: 5.5, delay: 0, kind: "egg" };
+  // Mom's star — a soft, slow breathe, not the busy twinkle and not a strong
+  // cross-flare (interaction spec §2: toned down from the mockup).
+  if (star.deep) return { period: 4.8, delay: 0, kind: "deep" };
   const { twinkle, phase } = animSeed(star.id);
   return {
     period: Math.max(1.4, 3.6 / twinkle),
