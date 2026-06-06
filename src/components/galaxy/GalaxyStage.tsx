@@ -8,6 +8,8 @@ import {
 import {
   constellationNodes,
   constellationSegments,
+  figureColor,
+  figureForGroup,
   hoverAffordanceFor,
 } from "#/lib/galaxy/constellation";
 import { createFocusController } from "#/lib/galaxy/focus";
@@ -117,23 +119,25 @@ export const GalaxyStage = () => {
   const nav = useTierNav();
   const m = getMessages(useLocale());
 
-  // Hover (#154, spec §3): the star under the pointer/keyboard-focus. When it
-  // belongs to a mood constellation (≥2 connectable nodes — never ungrouped,
-  // never the `deep` star), the overlay lights the group's connect-lines and
-  // everything else dims; a solo star (Mom's, the egg) fades up only its short
-  // description. Pure derivation — `constellation.ts` owns the rules.
+  // Hover (#154, spec §3 + owner rules 2026-06-06): the star under the pointer/
+  // keyboard-focus. When it belongs to an AUTHORED mood-pure figure, the overlay
+  // draws the figure's designed edges in the figure's ONE mood colour and
+  // everything else dims; a solo star (Mom's, the figure-less moods) fades up
+  // only its short description. Pure derivation — `constellation.ts` owns the
+  // rules (mood-validated membership, never `deep`, authored edges only).
   const [hovered, setHovered] = useState<MemoryStar | null>(null);
   const constellation = useMemo(() => {
     if (hovered === null) return null;
     const affordance = hoverAffordanceFor(hovered);
     if (affordance.kind !== "memory" || affordance.group === null) return null;
-    const nodes = constellationNodes(sky.stars, affordance.group);
-    const segments = constellationSegments(nodes);
-    if (segments.length === 0) return null; // a 1-node group reads as solo
+    const figure = figureForGroup(affordance.group);
+    if (figure === null) return null;
+    const segments = constellationSegments(sky.stars, figure);
+    if (segments.length === 0) return null; // a degenerate figure reads as solo
     return {
       segments,
-      color: hovered.color,
-      litIds: new Set(nodes.map((n) => n.id)),
+      color: figureColor(figure),
+      litIds: new Set(constellationNodes(sky.stars, figure).map((n) => n.id)),
     };
   }, [hovered, sky.stars]);
   // The "dim everything else" cross-fade on the far layers (L1 + the disk) —

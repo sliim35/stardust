@@ -2,21 +2,22 @@ import type { ConstellationSegment } from "#/lib/galaxy/constellation";
 import { STAGE_H, STAGE_W } from "#/lib/galaxy/place";
 
 /**
- * #154 — the mood-constellation overlay (interaction spec §3): thin SVG
- * `<line>`s over L3 connecting the hovered star's same-`group` siblings, in the
- * segments the pure `constellation.ts` builder computed. It renders inside the
- * camera plane (`.galaxy-l3-wrap`), so the lines track the stars under the
- * parallax/zoom transform exactly.
+ * #154 — the mood-constellation overlay (interaction spec §3 + owner rules
+ * 2026-06-06): thin SVG `<line>`s over L3 drawing an AUTHORED figure's designed
+ * edges, in the segments the pure `constellation.ts` builder computed. It
+ * renders inside the camera plane (`.galaxy-l3-wrap`), so the lines track the
+ * stars under the parallax/zoom transform exactly.
  *
  * Decorative: `aria-hidden`, pointer-transparent. The lines fade up via the
  * `constellation-in` keyframe (styles.css — stage-side animation, the card/loader
- * precedent); `prefers-reduced-motion` snaps them instant. Stroke = the hovered
- * star's agent-owned mood colour, rendered verbatim (never recoloured).
+ * precedent); `prefers-reduced-motion` snaps them instant. Stroke = the figure's
+ * ONE mood colour (`figureColor` — rule 2: single-colour by construction),
+ * rendered verbatim (never recoloured).
  */
 
 type Props = {
   segments: readonly ConstellationSegment[];
-  /** The hovered star's `color` — the agent's mood colour, verbatim. */
+  /** The figure's mood colour (`figureColor(figure)`) — one colour, verbatim. */
   color: string;
 };
 

@@ -98,6 +98,10 @@ export type Messages = {
     s04: MemoryStarCopy;
     s05: MemoryStarCopy;
     s06: MemoryStarCopy;
+    s07: MemoryStarCopy;
+    s08: MemoryStarCopy;
+    s09: MemoryStarCopy;
+    s10: MemoryStarCopy;
     irina: MemoryStarCopy;
   };
   /**

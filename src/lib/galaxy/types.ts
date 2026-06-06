@@ -71,9 +71,10 @@ export type MemoryStar = {
   who?: string | null; // opt-in attribution; null/absent = anonymous (brief §6)
   egg?: boolean; // the hidden dedication star (reveal on click)
   deep?: boolean; // the "fly-home" deep-story star (separate from the egg)
-  // Mood-constellation membership (Layer B — ADR-0010 §1/§4-④, spec §3). Same-group
-  // stars connect in `createdAt` order; absent/undefined = standalone (Mom's gold
-  // star, the egg). Additive + optional → fully back-compat with today's flat stars.
+  // Mood-constellation membership (Layer B — ADR-0010 §1/§4-④, spec §3): the
+  // `ConstellationFigure.group` key of the authored figure this star belongs to;
+  // absent/undefined = standalone (Mom's gold star, solo moods). Additive +
+  // optional → fully back-compat with today's flat stars.
   group?: string;
   // Where this star lives in the universe (ADR-0008 §2). Optional for back-compat:
   // a star without `placement` defaults to the home galaxy (`tier:'galaxy', parentId:'home'`).
@@ -84,6 +85,26 @@ export type MemoryStar = {
 export type GalaxySky = {
   backdrop: GalaxyBackdrop;
   stars: MemoryStar[];
+};
+
+/**
+ * One authored mood-constellation figure (owner rules, 2026-06-06 — issue #154):
+ * a **pre-created** figure with a designed edge topology, like a real
+ * constellation — NEVER an emergent `createdAt`-ordered chain (rule 3). Every
+ * member shares the figure's single `mood` (rule 1), and since colour maps from
+ * mood (`MOODS[mood].color`), a figure is single-colour **by construction**
+ * (rule 2). The builder (`constellation.ts`) validates membership rather than
+ * trusting it — a cross-mood or `deep` member is excluded, never drawn.
+ */
+export type ConstellationFigure = {
+  /** Stable membership key — mirrored in each member star's `group`. */
+  group: string;
+  /** The ONE mood every member shares; the figure's stroke colour derives from it. */
+  mood: Mood;
+  /** The figure's nodes (star ids), in authored order. */
+  members: readonly string[];
+  /** The designed edge topology — pairs of member ids; segments come from these only. */
+  edges: readonly (readonly [string, string])[];
 };
 
 // ── 3-tier scene graph (ADR-0008) ──────────────────────────────────────────────
