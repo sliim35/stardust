@@ -15,18 +15,11 @@
  * SSR-safe, and locale-agnostic (no React, no router, no I/O).
  */
 
+import { isRealObject } from "#/lib/galaxy/click-router";
 import type { LoreKey, MemoryStar, Mood, RealObject } from "#/lib/galaxy/types";
 
 /** What `openCard(target)` accepts — a real object (lore) or a memory star (memory). */
 export type CardTarget = RealObject | MemoryStar;
-
-/**
- * A real object is the lore target. The discriminant is structural — a `RealObject`
- * carries a `loreKey`; a `MemoryStar` carries a `mood` + `text`. We test `loreKey`
- * (present only on Layer A) so the resolution never depends on identity/lookup.
- */
-const isRealObject = (t: CardTarget): t is RealObject =>
-  typeof (t as RealObject).loreKey === "string";
 
 /** The lore skin's view-model — name + real distance + the i18n lore line key. */
 export type LoreCardModel = {

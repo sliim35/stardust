@@ -600,18 +600,24 @@ body {
   image-rendering: pixelated;
 }
 
-/* Hover bloom + flare brighten. Selection rings + the read panel are #5. */
-.mem-star:hover {
+/* Hover bloom + flare brighten. Keyboard focus on the hit-button drives the
+   same affordance (#154 — :focus-within is the parity selector). Selection
+   rings + the read panel are #5. */
+.mem-star:hover,
+.mem-star:focus-within {
   z-index: 5;
 }
-.mem-star:hover .mem-star__halo {
+.mem-star:hover .mem-star__halo,
+.mem-star:focus-within .mem-star__halo {
   width: calc(var(--bloom) * 1.3);
   height: calc(var(--bloom) * 1.3);
 }
-.mem-star:hover .mem-star__flare-h {
+.mem-star:hover .mem-star__flare-h,
+.mem-star:focus-within .mem-star__flare-h {
   opacity: 0.9;
 }
-.mem-star:hover .mem-star__flare-v {
+.mem-star:hover .mem-star__flare-v,
+.mem-star:focus-within .mem-star__flare-v {
   opacity: 0.6;
 }
 
@@ -629,7 +635,8 @@ body {
   transition: opacity 0.2s ease;
   pointer-events: none;
 }
-.mem-star:hover .mem-star__label {
+.mem-star:hover .mem-star__label,
+.mem-star:focus-within .mem-star__label {
   opacity: 1;
 }
 .mem-star__name {
@@ -644,6 +651,22 @@ body {
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--star-color);
+}
+
+/* The mood-constellation overlay (#154, interaction spec §3) — thin SVG connect-
+   lines over L3 (ConstellationOverlay.tsx; layout/stroke are Tailwind/props).
+   Only the animation side lives here (the card/loader precedent): the lines fade
+   up on hover; prefers-reduced-motion snaps them instant (the gate below). */
+.constellation-lines {
+  animation: constellation-in 0.3s ease-out both;
+}
+@keyframes constellation-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Layer C — chrome pinned to the viewport (#76): fixed inset:0, never scaled by
@@ -815,8 +838,14 @@ body {
   }
   .mem-star__halo,
   .mem-star__flare-h,
-  .mem-star__flare-v {
+  .mem-star__flare-v,
+  .mem-star__label {
     transition: none;
+  }
+  /* #154 — the hover affordance cross-fades instantly: the constellation lines
+     skip their fade-up (the star/layer dims use motion-reduce: utilities). */
+  .constellation-lines {
+    animation: none;
   }
   /* ASTRO holds a single static idle frame at rest — bob + drift disabled.
      The speech bubble (#72) appears instantly — no entrance fade/slide (AC7). */

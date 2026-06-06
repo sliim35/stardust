@@ -4,11 +4,12 @@ import {
   bloomSizing,
   haloGradient,
   hoverLabelFor,
-  MOOD_LABELS,
   starColor,
   twinkleParams,
 } from "#/lib/galaxy/star-visual";
 import type { MemoryStar } from "#/lib/galaxy/types";
+import { en } from "#/lib/i18n/messages/en";
+import type { Messages } from "#/lib/i18n/types";
 
 /**
  * L3 — one memory star as DOM/CSS (not canvas): a soft halo, lens flares, a
@@ -17,6 +18,12 @@ import type { MemoryStar } from "#/lib/galaxy/types";
  * egg shows no hover label (#4 AC6); a freshly added star carries
  * `data-igniting` so it plays `memIgnite` (#4 AC3 — the position invariant is
  * proven in `place.test.ts`).
+ *
+ * Hover/keyboard-focus (#154, spec §3) reports the star through `onHoverChange`
+ * so the stage can light its mood constellation; while another group is lit the
+ * star dims (`dimmed`) with a soft cross-fade (instant under reduced motion via
+ * `motion-reduce:transition-none`). The label's MOOD eyebrow reads the i18n
+ * `moods` catalog (en+ru) passed down by the locale-aware stage.
  *
  * Pure and deterministic (every value derives from the star's data), so it is
  * SSR-safe and hydrates without mismatch.
@@ -30,6 +37,16 @@ type Props = {
   onSelect?: (star: MemoryStar) => void;
   /** i18n fallback aria-label for unnamed stars (the egg). */
   a11yLabel?: string;
+  /** Hover/focus enter (the star) and leave (`null`) — the #154 affordance. */
+  onHoverChange?: (star: MemoryStar | null) => void;
+  /** True while another star's constellation is lit — this star fades back. */
+  dimmed?: boolean;
+  /**
+   * The localized MOOD eyebrow catalog (`Messages["moods"]`), passed by the
+   * locale-aware parent. Defaults to the `en` source-of-truth corpus so the
+   * component stays pure/router-free (the `buildSeedSky` precedent).
+   */
+  moodLabels?: Messages["moods"];
 };
 
 export const MemoryStarView = ({
@@ -38,6 +55,9 @@ export const MemoryStarView = ({
   igniting = false,
   onSelect,
   a11yLabel,
+  onHoverChange,
+  dimmed = false,
+  moodLabels,
 }: Props) => {
   const color = starColor(star);
   const sz = bloomSizing(star);
@@ -64,12 +84,17 @@ export const MemoryStarView = ({
 
   return (
     <div
-      className="mem-star"
+      className={`mem-star transition-opacity duration-300 motion-reduce:transition-none ${
+        dimmed ? "opacity-25" : "opacity-100"
+      }`}
       data-kind={tw.kind}
       data-igniting={igniting || undefined}
       data-egg={star.egg || undefined}
       data-mood={star.mood}
+      data-dimmed={dimmed || undefined}
       style={style}
+      onPointerEnter={onHoverChange && (() => onHoverChange(star))}
+      onPointerLeave={onHoverChange && (() => onHoverChange(null))}
     >
       <span className="mem-star__body" aria-hidden="true">
         <span className="mem-star__halo" />
@@ -92,13 +117,15 @@ export const MemoryStarView = ({
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-0 bg-transparent p-0 [block-size:max(var(--bloom),24px)] [inline-size:max(var(--bloom),24px)] focus-visible:[outline:2px_solid_var(--star-color)] focus-visible:[outline-offset:2px]"
           aria-label={star.name ?? a11yLabel}
           onClick={() => onSelect(star)}
+          onFocus={onHoverChange && (() => onHoverChange(star))}
+          onBlur={onHoverChange && (() => onHoverChange(null))}
         />
       )}
       {label !== null && (
         <span className="mem-star__label" aria-hidden="true">
           {star.name && <em className="mem-star__name">{star.name}</em>}
           <span className="mem-star__mood">
-            {MOOD_LABELS[star.mood]}
+            {(moodLabels ?? en.moods)[star.mood]}
             {star.who ? ` · ${star.who}` : ""}
           </span>
         </span>
