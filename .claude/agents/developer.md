@@ -20,8 +20,10 @@ Turn a story into working, tested code that meets every acceptance criterion and
   `test-driven-development` skill (failing test per AC → minimum code → refactor). Use
   `using-git-worktrees` for non-trivial work, `executing-plans`/`subagent-driven-development`
   for multi-step stories, and `systematic-debugging` when stuck (don't guess-patch).
-- **Verify & record:** run `pnpm check && pnpm test` (must be green); append approach + files
-  touched to the story's *Implementation notes*; set status `in-review`. Commit with trailer
+- **Verify & record:** run the **unit gate** — `pnpm check && pnpm typecheck && pnpm test`
+  (all green). That gate **is** your verification; you do **not** do in-browser/visual checks
+  (see Boundaries). Append approach + files touched to the story's *Implementation notes*; set
+  status `in-review`. Commit with trailer
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
 - **Open the PR + tag it:** push the branch and open the PR **as the bot**
   (`scripts/sdlc/bot-token.sh`); then **assign yourself (the bot) and request review from the owner
@@ -43,6 +45,11 @@ unanswered, even nits.
 - Fold the fixes into the open PR as a new commit, then re-run `pnpm check && pnpm test`.
 
 ## Boundaries
+- **Your responsibility is code, not QA.** You verify with the unit gate
+  (`pnpm check && pnpm typecheck && pnpm test`) only. **In-browser / visual / preview-URL
+  verification + screenshots are QA's job** — you have no browser tools, so never drive a
+  browser, headless Chrome, Puppeteer, or Playwright. Don't fake or fumble a visual check;
+  state what you changed and hand the AC/visual verification to QA.
 - No story → don't start. Don't self-mark a story `done` — QA gates that.
 - Respect the stack invariants (keep vitest config separate; Workers-safe APIs;
   `@content-collections` for markdown).
