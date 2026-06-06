@@ -93,11 +93,12 @@ export const GalaxyStage = () => {
     () => ({ ...sky.backdrop, palette }),
     [sky.backdrop, palette],
   );
-  // The 4 real Local-Group neighbours (ADR-0011 §1, I-1): painted on the L2 disk
-  // canvas alongside the home Milky Way via the same soft-glow renderer. Stable
-  // identity (the curated dataset never changes) so the disk redraws only on a real
-  // input change, not on every ignite re-render. Tier framing / depth bands are
-  // I-2 / I-3 / I-4 — here they sit at their authored data placements.
+  // The 4 real Local-Group neighbours (ADR-0011 §1, I-1): rendered via the same
+  // soft-glow generator. They belong to the LOCAL-GROUP tier — the home Milky-Way
+  // view stays memory-first (MW + memory stars), so we only feed them to the disk
+  // when the tier is `localGroup` (gated at the render below). Stable identity (the
+  // curated dataset never changes). The clean diorama framing (spread + scale per
+  // the FINAL proof) + depth bands are I-2 / I-3.
   const neighbours = useMemo(() => localGroupNeighbours(), []);
 
   const scale = useStageFit();
@@ -147,7 +148,10 @@ export const GalaxyStage = () => {
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
             <div className="galaxy-l2-wrap" ref={cam.l2}>
-              <GalaxyBackdrop backdrop={backdrop} neighbours={neighbours} />
+              <GalaxyBackdrop
+                backdrop={backdrop}
+                neighbours={nav.state.tier === "localGroup" ? neighbours : []}
+              />
             </div>
             <div className="galaxy-l3-wrap" ref={cam.l3}>
               <InteractiveStars
