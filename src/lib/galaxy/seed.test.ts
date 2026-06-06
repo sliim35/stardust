@@ -55,15 +55,26 @@ describe("buildSeedSky", () => {
     }
   });
 
-  // ── Layer-B mood constellations (ADR-0010 §1/§4-④, #146) ─────────────────────
-  it("groups the seed corpus into at least 2 mood constellations of >= 2 stars", () => {
+  // ── Layer-B mood constellations (ADR-0010 §1/§4-④, #146; owner rules 2026-06-06) ──
+  it("groups the seed corpus into >= 2 MOOD-PURE figures of >= 3 stars each (owner rules 1+4)", () => {
     const stars = buildSeedSky().stars;
-    const groups = new Map<string, number>();
+    const byGroup = new Map<string, typeof stars>();
     for (const s of stars) {
-      if (s.group) groups.set(s.group, (groups.get(s.group) ?? 0) + 1);
+      if (s.group) byGroup.set(s.group, [...(byGroup.get(s.group) ?? []), s]);
     }
-    expect(groups.size).toBeGreaterThanOrEqual(2);
-    for (const [, n] of groups) expect(n).toBeGreaterThanOrEqual(2);
+    expect(byGroup.size).toBeGreaterThanOrEqual(2);
+    for (const [group, members] of byGroup) {
+      expect(
+        members.length,
+        `figure "${group}" needs >= 3 stars`,
+      ).toBeGreaterThanOrEqual(3);
+      // Rule 1 — same mood only. Colour maps from mood, so mood-purity IS the
+      // single-colour-figure guarantee (rule 2) at the data level.
+      expect(
+        new Set(members.map((m) => m.mood)).size,
+        `figure "${group}" must be mood-pure`,
+      ).toBe(1);
+    }
   });
 
   it("keeps Mom's gold star (irina) UNGROUPED and standalone (ADR-0010 §1)", () => {

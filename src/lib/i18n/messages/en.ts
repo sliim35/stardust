@@ -158,6 +158,22 @@ export const en = {
       name: "saturn, actually",
       text: "the night dad aimed the telescope and i actually saw the rings of saturn, real.",
     },
+    s07: {
+      name: "all the green lights",
+      text: "every light turned green the whole way home, and we cheered each one like a small victory.",
+    },
+    s08: {
+      name: "the snow-day morning",
+      text: "school cancelled, the whole white morning suddenly ours, pancakes for no reason at all.",
+    },
+    s09: {
+      name: "the last bus",
+      text: "the smell of the last bus home from her place. some nights i rode past my stop on purpose.",
+    },
+    s10: {
+      name: "the blue door",
+      text: "we painted the front door blue one summer. it is someone else's door now. i hope they kept it.",
+    },
     irina: {
       name: "for mom",
       text: "for the one who taught me to look up. the gold was always hers; the rest is the universe she lived in.",
