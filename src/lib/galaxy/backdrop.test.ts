@@ -4,6 +4,7 @@ import {
   type DiskPlacement,
   MW_PLACEMENT,
   placedExtent,
+  placedSupport,
 } from "#/lib/galaxy/backdrop";
 import {
   DISK_TILT,
@@ -220,6 +221,49 @@ describe("placedExtent — the projected half-extents of a placed disk", () => {
     for (const p of [...g.arms, ...g.bulge]) {
       expect(Math.abs(p.x - place.cx)).toBeLessThanOrEqual(extent.x + 1);
       expect(Math.abs(p.y - place.cy)).toBeLessThanOrEqual(extent.y + 1);
+    }
+  });
+});
+
+describe("placedSupport — the silhouette reach along one direction", () => {
+  it("matches placedExtent on the stage axes (the same bound, one formula)", () => {
+    const place: DiskPlacement = { cx: 0, cy: 0, r: 120, tilt: 0.6, pa: -0.55 };
+    expect(placedSupport(place, 1, 0)).toBeCloseTo(placedExtent(place).x, 9);
+    expect(placedSupport(place, 0, 1)).toBeCloseTo(placedExtent(place).y, 9);
+  });
+
+  it("reads the major axis along pa and the squashed minor axis across it", () => {
+    const pa = 0.7;
+    const place: DiskPlacement = { cx: 0, cy: 0, r: 100, tilt: 0.5, pa };
+    // Along the position angle the disk reaches its full radius…
+    expect(placedSupport(place, Math.cos(pa), Math.sin(pa))).toBeCloseTo(
+      100,
+      6,
+    );
+    // …and perpendicular to it only the tilt-squashed minor axis.
+    expect(placedSupport(place, -Math.sin(pa), Math.cos(pa))).toBeCloseTo(
+      50,
+      6,
+    );
+  });
+
+  it("bounds every generated disk point along arbitrary directions", () => {
+    const place: DiskPlacement = {
+      cx: 640,
+      cy: 400,
+      r: 100,
+      tilt: 0.5,
+      pa: Math.PI / 3,
+    };
+    const g = buildBackdropGeometry(B(), place);
+    for (const angle of [0.3, 1.1, 2.4, 4.0, 5.5]) {
+      const ux = Math.cos(angle);
+      const uy = Math.sin(angle);
+      const reach = placedSupport(place, ux, uy);
+      for (const p of [...g.arms, ...g.bulge]) {
+        const proj = (p.x - place.cx) * ux + (p.y - place.cy) * uy;
+        expect(proj).toBeLessThanOrEqual(reach + 1);
+      }
     }
   });
 });

@@ -25,9 +25,37 @@ import { gsap } from "#/components/galaxy/gsap-setup";
 import { buildSeedSky, CONSTELLATIONS, MOODS } from "#/lib/galaxy/seed";
 import { en } from "#/lib/i18n/messages/en";
 
+const stubReducedMotion = (matches: boolean) => {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+};
+
+/**
+ * Land (LG overview, owner decision 2026-06-06) and dive into the MW tier with
+ * one scroll-up step — the reduced-motion snap path, so the swap lands
+ * synchronously (the eased path is pinned in useGalaxyCamera.test.tsx).
+ */
+const renderDivedIntoMilkyWay = () => {
+  stubReducedMotion(true);
+  render(<GalaxyStage />);
+  const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+  expect(stage).not.toBeNull();
+  fireEvent.wheel(stage, { deltaY: -12 }); // scroll up → descend INTO the MW
+  return stage;
+};
+
 describe("GalaxyStage — click → card wiring (#153)", () => {
-  it("clicking a memory star opens its memory card", () => {
-    render(<GalaxyStage />);
+  it("clicking a memory star (after the first dive) opens its memory card", () => {
+    renderDivedIntoMilkyWay();
     // The seeded sky renders memory stars as accessible hit-buttons inside `.mem-star`.
     const star = document.querySelector<HTMLButtonElement>(".mem-star button");
     expect(star).not.toBeNull();
@@ -38,55 +66,54 @@ describe("GalaxyStage — click → card wiring (#153)", () => {
 });
 
 describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () => {
-  const stubReducedMotion = (matches: boolean) => {
-    window.matchMedia = (query: string): MediaQueryList =>
-      ({
-        matches,
-        media: query,
-        onchange: null,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        addListener: () => {},
-        removeListener: () => {},
-        dispatchEvent: () => false,
-      }) as MediaQueryList;
-  };
+  // The landing state (owner decision 2026-06-06, overriding spec §1's MW-home):
+  // the page opens on the Local-Group overview — LG scale net, memory layer
+  // hidden — and stays QUIET: transition narration belongs to moves the user
+  // causes, never to the initial state (ASTRO's greeting flow is separate).
+  it("lands on the Local-Group overview with no transition narration", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    expect(screen.getByText("2.5 Mly")).toBeTruthy();
+    expect(screen.queryByText("100k ly")).toBeNull();
+    for (const line of [
+      en.astroNarration.onArrival.localGroup,
+      en.astroNarration.onArrival.galaxy,
+      en.astroNarration.ascend.toLocalGroup,
+      en.astroNarration.descend.toGalaxy,
+    ]) {
+      expect(screen.queryByText(line)).toBeNull();
+    }
+  });
 
   // Reduced motion = the snap path: the whole transition (threshold scene swap +
   // arrival narration) lands synchronously, so the wiring asserts without racing
   // GSAP's ticker — the eased path itself is pinned in useGalaxyCamera.test.tsx.
-  it("a wheel ascend relabels the scale net at the threshold and ASTRO narrates the arrival", () => {
+  it("a wheel descend relabels the scale net at the threshold and ASTRO narrates the arrival", () => {
     stubReducedMotion(true);
     render(<GalaxyStage />);
     const stage = document.querySelector(".galaxy-stage");
     expect(stage).not.toBeNull();
-    // The home tier reads the Milky-Way disk scale…
-    expect(screen.getByText("100k ly")).toBeTruthy();
-    fireEvent.wheel(stage as HTMLElement, { deltaY: 12 }); // scroll down → ascend
-    // …the swap relabels it to the Local-Group range…
+    // The landing tier reads the Local-Group range…
     expect(screen.getByText("2.5 Mly")).toBeTruthy();
-    expect(screen.queryByText("100k ly")).toBeNull();
+    fireEvent.wheel(stage as HTMLElement, { deltaY: -12 }); // scroll up → descend
+    // …the swap relabels it to the Milky-Way disk scale…
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    expect(screen.queryByText("2.5 Mly")).toBeNull();
     // …and ASTRO speaks the on-arrival line (the snap skips the depart line).
-    expect(
-      screen.getByText(en.astroNarration.onArrival.localGroup),
-    ).toBeTruthy();
+    expect(screen.getByText(en.astroNarration.onArrival.galaxy)).toBeTruthy();
   });
 
   // Slice I-2 (#112): the Local-Group tier is Layer-A territory — the L3 memory
-  // layer (MW-interior content) hides with the threshold swap, its pointer +
-  // keyboard affordances go with it, and the neighbours get serif/mono labels
-  // from the existing lore catalog. Reduced-motion = the snap path (no GSAP race).
-  it("the Local-Group tier hides the memory layer and labels the galaxies (I-2)", () => {
+  // layer (MW-interior content) hides there with its pointer + keyboard
+  // affordances, and the neighbours get serif/mono labels from the existing
+  // lore catalog. Now the LANDING state; the first dive restores L3.
+  it("the Local-Group landing hides the memory layer and labels the galaxies (I-2)", () => {
     stubReducedMotion(true);
     render(<GalaxyStage />);
     const stage = document.querySelector(".galaxy-stage") as HTMLElement;
     const l3 = document.querySelector(".galaxy-l3-wrap") as HTMLElement;
     expect(l3).not.toBeNull();
-    // Home tier: memory layer live, no Layer-A labels.
-    expect(l3.className).not.toContain("invisible");
-    expect(screen.queryByText(en.lore.andromeda.name)).toBeNull();
-    fireEvent.wheel(stage, { deltaY: 12 }); // scroll down → ascend to the LG tier
-    // The memory layer fades + loses pointer/keyboard affordances…
+    // Landing tier: memory layer hidden, no pointer/keyboard affordances…
     expect(l3.className).toContain("invisible");
     expect(l3.className).toContain("opacity-0");
     expect(l3.className).toContain("pointer-events-none");
@@ -105,20 +132,26 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(
       screen.getByText(en.lore.andromeda.name).closest('[aria-hidden="true"]'),
     ).not.toBeNull();
-    // Descending home restores the memory layer and drops the labels.
+    // The first dive (scroll up) restores the memory layer and drops the labels…
     fireEvent.wheel(stage, { deltaY: -12 });
     expect(l3.className).not.toContain("invisible");
     expect(l3.className).not.toContain("pointer-events-none");
     expect(screen.queryByText(en.lore.andromeda.name)).toBeNull();
+    // …and scrolling back down returns to the labelled LG overview.
+    fireEvent.wheel(stage, { deltaY: 12 });
+    expect(l3.className).toContain("invisible");
+    expect(screen.getByText(en.lore.andromeda.name)).toBeTruthy();
   });
 
-  it("the wheel clamp at the ceiling stays a quiet no-op — no swap, no narration", () => {
+  it("the wheel clamp at the LG ceiling stays a quiet no-op — no swap, no narration", () => {
     stubReducedMotion(true);
     render(<GalaxyStage />);
     const stage = document.querySelector(".galaxy-stage") as HTMLElement;
-    fireEvent.wheel(stage, { deltaY: 12 }); // → localGroup
-    fireEvent.wheel(stage, { deltaY: 12 }); // already at the ceiling (cooldown aside)
+    fireEvent.wheel(stage, { deltaY: 12 }); // scroll down at the landing ceiling
     expect(screen.getByText("2.5 Mly")).toBeTruthy();
+    expect(
+      screen.queryByText(en.astroNarration.onArrival.localGroup),
+    ).toBeNull();
     expect(
       screen.queryByText(en.astroNarration.ascend.toLocalGroup),
     ).toBeNull();
@@ -151,23 +184,25 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
         });
       };
       advance(0); // sync the frozen root clock to "now"
-      // Ascend: the eased timeline crosses the 0.9 s threshold → relabel to LG…
-      fireEvent.wheel(stage, { deltaY: 12 });
-      advance(1.0); // mid-arrive: past the threshold, well before the 2.3 s settle
-      expect(screen.getByText("2.5 Mly")).toBeTruthy();
-      expect(screen.queryByText("100k ly")).toBeNull();
-      // …reverse (the nav steps back to the galaxy): the timeline is live by
-      // construction, so it reverses in place — then Escape kills it before
-      // any tick can re-cross the threshold. Only the kill's terminal arrive
-      // can resolve the displayed tier back to the nav tier (galaxy).
+      // Descend: the eased timeline crosses the 0.9 s threshold → relabel to MW…
       fireEvent.wheel(stage, { deltaY: -12 });
+      advance(1.0); // mid-arrive: past the threshold, well before the 2.3 s settle
+      expect(screen.getByText("100k ly")).toBeTruthy();
+      expect(screen.queryByText("2.5 Mly")).toBeNull();
+      // …reverse (the nav steps back to the Local Group): the timeline is live
+      // by construction, so it reverses in place — then Escape kills it before
+      // any tick can re-cross the threshold. Only the kill's terminal arrive
+      // can resolve the displayed tier back to the nav tier (localGroup).
+      fireEvent.wheel(stage, { deltaY: 12 });
       act(() => {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
       });
-      expect(screen.getByText("100k ly")).toBeTruthy();
-      expect(screen.queryByText("2.5 Mly")).toBeNull();
+      expect(screen.getByText("2.5 Mly")).toBeTruthy();
+      expect(screen.queryByText("100k ly")).toBeNull();
       // ASTRO settles on the arrival line, not a stale mid-flight depart line.
-      expect(screen.getByText(en.astroNarration.onArrival.galaxy)).toBeTruthy();
+      expect(
+        screen.getByText(en.astroNarration.onArrival.localGroup),
+      ).toBeTruthy();
     });
   });
 });
@@ -177,11 +212,13 @@ describe("GalaxyStage — hover lights the mood constellation + dims the rest (#
   // seed/figure edits surface here as a deliberate diff, not a magic number
   // drifting out of date (owner rules, 2026-06-06: figures are authored —
   // segments == edges, lit == members — never an emergent createdAt chain).
+  // Every case dives into the MW first: the LG landing hides the memory layer,
+  // so hover is a post-first-dive affordance now.
   const seedStars = buildSeedSky().stars;
   const quietAche = CONSTELLATIONS.quietAche;
 
-  it("focusing a grouped star draws its AUTHORED edges in the figure's single mood colour, dims everything else, and blur restores", () => {
-    render(<GalaxyStage />);
+  it("focusing a grouped star (after the first dive) draws its AUTHORED edges in the figure's single mood colour, dims everything else, and blur restores", () => {
+    renderDivedIntoMilkyWay();
     // s04 "the old number" is a member of the wistful quiet-ache figure.
     const button = screen.getByRole("button", { name: "the old number" });
     fireEvent.focus(button);
@@ -219,7 +256,7 @@ describe("GalaxyStage — hover lights the mood constellation + dims the rest (#
   });
 
   it("a solo-mood star (no figure) lights no constellation and dims nothing — short-desc only, like Mom's", () => {
-    render(<GalaxyStage />);
+    renderDivedIntoMilkyWay();
     // s02 "his steady hands" (tender) lost its group in the mood-pure redesign
     // (owner rules, 2026-06-06) — solo moods behave like Mom's star on hover.
     const button = screen.getByRole("button", { name: "his steady hands" });
@@ -234,7 +271,7 @@ describe("GalaxyStage — hover lights the mood constellation + dims the rest (#
   });
 
   it("Mom's star (deep, ungrouped) lights no constellation and dims nothing — short-desc only", () => {
-    render(<GalaxyStage />);
+    renderDivedIntoMilkyWay();
     // irina is the only nostalgic star in the seed sky.
     const button = document.querySelector<HTMLButtonElement>(
       '.mem-star[data-mood="nostalgic"] button',

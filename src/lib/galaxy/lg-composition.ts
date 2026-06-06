@@ -64,8 +64,13 @@ export const LG_FRAMING: Camera = {
   zoom: LG_ZOOM,
 };
 
-/** The MW shrunk among its neighbours (FINAL proof) — still the largest disk. */
-const LG_MW_SCALE = 0.95;
+/**
+ * The MW shrunk among its neighbours (FINAL proof) — still the largest disk.
+ * 0.95 → 0.85 in the #167 sparseness pass (owner: "clear breathing room between
+ * every pair"): the shrink frees central space without giving up the
+ * largest-in-scene read; the threshold swap pop it costs stays a gentle step.
+ */
+const LG_MW_SCALE = 0.85;
 
 /** The home disk at the LG tier: same world centre + orientation, smaller radius. */
 export const LG_MW_PLACEMENT: DiskPlacement = {
@@ -77,17 +82,24 @@ export const LG_MW_PLACEMENT: DiskPlacement = {
  * The flattened neighbour ring (world px): `ρ(r) = base + gain·r`. The gentle
  * gain keeps the authored distance order visible without collapsing the proof's
  * roughly-even spread; the flatten squashes the ring vertically so the 1280×800
- * stage reads like the proof's wide diorama.
+ * stage reads like the proof's wide diorama. Retuned 460+140r → 540+80r in the
+ * #167 sparseness pass: the higher base pushes the NEAR satellites (the pairs
+ * that crowded the MW) well clear, while the flatter gain keeps the outermost
+ * anchor (M33) inside the stage canvas — the ring stays monotone in `r`, so the
+ * §5.2 nearer-reads-nearer order survives.
  */
-const LG_RING = { base: 460, gain: 140 } as const;
+const LG_RING = { base: 540, gain: 80 } as const;
 const LG_FLATTEN = 0.5;
 
 /**
  * Scale-by-distance (ADR-0011 §2, the I-2 slice of it): the far (Mly) anchors
  * render smaller relative to their authored size than the near (ly) satellites —
- * the proof's depth cue. Parallax bands + DOF are slice I-3.
+ * the proof's depth cue. Parallax bands + DOF are slice I-3. Both bands eased
+ * down a notch (0.9/0.6 → 0.85/0.55) in the #167 sparseness pass — smaller
+ * neighbours buy clear space everywhere while the near/far ratio (the cue)
+ * barely moves.
  */
-const LG_DISTANCE_SCALE = { near: 0.9, far: 0.6 } as const;
+const LG_DISTANCE_SCALE = { near: 0.85, far: 0.55 } as const;
 
 const isFar = (o: RealObject): boolean => o.realDistance.unit === "Mly";
 

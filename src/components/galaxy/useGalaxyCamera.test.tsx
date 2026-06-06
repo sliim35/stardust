@@ -2,7 +2,10 @@
 import { act, render, waitFor } from "@testing-library/react";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { gsap } from "#/components/galaxy/gsap-setup";
-import { useGalaxyCamera } from "#/components/galaxy/useGalaxyCamera";
+import {
+  INTRO_OVERZOOM,
+  useGalaxyCamera,
+} from "#/components/galaxy/useGalaxyCamera";
 import { cameraTransform } from "#/lib/galaxy/camera";
 import {
   createFocusController,
@@ -10,6 +13,7 @@ import {
   type FocusController,
   resolveFocusTarget,
 } from "#/lib/galaxy/focus";
+import { HOME_TIER } from "#/lib/galaxy/tier-nav";
 import {
   createTierTransitionController,
   framingForTier,
@@ -38,7 +42,13 @@ import type { GalaxySky, MemoryStar } from "#/lib/galaxy/types";
 const TIME_COMPRESSION = 10;
 const TIMEOUT = 1000;
 
-const HOME_TRANSFORM = cameraTransform(DEFAULT_FRAMING);
+/**
+ * The landing rest — the HOME_TIER framing (the LG overview; owner decision
+ * 2026-06-06 overriding spec §1's MW-home), derived so a HOME_TIER change never
+ * silently stales this suite.
+ */
+const HOME_FRAMING = framingForTier(HOME_TIER) ?? DEFAULT_FRAMING;
+const REST_TRANSFORM = cameraTransform(HOME_FRAMING);
 
 const star = (over: Partial<MemoryStar>): MemoryStar => ({
   id: "s1",
@@ -142,9 +152,9 @@ const mountWithTransitions = () => {
   return { focus, transitions, events, transforms, el };
 };
 
-/** Wait out the intro settle so a test starts from the resting home framing. */
+/** Wait out the intro settle so a test starts from the landing rest. */
 const settled = (el: HTMLElement) =>
-  waitFor(() => expect(el.style.transform).toBe(HOME_TRANSFORM), {
+  waitFor(() => expect(el.style.transform).toBe(REST_TRANSFORM), {
     timeout: TIMEOUT,
   });
 
@@ -165,10 +175,13 @@ describe("useGalaxyCamera — GSAP drives the focus/zoom eases (#143)", () => {
     stubReducedMotion(false);
   });
 
-  it("mounts on the intro settle: paints the 1.06 overzoom, then eases home", async () => {
+  it("mounts on the intro settle: paints the overzoom, then eases onto the landing (LG) rest", async () => {
     const { el } = mount();
     expect(el.style.transform).toBe(
-      cameraTransform({ ...DEFAULT_FRAMING, zoom: 1.06 }),
+      cameraTransform({
+        ...HOME_FRAMING,
+        zoom: HOME_FRAMING.zoom * INTRO_OVERZOOM,
+      }),
     );
     await settled(el);
   });
@@ -178,7 +191,7 @@ describe("useGalaxyCamera — GSAP drives the focus/zoom eases (#143)", () => {
     await settled(el);
     act(() => focus.focusStar("a"));
     // It eases — the camera must NOT be on the target synchronously…
-    expect(el.style.transform).toBe(HOME_TRANSFORM);
+    expect(el.style.transform).toBe(REST_TRANSFORM);
     // …and lands on the exact pure-math framing once the tween completes.
     await waitFor(() => expect(el.style.transform).toBe(framingOf("a")), {
       timeout: TIMEOUT,
@@ -190,7 +203,7 @@ describe("useGalaxyCamera — GSAP drives the focus/zoom eases (#143)", () => {
     await settled(el);
     act(() => focus.focusStar("a"));
     // Catch the move genuinely in flight (left home, not yet on a)…
-    await waitFor(() => expect(el.style.transform).not.toBe(HOME_TRANSFORM), {
+    await waitFor(() => expect(el.style.transform).not.toBe(REST_TRANSFORM), {
       timeout: TIMEOUT,
     });
     act(() => focus.focusStar("b"));
@@ -217,25 +230,38 @@ describe("useGalaxyCamera — GSAP drives the focus/zoom eases (#143)", () => {
       timeout: TIMEOUT,
     });
     pressEscape();
-    await waitFor(() => expect(el.style.transform).toBe(HOME_TRANSFORM), {
+    await waitFor(() => expect(el.style.transform).toBe(REST_TRANSFORM), {
       timeout: TIMEOUT,
     });
+  });
+
+  it("Escape at rest is inert — nothing to back out of, the camera stays on the landing rest", async () => {
+    // Without the guard, back()'s DEFAULT_FRAMING fallback would silently dive
+    // the camera to the MW framing while the scene/nav still show the Local
+    // Group — a first-touch desync now that the page lands on the LG tier.
+    const { el } = mount();
+    await settled(el);
+    pressEscape();
+    act(() => {
+      for (let i = 0; i < 10; i++) gsap.ticker.tick();
+    });
+    expect(el.style.transform).toBe(REST_TRANSFORM);
   });
 
   it("prefers-reduced-motion: focus snaps immediately — no tween, no intro", () => {
     stubReducedMotion(true);
     const { focus, el } = mount();
-    expect(el.style.transform).toBe(HOME_TRANSFORM); // no 1.06 intro overzoom
+    expect(el.style.transform).toBe(REST_TRANSFORM); // no intro overzoom
     act(() => focus.focusStar("a"));
     expect(el.style.transform).toBe(framingOf("a")); // synchronous snap
   });
 
-  it("prefers-reduced-motion: Escape snaps straight back home", () => {
+  it("prefers-reduced-motion: Escape snaps straight back to the landing rest", () => {
     stubReducedMotion(true);
     const { focus, el } = mount();
     act(() => focus.focusStar("a"));
     pressEscape();
-    expect(el.style.transform).toBe(HOME_TRANSFORM);
+    expect(el.style.transform).toBe(REST_TRANSFORM);
   });
 });
 
@@ -260,16 +286,22 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
   it("a tier request eases to the destination framing — depart → threshold → arrive", async () => {
     const { transitions, events, transforms, el } = mountWithTransitions();
     await settled(el);
-    act(() => transitions.request("galaxy", "localGroup"));
-    // It eases — the camera must NOT be on the LG framing synchronously…
-    expect(el.style.transform).toBe(HOME_TRANSFORM);
+    // The primary first gesture: dive from the LG landing INTO the Milky Way.
+    act(() => transitions.request("localGroup", "galaxy"));
+    // It eases — the camera must NOT be on the MW framing synchronously…
+    expect(el.style.transform).toBe(REST_TRANSFORM);
     // …the depart cue fires up front…
     expect(events).toEqual([
-      { kind: "depart", direction: "ascend", from: "galaxy", to: "localGroup" },
+      {
+        kind: "depart",
+        direction: "descend",
+        from: "localGroup",
+        to: "galaxy",
+      },
     ]);
-    // …and the timeline settles on the exact pure LG framing.
+    // …and the timeline settles on the exact pure MW framing.
     await waitFor(
-      () => expect(el.style.transform).toBe(tierTransformOf("localGroup")),
+      () => expect(el.style.transform).toBe(tierTransformOf("galaxy")),
       { timeout: TIMEOUT },
     );
     await waitFor(() =>
@@ -281,40 +313,41 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
     );
     // The scene swap happened MID-flight: at the threshold event the camera was
     // between the two rests, not parked on either.
-    expect(transforms[1]).not.toBe(HOME_TRANSFORM);
-    expect(transforms[1]).not.toBe(tierTransformOf("localGroup"));
-    expect(events[1]).toEqual({ kind: "threshold", tier: "localGroup" });
-    expect(events[2]).toEqual({ kind: "arrive", tier: "localGroup" });
+    expect(transforms[1]).not.toBe(REST_TRANSFORM);
+    expect(transforms[1]).not.toBe(tierTransformOf("galaxy"));
+    expect(events[1]).toEqual({ kind: "threshold", tier: "galaxy" });
+    expect(events[2]).toEqual({ kind: "arrive", tier: "galaxy" });
   });
 
-  it("reverses mid-flight (the breadcrumb case): swaps back, lands home, no stale timeline", async () => {
+  it("reverses mid-flight (the breadcrumb case): swaps back, lands on the LG rest, no stale timeline", async () => {
     const { transitions, events, el } = mountWithTransitions();
     await settled(el);
-    act(() => transitions.request("galaxy", "localGroup"));
-    // Let it cross the threshold (the scene swapped to the Local Group)…
+    act(() => transitions.request("localGroup", "galaxy"));
+    // Let it cross the threshold (the scene swapped to the Milky Way)…
     await waitFor(
       () => expect(events.some((e) => e.kind === "threshold")).toBe(true),
       { timeout: TIMEOUT },
     );
     // …then reverse (opposite scroll / breadcrumb): no snap at the flip…
-    act(() => transitions.request("localGroup", "galaxy"));
-    expect(el.style.transform).not.toBe(HOME_TRANSFORM);
-    // …the reverse re-narrates as a descend and swaps the scene back…
-    await waitFor(() => expect(el.style.transform).toBe(HOME_TRANSFORM), {
+    act(() => transitions.request("galaxy", "localGroup"));
+    expect(el.style.transform).not.toBe(REST_TRANSFORM);
+    // …the reverse re-narrates as an ascend and swaps the scene back…
+    await waitFor(() => expect(el.style.transform).toBe(REST_TRANSFORM), {
       timeout: TIMEOUT,
     });
     expect(events).toContainEqual({
       kind: "depart",
-      direction: "descend",
-      from: "localGroup",
-      to: "galaxy",
+      direction: "ascend",
+      from: "galaxy",
+      to: "localGroup",
     });
     expect(events.filter((e) => e.kind === "threshold")).toEqual([
-      { kind: "threshold", tier: "localGroup" },
       { kind: "threshold", tier: "galaxy" },
+      { kind: "threshold", tier: "localGroup" },
     ]);
     await waitFor(
-      () => expect(events.at(-1)).toEqual({ kind: "arrive", tier: "galaxy" }),
+      () =>
+        expect(events.at(-1)).toEqual({ kind: "arrive", tier: "localGroup" }),
       { timeout: TIMEOUT },
     );
     // …and STICKS: the reversed timeline never re-asserts itself.
@@ -323,16 +356,16 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
     act(() => {
       for (let i = 0; i < 10; i++) gsap.ticker.tick();
     });
-    expect(el.style.transform).toBe(HOME_TRANSFORM);
+    expect(el.style.transform).toBe(REST_TRANSFORM);
   });
 
   it("ignores a request for the tier it is already heading to", async () => {
     const { transitions, events, el } = mountWithTransitions();
     await settled(el);
-    act(() => transitions.request("galaxy", "localGroup"));
-    act(() => transitions.request("galaxy", "localGroup"));
+    act(() => transitions.request("localGroup", "galaxy"));
+    act(() => transitions.request("localGroup", "galaxy"));
     await waitFor(
-      () => expect(el.style.transform).toBe(tierTransformOf("localGroup")),
+      () => expect(el.style.transform).toBe(tierTransformOf("galaxy")),
       { timeout: TIMEOUT },
     );
     // One transition's worth of cues — no doubled depart/arrive.
@@ -346,15 +379,15 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
   it("a focus request mid-transition kills the timeline — the star framing sticks", async () => {
     const { focus, transitions, el } = mountWithTransitions();
     await settled(el);
-    act(() => transitions.request("galaxy", "localGroup"));
-    await waitFor(() => expect(el.style.transform).not.toBe(HOME_TRANSFORM), {
+    act(() => transitions.request("localGroup", "galaxy"));
+    await waitFor(() => expect(el.style.transform).not.toBe(REST_TRANSFORM), {
       timeout: TIMEOUT,
     });
     act(() => focus.focusStar("a"));
     await waitFor(() => expect(el.style.transform).toBe(framingOf("a")), {
       timeout: TIMEOUT,
     });
-    // The killed timeline never fights the camera back toward the LG framing.
+    // The killed timeline never fights the camera back toward the MW framing.
     // Deterministic (review #167 nit): pump the gsap ticker instead of a
     // wall-clock sleep — a surviving timeline would move the camera on tick.
     act(() => {
@@ -366,7 +399,7 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
   it("a focus kill after the threshold emits the terminal arrive for the nav tier (#167 review)", async () => {
     const { focus, transitions, events, el } = mountWithTransitions();
     await settled(el);
-    act(() => transitions.request("galaxy", "localGroup"));
+    act(() => transitions.request("localGroup", "galaxy"));
     // The threshold committed the displayed tier (scene swap, scale-net relabel)…
     await waitFor(
       () => expect(events.some((e) => e.kind === "threshold")).toBe(true),
@@ -376,7 +409,7 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
     // was heading toward, which is exactly where the nav already stepped
     // (code-style: terminal events on kill/cancel).
     act(() => focus.focusStar("a"));
-    expect(events.at(-1)).toEqual({ kind: "arrive", tier: "localGroup" });
+    expect(events.at(-1)).toEqual({ kind: "arrive", tier: "galaxy" });
     await waitFor(() => expect(el.style.transform).toBe(framingOf("a")), {
       timeout: TIMEOUT,
     });
@@ -403,19 +436,19 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
         });
       };
       advance(0); // sync the frozen root clock to "now"
-      act(() => transitions.request("galaxy", "localGroup"));
+      act(() => transitions.request("localGroup", "galaxy"));
       advance(0.1); // ×10 timeScale → 1 s of timeline: past the 0.9 s threshold
       expect(events.some((e) => e.kind === "threshold")).toBe(true);
-      // Reverse (the nav stepped back to the galaxy) and kill in ONE act: no
-      // tick can re-cross the threshold in between, so the swap-back never
+      // Reverse (the nav stepped back to the Local Group) and kill in ONE act:
+      // no tick can re-cross the threshold in between, so the swap-back never
       // fired — the kill alone must resolve the displayed tier to the heading.
       act(() => {
-        transitions.request("localGroup", "galaxy");
+        transitions.request("galaxy", "localGroup");
         focus.focusStar("a");
       });
-      expect(events.at(-1)).toEqual({ kind: "arrive", tier: "galaxy" });
+      expect(events.at(-1)).toEqual({ kind: "arrive", tier: "localGroup" });
       expect(events.filter((e) => e.kind === "threshold")).toEqual([
-        { kind: "threshold", tier: "localGroup" },
+        { kind: "threshold", tier: "galaxy" },
       ]);
       advance(0.2); // the focus tween (1.6 s ÷ 10) lands on the star
       expect(el.style.transform).toBe(framingOf("a"));
@@ -431,11 +464,16 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
     // never swapped — a terminal arrive here would force a swap the camera
     // never reached (spec §1: the swap belongs to the threshold).
     act(() => {
-      transitions.request("galaxy", "localGroup");
+      transitions.request("localGroup", "galaxy");
       focus.focusStar("a");
     });
     expect(events).toEqual([
-      { kind: "depart", direction: "ascend", from: "galaxy", to: "localGroup" },
+      {
+        kind: "depart",
+        direction: "descend",
+        from: "localGroup",
+        to: "galaxy",
+      },
     ]);
     await waitFor(() => expect(el.style.transform).toBe(framingOf("a")), {
       timeout: TIMEOUT,
@@ -445,11 +483,11 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
   it("prefers-reduced-motion: a tier change snaps — threshold + arrive, no ease, no depart", () => {
     stubReducedMotion(true);
     const { transitions, events, el } = mountWithTransitions();
-    act(() => transitions.request("galaxy", "localGroup"));
-    expect(el.style.transform).toBe(tierTransformOf("localGroup")); // synchronous snap
+    act(() => transitions.request("localGroup", "galaxy"));
+    expect(el.style.transform).toBe(tierTransformOf("galaxy")); // synchronous snap
     expect(events).toEqual([
-      { kind: "threshold", tier: "localGroup" },
-      { kind: "arrive", tier: "localGroup" },
+      { kind: "threshold", tier: "galaxy" },
+      { kind: "arrive", tier: "galaxy" },
     ]);
   });
 });

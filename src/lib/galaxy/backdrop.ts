@@ -108,22 +108,41 @@ const toStage = (
 };
 
 /**
+ * A placed disk's silhouette reach along one direction `(ux, uy)` (unit vector)
+ * — the support function of the ellipse with semi-axes `(r, r·tilt)` rotated by
+ * `pa`: how far the projected disk extends from its centre when measured along
+ * that axis. The pairwise-separation guarantee of the LG composition (#167
+ * sparseness) measures gaps along the centre-to-centre line with this — the
+ * axis-aligned `placedExtent` over-reaches on diagonals (it bounds the box, not
+ * the ellipse).
+ */
+export const placedSupport = (
+  place: DiskPlacement,
+  ux: number,
+  uy: number,
+): number => {
+  // Project the direction onto the ellipse's own axes (major e1 = pa, minor
+  // e2 = pa + 90°), then the support is √((r·u₁)² + (r·tilt·u₂)²).
+  const cosPa = Math.cos(place.pa);
+  const sinPa = Math.sin(place.pa);
+  const u1 = ux * cosPa + uy * sinPa;
+  const u2 = -ux * sinPa + uy * cosPa;
+  return Math.hypot(place.r * u1, place.r * place.tilt * u2);
+};
+
+/**
  * The projected half-extents of a placed disk — the tight axis-aligned bounding
- * box of the ellipse with semi-axes `(r, r·tilt)` rotated by `pa`. The one place
- * the silhouette bound lives: the LG composition (labels clear of the disk, fit
- * inside the stage) and the tests read it instead of re-deriving the trig.
+ * box of the ellipse with semi-axes `(r, r·tilt)` rotated by `pa` (the support
+ * along the stage axes). The one place the silhouette bound lives: the LG
+ * composition (labels clear of the disk, fit inside the stage) and the tests
+ * read it instead of re-deriving the trig.
  */
 export const placedExtent = (
   place: DiskPlacement,
-): { x: number; y: number } => {
-  const cosPa = Math.cos(place.pa);
-  const sinPa = Math.sin(place.pa);
-  const ry = place.r * place.tilt;
-  return {
-    x: Math.hypot(place.r * cosPa, ry * sinPa),
-    y: Math.hypot(place.r * sinPa, ry * cosPa),
-  };
-};
+): { x: number; y: number } => ({
+  x: placedSupport(place, 1, 0),
+  y: placedSupport(place, 0, 1),
+});
 
 /**
  * Project one disk-polar point into a placed, stage-clamped `BackdropPoint`. Exported

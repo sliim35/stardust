@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ascendTier,
   descendTier,
+  HOME_TIER,
   initialTierNav,
   type TierNavState,
   tierNavReducer,
@@ -13,8 +14,9 @@ import type { Tier } from "#/lib/galaxy/types";
 const FULL: readonly Tier[] = ["localGroup", "galaxy", "solarSystem"];
 
 describe("tierNavReducer", () => {
-  it("lands on the home (galaxy) tier with no focus", () => {
-    expect(initialTierNav).toEqual({ tier: "galaxy", focusedId: null });
+  it("lands on the Local-Group overview with no focus (owner decision 2026-06-06, overriding spec §1's MW-home)", () => {
+    expect(HOME_TIER).toBe("localGroup");
+    expect(initialTierNav).toEqual({ tier: HOME_TIER, focusedId: null });
   });
 
   it("ascend zooms out one available tier (galaxy → localGroup)", () => {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { MW_PLACEMENT, placedExtent } from "#/lib/galaxy/backdrop";
+import {
+  MW_PLACEMENT,
+  placedExtent,
+  placedSupport,
+} from "#/lib/galaxy/backdrop";
 import { DEFAULT_FRAMING } from "#/lib/galaxy/focus";
 import {
   LG_FRAMING,
@@ -116,6 +120,32 @@ describe("lgPlacementFor — authored placement → spread LG stage coords", () 
         expect(d).toBeGreaterThan(Math.max(placed[i].r, placed[j].r));
         // …and the dense cores must read as clearly distinct objects.
         expect(d).toBeGreaterThan(0.6 * (placed[i].r + placed[j].r));
+      }
+    }
+  });
+
+  // The owner's sparseness floor (#167 follow-up, 2026-06-06): "clear breathing
+  // room between every pair" — pinned, not vibes. Measured along the
+  // centre-to-centre line: the gap between the two silhouettes' directional
+  // reaches (`placedSupport`, the exact ellipse bound the axis-aligned
+  // `placedExtent` boxes) must clear the floor for EVERY pair, the MW included.
+  const MIN_PAIR_GAP = 60;
+
+  it(`keeps ≥ ${MIN_PAIR_GAP}px of clear space between every pair of placed silhouettes`, () => {
+    const placed = allPlaced();
+    const ids = [HOME_MILKY_WAY_ID, ...lgGalaxies().map((p) => p.object.id)];
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        const d = dist(placed[i], placed[j]);
+        const ux = (placed[j].cx - placed[i].cx) / d;
+        const uy = (placed[j].cy - placed[i].cy) / d;
+        const gap =
+          d -
+          placedSupport(placed[i], ux, uy) -
+          placedSupport(placed[j], ux, uy);
+        expect(gap, `${ids[i]} ↔ ${ids[j]} gap`).toBeGreaterThanOrEqual(
+          MIN_PAIR_GAP,
+        );
       }
     }
   });

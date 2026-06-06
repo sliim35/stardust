@@ -13,8 +13,10 @@ import {
   focusCamera,
   resolveFocusTarget,
 } from "#/lib/galaxy/focus";
+import { HOME_TIER } from "#/lib/galaxy/tier-nav";
 import {
   directionOf,
+  framingForTier,
   planTierTransition,
   type TierTransitionController,
   type TierTransitionEvent,
@@ -66,8 +68,18 @@ import { gsap, useGalaxyGsap } from "./gsap-setup";
  */
 export const FOCUS_TWEEN = { duration: 1.6, ease: "power3.out" } as const;
 
-/** The mount settle (zoom 1.06 → 1) — the visible "no snap" intro. */
+/** The mount settle (zoom ×1.06 → the landing rest) — the visible "no snap" intro. */
 export const INTRO_TWEEN = { duration: 1.2, ease: "power2.out" } as const;
+export const INTRO_OVERZOOM = 1.06;
+
+/**
+ * The landing rest the intro settles onto — the HOME_TIER framing (the LG
+ * overview; owner decision 2026-06-06, PR #167, overriding spec §1's MW-home).
+ * Derived, never authored here, so the camera and the nav spine can't disagree
+ * about where the page opens. The `??` arm is unreachable while HOME_TIER has a
+ * built framing — it guards the #127 (Solar-System) extension, not a real path.
+ */
+const HOME_FRAMING: Camera = framingForTier(HOME_TIER) ?? DEFAULT_FRAMING;
 
 /**
  * The two phases of a tier transition (#125, ADR-0009 step 4): an ease-in toward
@@ -124,7 +136,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
 
   // The focus machine lives in a ref: GSAP tweens toward its targets, never via
   // React state, so a focus move costs zero re-renders.
-  const focusState = useRef<FocusState>(createFocus(DEFAULT_FRAMING));
+  const focusState = useRef<FocusState>(createFocus(HOME_FRAMING));
 
   // ADR-0009: registration at hook scope, client-only — never at module scope
   // (Workers SSR safety). Returns the context-scoped `useGSAP` effect hook.
@@ -136,7 +148,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     // The GSAP tween target: a plain Camera object — no DOM needed. `onUpdate`
     // paints it through the pure `cameraTransform`; its `Math.round` is what
     // keeps the tween's fractional values from ever hitting the DOM raw.
-    const camera: Camera = { ...DEFAULT_FRAMING };
+    const camera: Camera = { ...HOME_FRAMING };
     const applyCamera = () => {
       if (cam.current) cam.current.style.transform = cameraTransform(camera);
     };
@@ -199,12 +211,14 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       });
     };
 
-    // Intro settle on load — a visible "no snap" demonstration (1.06 → 1.0).
-    // A focus request mid-settle simply overwrites this tween's zoom axis.
+    // Intro settle on load — a visible "no snap" demonstration easing onto the
+    // landing (HOME_TIER) rest from a slight overzoom; reduced motion mounts
+    // parked on the rest instead. A focus request mid-settle simply overwrites
+    // this tween's zoom axis.
     if (!mq.matches) {
-      camera.zoom = 1.06;
+      camera.zoom = HOME_FRAMING.zoom * INTRO_OVERZOOM;
       gsap.to(camera, {
-        zoom: DEFAULT_FRAMING.zoom,
+        zoom: HOME_FRAMING.zoom,
         ...INTRO_TWEEN,
         overwrite: "auto",
         onUpdate: applyCamera,
@@ -227,6 +241,12 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       tweenTo(focusState.current.target);
     };
     const requestBack = () => {
+      // ESC with nothing to back out of is inert (no prior focus, no focus in
+      // flight, no tier timeline): `back()`'s DEFAULT_FRAMING fallback would
+      // silently dive the camera to the MW framing while the scene/nav stay
+      // put — a first-touch desync now that the page lands on the LG tier.
+      const { prior, focusing } = focusState.current;
+      if (!prior && !focusing && !transition) return;
       focusState.current = back({
         ...focusState.current,
         current: { ...camera },

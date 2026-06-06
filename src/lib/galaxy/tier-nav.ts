@@ -20,8 +20,13 @@ export const TIER_ORDER = [
 /** Tiers buildable in v1 — Solar System is deferred to #127. */
 export const V1_AVAILABLE_TIERS: readonly Tier[] = ["localGroup", "galaxy"];
 
-/** The home/default tier the visitor lands on (interaction spec §1: the Milky Way). */
-export const HOME_TIER: Tier = "galaxy";
+/**
+ * The tier the visitor lands on. Owner decision (PR #167, 2026-06-06),
+ * deliberately **overriding interaction-spec §1's "the Milky Way is home"**:
+ * the page opens on the Local-Group overview and the first gesture is the
+ * scroll-up dive INTO the Milky Way (memory stars appear after the dive).
+ */
+export const HOME_TIER: Tier = "localGroup";
 
 export type TierNavState = { tier: Tier; focusedId: string | null };
 
