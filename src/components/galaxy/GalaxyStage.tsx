@@ -7,6 +7,13 @@ import {
 } from "react";
 import type { BackdropPoint } from "#/lib/galaxy/backdrop";
 import { MW_PLACEMENT } from "#/lib/galaxy/backdrop";
+import {
+  constellationNodes,
+  constellationSegments,
+  figureColor,
+  figureForGroup,
+  hoverAffordanceFor,
+} from "#/lib/galaxy/constellation";
 import { createFocusController } from "#/lib/galaxy/focus";
 import type { PlacedGalaxy } from "#/lib/galaxy/galaxy-render";
 import {
@@ -27,9 +34,11 @@ import {
 } from "#/lib/galaxy/tier-transition";
 import type { MemoryStar, Tier } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
+import type { Messages } from "#/lib/i18n/types";
 import { BackdropTint } from "./BackdropTint";
 import { CardHost } from "./CardHost";
 import { ChromeOverlay } from "./ChromeOverlay";
+import { ConstellationOverlay } from "./ConstellationOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { LgGalaxyLabels } from "./LgGalaxyLabels";
@@ -179,7 +188,35 @@ export const GalaxyStage = () => {
     () => (lgView ? lgGoldAccents() : NO_GOLD),
     [lgView],
   );
-  const a11yLabel = m.a11y.memoryStar;
+
+  // Hover (#154, spec §3 + owner rules 2026-06-06): the star under the pointer/
+  // keyboard-focus. When it belongs to an AUTHORED mood-pure figure, the overlay
+  // draws the figure's designed edges in the figure's ONE mood colour and
+  // everything else dims; a solo star (Mom's, the figure-less moods) fades up
+  // only its short description. Pure derivation — `constellation.ts` owns the
+  // rules (mood-validated membership, never `deep`, authored edges only).
+  // Gated off the Local-Group view (I-2): L3 hides there, and a hover that was
+  // live when the ascend started must not strand the dim/overlay on Layer A.
+  const [hovered, setHovered] = useState<MemoryStar | null>(null);
+  const constellation = useMemo(() => {
+    if (lgView || hovered === null) return null;
+    const affordance = hoverAffordanceFor(hovered);
+    if (affordance.kind !== "memory" || affordance.group === null) return null;
+    const figure = figureForGroup(affordance.group);
+    if (figure === null) return null;
+    const segments = constellationSegments(sky.stars, figure);
+    if (segments.length === 0) return null; // a degenerate figure reads as solo
+    return {
+      segments,
+      color: figureColor(figure),
+      litIds: new Set(constellationNodes(sky.stars, figure).map((n) => n.id)),
+    };
+  }, [lgView, hovered, sky.stars]);
+  // The "dim everything else" cross-fade on the far layers (L1 + the disk) —
+  // instant under prefers-reduced-motion (AC7).
+  const dimClass = `transition-opacity duration-300 motion-reduce:transition-none ${
+    constellation ? "opacity-40" : "opacity-100"
+  }`;
 
   return (
     <div
@@ -199,7 +236,7 @@ export const GalaxyStage = () => {
         {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
             the farthest/slowest parallax plane). Decorative. */}
         <div
-          className="absolute inset-0 [will-change:transform]"
+          className={`absolute inset-0 [will-change:transform] ${dimClass}`}
           ref={cam.l1}
           aria-hidden="true"
         >
@@ -214,7 +251,7 @@ export const GalaxyStage = () => {
           style={{ "--stage-scale": scale } as CSSProperties}
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
-            <div className="galaxy-l2-wrap" ref={cam.l2}>
+            <div className={`galaxy-l2-wrap ${dimClass}`} ref={cam.l2}>
               <GalaxyBackdrop
                 backdrop={backdrop}
                 homePlacement={lgView ? LG_MW_PLACEMENT : MW_PLACEMENT}
@@ -236,11 +273,20 @@ export const GalaxyStage = () => {
               }`}
               ref={cam.l3}
             >
+              {constellation && (
+                <ConstellationOverlay
+                  segments={constellation.segments}
+                  color={constellation.color}
+                />
+              )}
               <InteractiveStars
                 stars={sky.stars}
                 ignitingIds={ignitingIds}
                 diveTo={nav.diveTo}
-                a11yLabel={a11yLabel}
+                a11yLabel={m.a11y.memoryStar}
+                moodLabels={m.moods}
+                onHoverChange={setHovered}
+                litIds={constellation?.litIds ?? null}
               />
             </div>
           </div>
@@ -265,18 +311,25 @@ export const GalaxyStage = () => {
  * The L3 memory layer made interactive — a child of `<CardHost>` so it can read the
  * card context via `useObjectClick`. Memory-star clicks resolve to a memory card; a
  * gateway dive would route through `diveTo` (the real-object layer adopts this hook
- * when slice I / #112 lands).
+ * when slice I / #112 lands). Hover/focus (#154) reports up through `onHoverChange`;
+ * `litIds` flows back down as the dim mask while a constellation is lit.
  */
 const InteractiveStars = ({
   stars,
   ignitingIds,
   diveTo,
   a11yLabel,
+  moodLabels,
+  onHoverChange,
+  litIds,
 }: {
   stars: readonly MemoryStar[];
   ignitingIds: ReadonlySet<string>;
   diveTo: (id: string, tier: Tier) => void;
   a11yLabel: string;
+  moodLabels: Messages["moods"];
+  onHoverChange: (star: MemoryStar | null) => void;
+  litIds: ReadonlySet<string> | null;
 }) => {
   const onSelect = useObjectClick(diveTo);
   return (
@@ -285,6 +338,9 @@ const InteractiveStars = ({
       ignitingIds={ignitingIds}
       onSelect={onSelect}
       a11yLabel={a11yLabel}
+      moodLabels={moodLabels}
+      onHoverChange={onHoverChange}
+      litIds={litIds}
     />
   );
 };

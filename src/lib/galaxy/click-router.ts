@@ -15,8 +15,13 @@ export type ClickOutcome =
   | { kind: "dive"; id: string; tier: Tier }
   | { kind: "card"; target: ClickTarget };
 
-/** Structural discriminant — only a `RealObject` carries `loreKey` (mirrors card-model). */
-const isRealObject = (t: ClickTarget): t is RealObject =>
+/**
+ * Structural discriminant for the shared `RealObject | MemoryStar` union — only
+ * a `RealObject` carries a `loreKey`; a `MemoryStar` carries `mood` + `text`.
+ * Exported as THE one discriminant (DRY): card-model (#152) and the hover
+ * affordance (#154) resolve targets through this same test, never by identity.
+ */
+export const isRealObject = (t: RealObject | MemoryStar): t is RealObject =>
   typeof (t as RealObject).loreKey === "string";
 
 export const resolveClick = (

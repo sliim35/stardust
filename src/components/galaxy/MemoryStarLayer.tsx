@@ -1,5 +1,6 @@
 import { layoutStars } from "#/lib/galaxy/place";
 import type { MemoryStar } from "#/lib/galaxy/types";
+import type { Messages } from "#/lib/i18n/types";
 import { MemoryStarView } from "./MemoryStarView";
 
 /**
@@ -9,6 +10,10 @@ import { MemoryStarView } from "./MemoryStarView";
  *
  * The layer itself ignores the pointer; each star opts back in (selection/panel
  * is #5). Rendered ordered by `createdAt` so the future tab order (#5) is stable.
+ *
+ * Hover (#154): `onHoverChange` reports the star under the pointer/focus; while
+ * a constellation is lit, `litIds` names the stars that stay bright — every
+ * other star dims (`litIds: null` = nothing lit, nobody dims).
  */
 
 type Props = {
@@ -18,6 +23,12 @@ type Props = {
   onSelect?: (star: MemoryStar) => void;
   /** i18n fallback aria-label for unnamed stars. */
   a11yLabel?: string;
+  /** #154: hover/focus enter (the star) / leave (`null`). */
+  onHoverChange?: (star: MemoryStar | null) => void;
+  /** #154: the lit constellation's star ids — others dim. `null` = no dim. */
+  litIds?: ReadonlySet<string> | null;
+  /** #154: localized MOOD eyebrow catalog for the hover labels. */
+  moodLabels?: Messages["moods"];
 };
 
 export const MemoryStarLayer = ({
@@ -25,6 +36,9 @@ export const MemoryStarLayer = ({
   ignitingIds,
   onSelect,
   a11yLabel,
+  onHoverChange,
+  litIds = null,
+  moodLabels,
 }: Props) => {
   const positions = layoutStars(stars);
   const ordered = [...stars].sort((a, b) => a.createdAt - b.createdAt);
@@ -39,6 +53,9 @@ export const MemoryStarLayer = ({
           igniting={ignitingIds?.has(star.id)}
           onSelect={onSelect}
           a11yLabel={a11yLabel}
+          onHoverChange={onHoverChange}
+          dimmed={litIds !== null && !litIds.has(star.id)}
+          moodLabels={moodLabels}
         />
       ))}
     </div>

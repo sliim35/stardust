@@ -15,6 +15,7 @@
 
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import type {
+  ConstellationFigure,
   GalaxyBackdrop,
   GalaxySky,
   MemoryStar,
@@ -74,16 +75,40 @@ export const placeStar = (
   return { r, angle };
 };
 
-// ── mood constellations (Layer B — ADR-0010 §1/§4-④, #146) ─────────────────────
-// Same-`group` seed stars connect into one constellation (in `createdAt` order). The
-// names are owner-facing constellation captions — but they are NOT user-visible copy
-// here; the group is a stable membership key consumed by the overlay (spec §3) which
-// reads the mood label from the i18n `moods` catalog. Mom's star stays ungrouped
-// (standalone), per ADR-0010 §1 + the Mom's-star treatment (2026-06-06).
+// ── mood constellations (Layer B — ADR-0010 §1/§4-④, #146; owner rules 2026-06-06) ──
+// Each constellation is an AUTHORED figure (issue #154 amendment): one mood per
+// figure (rule 1 — hence one colour, rule 2), a designed edge topology like a real
+// constellation (rule 3 — never an emergent `createdAt` chain). The `group` key is
+// the stable membership marker mirrored on each member star; member ids are the
+// `s${index+1}` ids `buildSeedSky` derives from SEED order (a drifted id fails the
+// seed mood-purity test). Same-mood members share a `placeStar` wedge, so each
+// figure reads as a local shape. Mom's star stays ungrouped (standalone), per
+// ADR-0010 §1 + the Mom's-star treatment (2026-06-06).
 export const CONSTELLATIONS = {
-  brightDays: "bright-days",
-  quietAche: "quiet-ache",
-} as const;
+  // "bright days" — the joyful figure: a slightly irregular closed triangle
+  // (3 nodes / 3 edges — deliberately MORE edges than a chain could draw).
+  brightDays: {
+    group: "bright-days",
+    mood: "joyful",
+    members: ["s01", "s07", "s08"],
+    edges: [
+      ["s01", "s07"],
+      ["s07", "s08"],
+      ["s08", "s01"],
+    ],
+  },
+  // "quiet ache" — the wistful figure: an open arc routed through s04 as its
+  // hub (s09—s04—s10) — NOT the s04→s09→s10 createdAt chain.
+  quietAche: {
+    group: "quiet-ache",
+    mood: "wistful",
+    members: ["s04", "s09", "s10"],
+    edges: [
+      ["s09", "s04"],
+      ["s04", "s10"],
+    ],
+  },
+} as const satisfies Record<string, ConstellationFigure>;
 
 // ── the curated seed corpus (subset of the prototype's 36) ─────────────────────
 // `copyKey` indexes the i18n `memoryStars` catalog — no inline name/text here
@@ -100,35 +125,58 @@ const SEED = [
     mood: "joyful",
     copyKey: "s01",
     who: "marco",
-    group: CONSTELLATIONS.brightDays,
+    group: CONSTELLATIONS.brightDays.group,
   },
+  // s02/s03/s05/s06 are SOLO stars — their moods have no authored figure yet, so
+  // hover gives them the short description only (like Mom's star), per the
+  // mood-pure redesign (owner rules, 2026-06-06).
   {
     mood: "tender",
     copyKey: "s02",
     who: "lena",
-    group: CONSTELLATIONS.quietAche,
   },
   {
     mood: "grieving",
     copyKey: "s03",
-    group: CONSTELLATIONS.quietAche,
   },
   {
     mood: "wistful",
     copyKey: "s04",
-    group: CONSTELLATIONS.quietAche,
+    group: CONSTELLATIONS.quietAche.group,
   },
   {
     mood: "peaceful",
     copyKey: "s05",
     who: "ana",
-    group: CONSTELLATIONS.brightDays,
   },
   {
     mood: "wonder",
     copyKey: "s06",
     who: "ken",
-    group: CONSTELLATIONS.brightDays,
+  },
+  // The corpus growth (owner rule 4): two more joyful + two more wistful stars so
+  // both authored figures have >= 3 same-mood nodes.
+  {
+    mood: "joyful",
+    copyKey: "s07",
+    group: CONSTELLATIONS.brightDays.group,
+  },
+  {
+    mood: "joyful",
+    copyKey: "s08",
+    who: "noor",
+    group: CONSTELLATIONS.brightDays.group,
+  },
+  {
+    mood: "wistful",
+    copyKey: "s09",
+    group: CONSTELLATIONS.quietAche.group,
+  },
+  {
+    mood: "wistful",
+    copyKey: "s10",
+    who: "tomas",
+    group: CONSTELLATIONS.quietAche.group,
   },
 ] as const satisfies readonly SeedSpec[];
 
