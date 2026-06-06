@@ -161,7 +161,11 @@ describe("useGalaxyCamera — GSAP drives the focus/zoom eases (#143)", () => {
       timeout: TIMEOUT,
     });
     // …and STICKS there: the killed a-tween never fights the camera back.
-    await new Promise((r) => setTimeout(r, 120));
+    // Deterministic (review #166 nit): pump the gsap ticker instead of a
+    // wall-clock sleep — a surviving a-tween would move the camera on tick.
+    act(() => {
+      for (let i = 0; i < 10; i++) gsap.ticker.tick();
+    });
     expect(el.style.transform).toBe(framingOf("b"));
   });
 
