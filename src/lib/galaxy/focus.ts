@@ -1,18 +1,20 @@
 /**
  * The pure focus-on-star state machine (#111) — the shared camera primitive that
  * gates read deep-link (#5) and discovery search-select (#113). It owns the
- * *numbers* of a programmatic camera move: the current framing, the eased target,
- * whether a move is in flight, and the prior framing to return to on ESC/back.
- * The component owns the RAF loop + key/pointer events (mirrors `camera.ts`'s
- * "components own RAF + DOM; this module owns the numbers" contract), so the whole
- * machine is unit-testable headless.
+ * *spatial decisions* of a programmatic camera move: the eased target, whether a
+ * move is in flight, and the prior framing to return to on ESC/back. The
+ * component owns the DOM + key/pointer events and the **time domain** — GSAP
+ * tweens toward the targets this machine computes (ADR-0009; the hand-rolled
+ * `stepFocus`/`lerpCamera` stepping is retired) — so the whole machine stays
+ * unit-testable headless.
  *
- * It composes — never forks — the existing `camera.ts` easing: `focusOn` builds a
- * target, `lerpCamera` eases toward it. Focusing never touches a star's `(r, angle)`,
- * so the append-only invariant holds: framing a star can't move any other star.
+ * It composes — never forks — the `camera.ts` target math: `focusOn` builds a
+ * target; the component layer eases toward it. Focusing never touches a star's
+ * `(r, angle)`, so the append-only invariant holds: framing a star can't move
+ * any other star.
  */
 
-import { type Camera, focusOn, lerpCamera } from "#/lib/galaxy/camera";
+import { type Camera, focusOn } from "#/lib/galaxy/camera";
 import { GALAXY_CENTER, polarToXY } from "#/lib/galaxy/place";
 import type { GalaxySky } from "#/lib/galaxy/types";
 
@@ -29,15 +31,13 @@ export const DEFAULT_FRAMING = {
   zoom: 1,
 } as const satisfies Camera;
 
-/** Sub-pixel / sub-zoom slop under which a move is considered settled. */
-const ARRIVE_EPSILON = 0.01;
-
 export type FocusState = {
-  /** Where the camera is *now* (eased each frame toward `target`). */
+  /** Where the camera is *now*. The hook owning the live (GSAP-tweened) camera
+   * syncs this at each request boundary; between requests it may lag. */
   current: Camera;
   /** Where the camera is heading. `current === target` ⇒ at rest. */
   target: Camera;
-  /** True while an eased move is in flight (drives the RAF loop in the component). */
+  /** True while an eased move is in flight (cleared by the tween's completion). */
   focusing: boolean;
   /** The framing to restore on ESC/back; `null` once consumed or never set. */
   prior: Camera | null;
@@ -91,33 +91,6 @@ export const back = (state: FocusState): FocusState => ({
   focusing: true,
   prior: null,
 });
-
-/** Whether `cur` is within an epsilon of `target` on every axis (move settled). */
-export const isArrived = (cur: Camera, target: Camera): boolean =>
-  Math.abs(cur.cx - target.cx) < ARRIVE_EPSILON &&
-  Math.abs(cur.cy - target.cy) < ARRIVE_EPSILON &&
-  Math.abs(cur.zoom - target.zoom) < ARRIVE_EPSILON;
-
-/**
- * Advance the eased move one frame: `current` eases toward `target` by `t`
- * (`lerpCamera`). Under reduced motion the component passes `reduce = true`, which
- * drives `t = 1` — an instant snap, the existing reduced-motion pattern. Once
- * arrived, `current` lands exactly on `target` and `focusing` clears.
- */
-export const stepFocus = (
-  state: FocusState,
-  t: number,
-  reduce = false,
-): FocusState => {
-  const stepped = lerpCamera(state.current, state.target, reduce ? 1 : t);
-  const arrived = reduce || isArrived(stepped, state.target);
-  return {
-    current: arrived ? { ...state.target } : stepped,
-    target: { ...state.target },
-    focusing: !arrived,
-    prior: state.prior,
-  };
-};
 
 /**
  * A focus request crossing the seam from a feature (read deep-link #5, search

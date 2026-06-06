@@ -18,8 +18,10 @@ import gsap from "gsap";
  * (component) scope — and `useGSAP` itself falls back to `useEffect` when `window`
  * is undefined, so the whole path is SSR/Workers-safe.
  *
- * This is ADR-0009 migration step 1: it lands the engine + the import-boundary
- * guard only. No camera/animation is wired to GSAP yet (later waves).
+ * ADR-0009 migration step 1 landed the engine + the import-boundary guard;
+ * step 2 (#143) wired the camera focus/zoom eases through it — `useGalaxyCamera`
+ * tweens the plain `Camera` object via `gsap.to`. Tier-transition timelines
+ * (#125) build on this seam next.
  */
 
 // Module-scope `let` (not a side effect — just a flag) so registration is
