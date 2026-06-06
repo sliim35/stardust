@@ -183,4 +183,9 @@ export const en = {
     fieldLog: "FIELD LOG",
     close: "Close",
   },
+  // Scale net (#112, spec §5.3) — the bottom-left range rings' accessible name;
+  // the visible ring distances are formatted from values, not from the catalog.
+  scaleNet: {
+    label: "Distance scale",
+  },
 } as const satisfies Messages;

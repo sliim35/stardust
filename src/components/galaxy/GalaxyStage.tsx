@@ -163,6 +163,7 @@ export const GalaxyStage = () => {
           count={sky.stars.length}
           palette={palette}
           onPaletteChange={setPalette}
+          tier={nav.state.tier}
         />
       </CardHost>
     </div>
