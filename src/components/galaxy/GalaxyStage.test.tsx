@@ -71,6 +71,46 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     ).toBeTruthy();
   });
 
+  // Slice I-2 (#112): the Local-Group tier is Layer-A territory — the L3 memory
+  // layer (MW-interior content) hides with the threshold swap, its pointer +
+  // keyboard affordances go with it, and the neighbours get serif/mono labels
+  // from the existing lore catalog. Reduced-motion = the snap path (no GSAP race).
+  it("the Local-Group tier hides the memory layer and labels the galaxies (I-2)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    const l3 = document.querySelector(".galaxy-l3-wrap") as HTMLElement;
+    expect(l3).not.toBeNull();
+    // Home tier: memory layer live, no Layer-A labels.
+    expect(l3.className).not.toContain("invisible");
+    expect(screen.queryByText(en.lore.andromeda.name)).toBeNull();
+    fireEvent.wheel(stage, { deltaY: 12 }); // scroll down → ascend to the LG tier
+    // The memory layer fades + loses pointer/keyboard affordances…
+    expect(l3.className).toContain("invisible");
+    expect(l3.className).toContain("opacity-0");
+    expect(l3.className).toContain("pointer-events-none");
+    // …and the MW + every neighbour read their serif name + mono distance.
+    for (const key of [
+      "milkyWay",
+      "andromeda",
+      "triangulum",
+      "lmc",
+      "smc",
+    ] as const) {
+      expect(screen.getByText(en.lore[key].name)).toBeTruthy();
+      expect(screen.getByText(en.lore[key].sublabel)).toBeTruthy();
+    }
+    // Labels are decorative annotations — aria-hidden like the mem-star labels.
+    expect(
+      screen.getByText(en.lore.andromeda.name).closest('[aria-hidden="true"]'),
+    ).not.toBeNull();
+    // Descending home restores the memory layer and drops the labels.
+    fireEvent.wheel(stage, { deltaY: -12 });
+    expect(l3.className).not.toContain("invisible");
+    expect(l3.className).not.toContain("pointer-events-none");
+    expect(screen.queryByText(en.lore.andromeda.name)).toBeNull();
+  });
+
   it("the wheel clamp at the ceiling stays a quiet no-op — no swap, no narration", () => {
     stubReducedMotion(true);
     render(<GalaxyStage />);

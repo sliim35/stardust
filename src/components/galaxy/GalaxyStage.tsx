@@ -5,9 +5,17 @@ import {
   useRef,
   useState,
 } from "react";
+import type { BackdropPoint } from "#/lib/galaxy/backdrop";
+import { MW_PLACEMENT } from "#/lib/galaxy/backdrop";
 import { createFocusController } from "#/lib/galaxy/focus";
+import type { PlacedGalaxy } from "#/lib/galaxy/galaxy-render";
+import {
+  LG_MW_PLACEMENT,
+  lgGalaxies,
+  lgGoldAccents,
+  lgLabels,
+} from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
-import { localGroupNeighbours } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { HOME_TIER } from "#/lib/galaxy/tier-nav";
@@ -17,13 +25,14 @@ import {
   departNarration,
   type TierTransitionEvent,
 } from "#/lib/galaxy/tier-transition";
-import type { MemoryStar, RealObject, Tier } from "#/lib/galaxy/types";
+import type { MemoryStar, Tier } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import { BackdropTint } from "./BackdropTint";
 import { CardHost } from "./CardHost";
 import { ChromeOverlay } from "./ChromeOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
+import { LgGalaxyLabels } from "./LgGalaxyLabels";
 import { MemoryStarLayer } from "./MemoryStarLayer";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { useObjectClick } from "./useObjectClick";
@@ -34,8 +43,9 @@ import { useTierNav } from "./useTierNav";
 /** Mirrors the `memIgnite` CSS animation duration (1.5s) — one ignite number. */
 const IGNITE_MS = 1500;
 
-/** Stable empty neighbour set — the home/MW scene paints no Layer-A galaxies. */
-const NO_NEIGHBOURS: readonly RealObject[] = [];
+/** Stable empty sets — the home/MW scene paints no Layer-A galaxies or gold. */
+const NO_NEIGHBOURS: readonly PlacedGalaxy[] = [];
+const NO_GOLD: readonly BackdropPoint[] = [];
 
 /**
  * The top-level galaxy scene (#4): composes L1 (deep starfield) · L2 (the disk)
@@ -103,11 +113,6 @@ export const GalaxyStage = () => {
     () => ({ ...sky.backdrop, palette }),
     [sky.backdrop, palette],
   );
-  // Layer-A neighbours are NOT rendered at the home/Milky-Way tier (memory-first).
-  // The render foundation (placement-aware generator + the `shape`→recipe mappers in
-  // galaxy-render.ts + the GalaxyBackdrop `neighbours` capability) is in place and
-  // tested; slice I-2 composes the actual Local-Group tier (MW shrunk + the 4
-  // neighbours spread + scaled per the FINAL proof) and feeds them to the disk there.
   const scale = useStageFit();
   const m = getMessages(useLocale());
 
@@ -160,14 +165,19 @@ export const GalaxyStage = () => {
     transitions.request(from, to);
   }, [nav.state.tier, transitions]);
 
-  // The scene swap (#125): the Local-Group view paints the 4 real neighbours
-  // through the I-1 render capability. Indicative until slice I-2 (#112)
-  // composes the full LG scene (MW shrunk + neighbours spread); memoized so the
-  // disk only redraws when the displayed tier actually swaps.
+  // The scene swap (#125 → composed by I-2 #112): at the Local-Group tier the
+  // disk paints the FINAL-proof composition — the MW shrunk (LG_MW_PLACEMENT) +
+  // the 4 neighbours spread per `lg-composition` + the gold accents — and the
+  // L3 memory layer (MW-interior content) hides below. Memoized so the canvas
+  // only redraws when the displayed tier actually swaps.
+  const lgView = displayedTier === "localGroup";
   const neighbours = useMemo(
-    () =>
-      displayedTier === "localGroup" ? localGroupNeighbours() : NO_NEIGHBOURS,
-    [displayedTier],
+    () => (lgView ? lgGalaxies() : NO_NEIGHBOURS),
+    [lgView],
+  );
+  const goldDust = useMemo(
+    () => (lgView ? lgGoldAccents() : NO_GOLD),
+    [lgView],
   );
   const a11yLabel = m.a11y.memoryStar;
 
@@ -205,9 +215,27 @@ export const GalaxyStage = () => {
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
             <div className="galaxy-l2-wrap" ref={cam.l2}>
-              <GalaxyBackdrop backdrop={backdrop} neighbours={neighbours} />
+              <GalaxyBackdrop
+                backdrop={backdrop}
+                homePlacement={lgView ? LG_MW_PLACEMENT : MW_PLACEMENT}
+                neighbours={neighbours}
+                goldDust={goldDust}
+              />
+              {/* Serif/mono galaxy labels ride the L2 plane so they track the
+                  framing + parallax exactly like the disks they annotate. */}
+              {lgView && <LgGalaxyLabels labels={lgLabels()} lore={m.lore} />}
             </div>
-            <div className="galaxy-l3-wrap" ref={cam.l3}>
+            {/* The L3 memory layer is MW-interior content: at the Local-Group
+                tier it fades with the threshold swap (motion-reduce snaps) and
+                drops its pointer + keyboard affordances (visibility removes the
+                star buttons from the tab order; pointer-events guards the fade
+                window). */}
+            <div
+              className={`galaxy-l3-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
+                lgView ? "pointer-events-none invisible opacity-0" : ""
+              }`}
+              ref={cam.l3}
+            >
               <InteractiveStars
                 stars={sky.stars}
                 ignitingIds={ignitingIds}

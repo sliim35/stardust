@@ -89,17 +89,22 @@ const buildSpiralGeometry = (
   return { bgStars: [], arms, bulge };
 };
 
-const CLUMP_COUNT = 5; // a handful of star-forming knots — the magellanic look
-const CLUMP_POINTS = 220; // points scattered around each knot
+const CLUMP_COUNT = 6; // a handful of star-forming knots — the magellanic look
+const CLUMP_POINTS = 185; // points scattered around each knot
+const CLUMP_REACH = 0.55; // knot centres stay inside this disk fraction…
+const CLUMP_SPREAD = { min: 0.18, max: 0.38 }; // …and their fuzz overlaps (one cloud)
 
 /**
  * The clumpy recipe (magellanic / irregular) — the Magellanic Clouds and the SMC have
- * no clean spiral arms; they read as a lumpy, structureless point cloud of bright
- * star-forming knots. We seed a few clump centres in the disk, scatter points tightly
- * around each, and project them through the *same* `pointAt` (so the soft-glow surface,
- * clamp, and SSR-safe quantization match the spirals). Output goes in `arms` (the main
- * cloud) + a small `bulge` (a faint brighter core) so the canvas paints it back-to-front
- * exactly like a spiral — same `paintGlow` path, no forked renderer.
+ * no clean spiral arms; they read as ONE lumpy, structureless cloud of overlapping
+ * bright star-forming knots (the FINAL proof's ragged clouds — not disconnected
+ * blobs, the first I-2 cut's mistake). Knot centres stay inside `CLUMP_REACH`
+ * with wide per-knot fuzz so the knots blend; the scatter is disk-cartesian
+ * (round knots, no banana arcs), then converted to polar for the *same* `pointAt`
+ * (so the soft-glow surface, clamp, and SSR-safe quantization match the spirals).
+ * Output goes in `arms` (the main cloud) + a small `bulge` (a faint brighter core)
+ * so the canvas paints it back-to-front exactly like a spiral — same `paintGlow`
+ * path, no forked renderer.
  */
 const buildClumpyGeometry = (
   tuning: GalaxyBackdrop,
@@ -107,18 +112,26 @@ const buildClumpyGeometry = (
 ): BackdropGeometry => {
   const rng = mulberry32(tuning.seed);
 
-  // Seed the clump centres first (disk-polar), so the scatter loop reads stable knots.
-  const clumps = Array.from({ length: CLUMP_COUNT }, () => ({
-    r: rng() ** 1.4 * 0.85, // biased toward the centre, some out to the rim
-    theta: rng() * TAU,
-    tightness: 0.12 + rng() * 0.16,
-  }));
+  // Seed the clump centres first (disk-cartesian), so the scatter loop reads
+  // stable knots. Centre-biased so the cloud has a dense heart.
+  const clumps = Array.from({ length: CLUMP_COUNT }, () => {
+    const r = rng() ** 1.2 * CLUMP_REACH;
+    const ang = rng() * TAU;
+    return {
+      x: Math.cos(ang) * r,
+      y: Math.sin(ang) * r,
+      spread: CLUMP_SPREAD.min + rng() * (CLUMP_SPREAD.max - CLUMP_SPREAD.min),
+    };
+  });
 
   const arms: BackdropPoint[] = [];
   for (const c of clumps) {
     for (let i = 0; i < CLUMP_POINTS; i++) {
-      const rNorm = Math.max(0, c.r + (rng() - 0.5) * c.tightness);
-      const theta = c.theta + (rng() - 0.5) * c.tightness * 3;
+      // Triangular-distributed offsets → soft round knots that fade outward.
+      const px = c.x + (rng() + rng() - 1) * c.spread;
+      const py = c.y + (rng() + rng() - 1) * c.spread;
+      const rNorm = Math.min(Math.hypot(px, py), 1);
+      const theta = Math.atan2(py, px);
       arms.push(
         pointAt(
           rNorm,
@@ -155,19 +168,32 @@ const buildClumpyGeometry = (
 };
 
 /**
+ * One real galaxy placed somewhere on the stage — what a tier composition (the
+ * Local-Group scene, `lg-composition.ts`) hands the renderer: the curated object
+ * plus the `DiskPlacement` the active tier wants it painted at.
+ */
+export type PlacedGalaxy = {
+  object: RealObject;
+  place: DiskPlacement;
+};
+
+/**
  * Render-capability for ONE real object (ADR-0011 §1): pick the geometry recipe from
- * the object's `shape`, build it at the object's data placement + tuning, and return
- * the placed soft-glow point clouds the canvas paints with the existing `paintGlow` +
- * `paletteFor`. `bgStars` is always empty — the home MW backdrop owns the one deep
- * field; a neighbour contributes only its own disk.
+ * the object's `shape`, build it at `place` (default: the object's raw data
+ * placement; a tier composition like the LG scene passes its own — the I-2 seam) +
+ * tuning, and return the placed soft-glow point clouds the canvas paints with the
+ * existing `paintGlow` + `paletteFor`. `bgStars` is always empty — the home MW
+ * backdrop owns the one deep field; a neighbour contributes only its own disk.
  *
  * v1 recipe map: barred-spiral / spiral reuse the arm+core generator; magellanic /
  * irregular use the clumpy variant; dwarf-spheroidal (M31's satellites) falls through
  * to the clumpy variant too (a small structureless blob). The map is the seam #155 /
  * #127 extend later.
  */
-export const buildGalaxyGeometry = (o: RealObject): BackdropGeometry => {
-  const place = placementFor(o);
+export const buildGalaxyGeometry = (
+  o: RealObject,
+  place: DiskPlacement = placementFor(o),
+): BackdropGeometry => {
   const tuning = tuningFor(o);
   switch (o.shape) {
     case "barred-spiral":

@@ -3,6 +3,7 @@ import {
   buildBackdropGeometry,
   type DiskPlacement,
   MW_PLACEMENT,
+  placedExtent,
 } from "#/lib/galaxy/backdrop";
 import {
   DISK_TILT,
@@ -172,6 +173,53 @@ describe("buildBackdropGeometry — placement-aware (ADR-0011 §1)", () => {
       expect(p.x).toBeLessThanOrEqual(STAGE_W);
       expect(p.y).toBeGreaterThanOrEqual(0);
       expect(p.y).toBeLessThanOrEqual(STAGE_H);
+    }
+  });
+
+  it("treats pa as a true sky position angle — a thin disk turned 90° reads vertical (I-2)", () => {
+    // Pre-I-2 the rotation ran BEFORE the tilt squash, so the silhouette was
+    // always axis-aligned and the FINAL proof's diagonal Andromeda was
+    // unreachable. Post-squash rotation = the projected ellipse itself rotates.
+    const flat: DiskPlacement = { cx: 640, cy: 400, r: 120, tilt: 0.3, pa: 0 };
+    const turned: DiskPlacement = { ...flat, pa: Math.PI / 2 };
+    const spreads = (place: DiskPlacement) => {
+      const g = buildBackdropGeometry(B(), place);
+      const pts = [...g.arms, ...g.bulge]; // the disk body, not the deep field
+      const xs = pts.map((p) => Math.abs(p.x - place.cx));
+      const ys = pts.map((p) => Math.abs(p.y - place.cy));
+      return { x: Math.max(...xs), y: Math.max(...ys) };
+    };
+    const a = spreads(flat);
+    const b = spreads(turned);
+    expect(a.x).toBeGreaterThan(a.y); // flat: wide, squashed
+    expect(b.y).toBeGreaterThan(b.x); // turned 90°: tall, narrow
+  });
+});
+
+describe("placedExtent — the projected half-extents of a placed disk", () => {
+  it("reduces to (r, r·tilt) at pa 0 — the axis-aligned default", () => {
+    const place: DiskPlacement = { cx: 0, cy: 0, r: 100, tilt: 0.5, pa: 0 };
+    expect(placedExtent(place).x).toBeCloseTo(100, 6);
+    expect(placedExtent(place).y).toBeCloseTo(50, 6);
+  });
+
+  it("swaps the axes at pa π/2 and bounds every generated point", () => {
+    const place: DiskPlacement = {
+      cx: 640,
+      cy: 400,
+      r: 100,
+      tilt: 0.5,
+      pa: Math.PI / 2,
+    };
+    expect(placedExtent(place).x).toBeCloseTo(50, 6);
+    expect(placedExtent(place).y).toBeCloseTo(100, 6);
+    const extent = placedExtent(place);
+    const g = buildBackdropGeometry(B(), place);
+    // The disk body (arms + bulge) stays inside the extents; bgStars are the
+    // full-stage deep field and deliberately ignore the placement.
+    for (const p of [...g.arms, ...g.bulge]) {
+      expect(Math.abs(p.x - place.cx)).toBeLessThanOrEqual(extent.x + 1);
+      expect(Math.abs(p.y - place.cy)).toBeLessThanOrEqual(extent.y + 1);
     }
   });
 });

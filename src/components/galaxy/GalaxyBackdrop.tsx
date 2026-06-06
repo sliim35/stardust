@@ -1,9 +1,16 @@
 import { useEffect, useRef } from "react";
 import {
+  type BackdropGeometry,
   type BackdropPoint,
   buildBackdropGeometry,
+  type DiskPlacement,
+  MW_PLACEMENT,
 } from "#/lib/galaxy/backdrop";
-import { buildGalaxyGeometry } from "#/lib/galaxy/galaxy-render";
+import {
+  buildGalaxyGeometry,
+  type PlacedGalaxy,
+} from "#/lib/galaxy/galaxy-render";
+import { LG_GOLD } from "#/lib/galaxy/lg-composition";
 import {
   buildShooters,
   SHOOTER_ALPHA_CAP,
@@ -11,10 +18,7 @@ import {
 } from "#/lib/galaxy/meteors";
 import { paletteFor } from "#/lib/galaxy/palette";
 import { STAGE_H, STAGE_W } from "#/lib/galaxy/place";
-import type {
-  GalaxyBackdrop as Backdrop,
-  RealObject,
-} from "#/lib/galaxy/types";
+import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
 
 /**
  * L2 — the spiral disk (no central bar). **Soft-glow direction** (owner-chosen 2026-06-03,
@@ -87,40 +91,58 @@ const paintGlow = (
  * The browser composites this transparent-backed canvas over that tint, so the
  * additive `lighter` light lands over the nebula exactly as before.
  *
- * Neighbours (ADR-0011 §1, I-1) paint on the SAME static base canvas with the SAME
- * `paintGlow` + palette sprites, one extra `buildGalaxyGeometry` call each — so the
- * home Milky Way and every Local-Group neighbour read as one coherent soft-glow scene
- * (one renderer, not two). Each neighbour's geometry carries no `bgStars` (the MW owns
- * the one deep field), so we paint only its `arms` + `bulge`.
+ * Neighbours (ADR-0011 §1, I-1/I-2) paint on the SAME static base canvas with the
+ * SAME `paintGlow` + palette sprites — so the home Milky Way and every Local-Group
+ * neighbour read as one coherent soft-glow scene (one renderer, not two). Each
+ * neighbour's geometry carries no `bgStars` (the MW owns the one deep field), so
+ * only its `arms` + `bulge` paint. The gold accents (Sol's mark + the globulars,
+ * I-2) paint last with the dedicated gold sprite — the reserved gold never
+ * re-tints with the theme palette.
  */
 const drawBase = (
   ctx: CanvasRenderingContext2D,
-  geom: ReturnType<typeof buildBackdropGeometry>,
+  geom: BackdropGeometry,
+  neighbourGeoms: readonly BackdropGeometry[],
+  goldDust: readonly BackdropPoint[],
   sprites: Sprites,
-  neighbours: readonly RealObject[],
+  goldSprite: HTMLCanvasElement,
 ): void => {
   ctx.clearRect(0, 0, STAGE_W, STAGE_H);
   paintGlow(ctx, geom.bgStars, sprites);
   paintGlow(ctx, geom.arms, sprites);
   paintGlow(ctx, geom.bulge, sprites);
-  for (const o of neighbours) {
-    const ng = buildGalaxyGeometry(o);
+  for (const ng of neighbourGeoms) {
     paintGlow(ctx, ng.arms, sprites);
     paintGlow(ctx, ng.bulge, sprites);
   }
+  // One fixed-gold sprite for every warmth bucket — gold dust never palette-tints.
+  paintGlow(ctx, goldDust, [goldSprite, goldSprite, goldSprite]);
 };
 
 export const GalaxyBackdrop = ({
   backdrop,
+  homePlacement = MW_PLACEMENT,
   neighbours = [],
+  goldDust = [],
 }: {
   backdrop: Backdrop;
   /**
-   * Layer-A real galaxies to paint alongside the home disk (ADR-0011 §1, I-1). Each
-   * renders through the same generator + `paintGlow`, differing only in placement +
-   * tuning. Defaults to none → the home-only render is byte-identical to today.
+   * Where the home disk sits (I-2): the MW default keeps the home render
+   * byte-identical; the LG tier passes the shrunk `LG_MW_PLACEMENT`.
    */
-  neighbours?: readonly RealObject[];
+  homePlacement?: DiskPlacement;
+  /**
+   * Layer-A real galaxies to paint alongside the home disk (ADR-0011 §1), each
+   * at the placement its tier composition chose. Renders through the same
+   * generator + `paintGlow`, differing only in placement + tuning. Defaults to
+   * none → the home-only render is unchanged.
+   */
+  neighbours?: readonly PlacedGalaxy[];
+  /**
+   * Gold accents (I-2: Sol's amber mark + globular sprinkles), painted with the
+   * reserved-gold sprite so they never re-tint with the theme palette.
+   */
+  goldDust?: readonly BackdropPoint[];
 }) => {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const liveRef = useRef<HTMLCanvasElement | null>(null);
@@ -146,8 +168,18 @@ export const GalaxyBackdrop = ({
       makeGlowSprite(p.starWarm),
       makeGlowSprite(p.starHot),
     ];
-    const geom = buildBackdropGeometry(backdrop);
-    drawBase(bctx, geom, sprites, neighbours);
+    const geom = buildBackdropGeometry(backdrop, homePlacement);
+    const neighbourGeoms = neighbours.map(({ object, place }) =>
+      buildGalaxyGeometry(object, place),
+    );
+    drawBase(
+      bctx,
+      geom,
+      neighbourGeoms,
+      goldDust,
+      sprites,
+      makeGlowSprite(LG_GOLD),
+    );
 
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -201,7 +233,7 @@ export const GalaxyBackdrop = ({
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [backdrop, neighbours]);
+  }, [backdrop, homePlacement, neighbours, goldDust]);
 
   return (
     <div className="galaxy-l2" aria-hidden="true">

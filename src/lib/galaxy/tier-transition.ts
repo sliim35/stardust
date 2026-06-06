@@ -7,12 +7,12 @@
  * in `components/galaxy/useGalaxyCamera` (the ADR-0009 import boundary: GSAP only
  * ever tweens *toward* what this module computes, never under `src/lib/**`).
  *
- * **v1 framings are authored, indicative constants.** Both built tiers rest on
- * the shared stage centre; the Local-Group tier simply frames the same world
- * wider so the 4 placed neighbours (realdata §5.1) fit the 800px-high stage with
- * margin (Andromeda's disk reaches ~500 stage-px from centre; ×0.62 ≈ 310px).
- * When slice I-2 (#112) re-composes the LG scene (MW shrunk + neighbours spread),
- * the framing constants tune here without touching the timeline.
+ * **Framings:** the galaxy/home tier rests on the identity framing
+ * (`DEFAULT_FRAMING`); the Local-Group tier rests on `LG_FRAMING`, owned by the
+ * I-2 composition (`lg-composition.ts`) so the camera and the composed scene
+ * can never drift apart. Because the MW's world centre is tier-invariant
+ * (GALAXY_CENTER), the LG→MW descend path — rest → threshold → identity —
+ * reads as a dive INTO the MW disk.
  *
  * Narration is HARDCODED i18n (en+ru) — the catalog's `astroNarration.*` keys are
  * exactly the seam the post-v1 ASTRO-AI (#128) swaps behind. The resolvers take
@@ -25,31 +25,21 @@
 
 import type { Camera } from "#/lib/galaxy/camera";
 import { DEFAULT_FRAMING } from "#/lib/galaxy/focus";
+import { LG_FRAMING } from "#/lib/galaxy/lg-composition";
 import { TIER_ORDER } from "#/lib/galaxy/tier-nav";
 import type { Tier } from "#/lib/galaxy/types";
 import type { Messages } from "#/lib/i18n/types";
 
 /**
- * The Local-Group resting zoom — wide enough that the widest authored neighbour
- * (Andromeda, placement r=0.62 + size 0.78 → ~500 stage-px from centre) sits
- * inside the 800px-high stage with breathing room. Authored, not derived
- * (the §5.2 "close-to-real, no projection engine" rule).
- */
-export const LOCAL_GROUP_ZOOM = 0.62;
-
-/**
  * The per-tier resting camera framings (spec §1: within a tier the framing is
  * fixed). The galaxy/home tier IS the identity framing the camera already rests
- * on (`DEFAULT_FRAMING`); the Local-Group tier views the same centre wider. The
+ * on (`DEFAULT_FRAMING`); the Local-Group tier rests on the I-2 composition's
+ * `LG_FRAMING` (zoomed out, the MW slightly low — the FINAL proof). The
  * Solar-System tier is deferred (#127) — absent here, so transitions into it
  * degrade to a no-op rather than a throw (the v1 reducer never offers it).
  */
 const TIER_FRAMINGS = {
-  localGroup: {
-    cx: DEFAULT_FRAMING.cx,
-    cy: DEFAULT_FRAMING.cy,
-    zoom: LOCAL_GROUP_ZOOM,
-  },
+  localGroup: LG_FRAMING,
   galaxy: DEFAULT_FRAMING,
 } as const satisfies Partial<Record<Tier, Camera>>;
 

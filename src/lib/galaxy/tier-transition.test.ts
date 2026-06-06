@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FRAMING } from "#/lib/galaxy/focus";
-import { GALAXY_CENTER } from "#/lib/galaxy/place";
+import { LG_FRAMING } from "#/lib/galaxy/lg-composition";
 import {
   arrivalNarration,
   createTierTransitionController,
@@ -18,11 +18,9 @@ describe("framingForTier — the pure per-tier resting camera (#125)", () => {
     expect(framingForTier("galaxy")).toEqual(DEFAULT_FRAMING);
   });
 
-  it("rests the Local-Group tier wider (zoomed out) on the same centre", () => {
+  it("rests the Local-Group tier on the I-2 composed framing (zoomed out)", () => {
     const lg = framingForTier("localGroup");
-    expect(lg).not.toBeNull();
-    expect(lg?.cx).toBe(GALAXY_CENTER.x);
-    expect(lg?.cy).toBe(GALAXY_CENTER.y);
+    expect(lg).toEqual(LG_FRAMING); // the composition module owns the LG view
     expect(lg?.zoom).toBeLessThan(DEFAULT_FRAMING.zoom);
     expect(lg?.zoom).toBeGreaterThan(0);
   });
