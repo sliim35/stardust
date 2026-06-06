@@ -9,8 +9,16 @@ type Props = {
   count: number;
   palette: Palette;
   onPaletteChange: (p: Palette) => void;
-  /** The active tier — drives the bottom-left scale net's labels (#112, §5.3). */
+  /**
+   * The *displayed* tier — drives the bottom-left scale net's labels (#112,
+   * §5.3). During a tier transition (#125) it swaps at the timeline's threshold,
+   * not at request time, so the net relabels exactly when the scene does.
+   */
   tier: Tier;
+  /** The active tier-transition narration line for ASTRO's bubble (#125). */
+  narration?: string | null;
+  /** Clears the narration (bubble dismiss / ASTRO click). */
+  onNarrationDismiss?: () => void;
 };
 
 /**
@@ -36,10 +44,12 @@ export const ChromeOverlay = ({
   palette,
   onPaletteChange,
   tier,
+  narration = null,
+  onNarrationDismiss,
 }: Props) => (
   <div className="galaxy-chrome-overlay">
     <GalaxyChrome count={count} />
-    <Astro />
+    <Astro narration={narration} onNarrationDismiss={onNarrationDismiss} />
     <PaletteSwitcher value={palette} onChange={onPaletteChange} />
     <ScaleNet tier={tier} label={getMessages(useLocale()).scaleNet.label} />
   </div>

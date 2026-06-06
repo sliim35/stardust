@@ -49,6 +49,14 @@ type Props = {
    * string overrides the auto-greet copy verbatim (not localized).
    */
   message?: string;
+  /**
+   * #125 — the active tier-transition narration line (already localized by the
+   * owner of the transition state). While set it takes the bubble over — even a
+   * dismissed bubble reopens for it; `null`/absent restores the spoken flow.
+   */
+  narration?: string | null;
+  /** Clears the narration upstream (dismiss ×, or a click advancing the line). */
+  onNarrationDismiss?: () => void;
 };
 
 /**
@@ -59,7 +67,7 @@ type Props = {
  */
 type Spoken = { kind: "greeting" } | { kind: "line"; index: number };
 
-export const Astro = ({ message }: Props) => {
+export const Astro = ({ message, narration, onNarrationDismiss }: Props) => {
   const m = getMessages(useLocale());
   // Seed deterministically so SSR + the client agree on first paint (auto-greet
   // on mount, no hydration flip). `null` once dismissed.
@@ -67,7 +75,10 @@ export const Astro = ({ message }: Props) => {
   const { mood, emote } = useAstroFace();
 
   // The shared click trigger: speak the next line (#72) AND emote (#71) together.
+  // A click during a tier narration (#125) also clears it, so the fresh click
+  // line is what actually shows — the trigger never appears dead.
   const onClick = () => {
+    if (narration != null) onNarrationDismiss?.();
     setSpoken((prev) => ({
       kind: "line",
       index: nextClickIndex(
@@ -78,20 +89,27 @@ export const Astro = ({ message }: Props) => {
     emote();
   };
 
-  // Resolve the displayed text from the active locale's catalog (greeting unless
+  // Resolve the displayed text: an active tier-transition narration (#125) takes
+  // the bubble over; otherwise the active locale's catalog line (greeting unless
   // an explicit `message` override is set; otherwise the rotated click line).
-  const text =
+  const spokenText =
     spoken == null
       ? null
       : spoken.kind === "greeting"
         ? (message ?? m.astro.greeting)
         : m.astro.clickLines[spoken.index];
+  const text = narration ?? spokenText;
+
+  // Dismissing a narration clears it upstream AND quiets the spoken line under
+  // it, so the × closes the bubble instead of "revealing" a stale greeting.
+  const onDismiss = () => {
+    if (narration != null) onNarrationDismiss?.();
+    setSpoken(null);
+  };
 
   return (
     <div className="galaxy-astro">
-      {text != null && (
-        <AstroBubble message={text} onDismiss={() => setSpoken(null)} />
-      )}
+      {text != null && <AstroBubble message={text} onDismiss={onDismiss} />}
       <button
         type="button"
         className="galaxy-astro__hit"

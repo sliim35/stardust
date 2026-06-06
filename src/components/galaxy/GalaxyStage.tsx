@@ -7,9 +7,17 @@ import {
 } from "react";
 import { createFocusController } from "#/lib/galaxy/focus";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
+import { localGroupNeighbours } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
-import type { MemoryStar, Tier } from "#/lib/galaxy/types";
+import { HOME_TIER } from "#/lib/galaxy/tier-nav";
+import {
+  arrivalNarration,
+  createTierTransitionController,
+  departNarration,
+  type TierTransitionEvent,
+} from "#/lib/galaxy/tier-transition";
+import type { MemoryStar, RealObject, Tier } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import { BackdropTint } from "./BackdropTint";
 import { CardHost } from "./CardHost";
@@ -25,6 +33,9 @@ import { useTierNav } from "./useTierNav";
 
 /** Mirrors the `memIgnite` CSS animation duration (1.5s) — one ignite number. */
 const IGNITE_MS = 1500;
+
+/** Stable empty neighbour set — the home/MW scene paints no Layer-A galaxies. */
+const NO_NEIGHBOURS: readonly RealObject[] = [];
 
 /**
  * The top-level galaxy scene (#4): composes L1 (deep starfield) · L2 (the disk)
@@ -98,17 +109,58 @@ export const GalaxyStage = () => {
   // tested; slice I-2 composes the actual Local-Group tier (MW shrunk + the 4
   // neighbours spread + scaled per the FINAL proof) and feeds them to the disk there.
   const scale = useStageFit();
+  const m = getMessages(useLocale());
+
+  // The tier-transition seam (slice F, #125): the *displayed* tier (what the
+  // scene + scale net render) follows the timeline's threshold event, NOT the
+  // nav state — so the scene swaps mid-flight, exactly where the camera crosses
+  // the threshold framing. `narration` is ASTRO's transition line (depart on
+  // launch, on-arrival when the tier settles), resolved from the catalog by the
+  // pure lib routing — hardcoded i18n, the post-v1 ASTRO-AI swap seam.
+  const [transitions] = useState(() => createTierTransitionController());
+  const [displayedTier, setDisplayedTier] = useState<Tier>(HOME_TIER);
+  const [narration, setNarration] = useState<string | null>(null);
+  const onTransitionEvent = (e: TierTransitionEvent) => {
+    if (e.kind === "threshold") setDisplayedTier(e.tier);
+    else if (e.kind === "depart")
+      setNarration(departNarration(m.astroNarration, e.direction, e.to));
+    else setNarration(arrivalNarration(m.astroNarration, e.tier));
+  };
+
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
   // #113 search) call to ease the camera onto a star by id. The camera hook
   // resolves the id against the live sky (`skyRef`) and drives the eased move.
   const [focus] = useState(() => createFocusController());
-  const cam = useGalaxyCamera({ focus, getSky: () => skyRef.current });
+  const cam = useGalaxyCamera({
+    focus,
+    getSky: () => skyRef.current,
+    transitions,
+    onTransitionEvent,
+  });
 
   // The guided-navigation spine (slice E, #153): scroll steps the tier-zoom state
-  // (the eased camera move arrives with slice F / #125; here the state + the
-  // wheel-debounce land), and `nav.diveTo` is the gateway-dive sink for clicks.
+  // and `nav.diveTo` is the gateway-dive sink for clicks. The camera *follows*
+  // the nav state (slice F): a tier flip requests the eased timeline below.
   const nav = useTierNav();
-  const a11yLabel = getMessages(useLocale()).a11y.memoryStar;
+  const prevTier = useRef(nav.state.tier);
+  useEffect(() => {
+    const from = prevTier.current;
+    const to = nav.state.tier;
+    if (from === to) return;
+    prevTier.current = to;
+    transitions.request(from, to);
+  }, [nav.state.tier, transitions]);
+
+  // The scene swap (#125): the Local-Group view paints the 4 real neighbours
+  // through the I-1 render capability. Indicative until slice I-2 (#112)
+  // composes the full LG scene (MW shrunk + neighbours spread); memoized so the
+  // disk only redraws when the displayed tier actually swaps.
+  const neighbours = useMemo(
+    () =>
+      displayedTier === "localGroup" ? localGroupNeighbours() : NO_NEIGHBOURS,
+    [displayedTier],
+  );
+  const a11yLabel = m.a11y.memoryStar;
 
   return (
     <div
@@ -144,7 +196,7 @@ export const GalaxyStage = () => {
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
             <div className="galaxy-l2-wrap" ref={cam.l2}>
-              <GalaxyBackdrop backdrop={backdrop} />
+              <GalaxyBackdrop backdrop={backdrop} neighbours={neighbours} />
             </div>
             <div className="galaxy-l3-wrap" ref={cam.l3}>
               <InteractiveStars
@@ -163,7 +215,9 @@ export const GalaxyStage = () => {
           count={sky.stars.length}
           palette={palette}
           onPaletteChange={setPalette}
-          tier={nav.state.tier}
+          tier={displayedTier}
+          narration={narration}
+          onNarrationDismiss={() => setNarration(null)}
         />
       </CardHost>
     </div>
