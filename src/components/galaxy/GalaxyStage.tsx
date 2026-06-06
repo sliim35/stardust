@@ -20,6 +20,7 @@ import {
   LG_MW_PLACEMENT,
   lgGalaxies,
   lgGoldAccents,
+  lgHitTargets,
   lgLabels,
 } from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
@@ -258,9 +259,18 @@ export const GalaxyStage = () => {
                 neighbours={neighbours}
                 goldDust={goldDust}
               />
-              {/* Serif/mono galaxy labels ride the L2 plane so they track the
-                  framing + parallax exactly like the disks they annotate. */}
-              {lgView && <LgGalaxyLabels labels={lgLabels()} lore={m.lore} />}
+              {/* Serif/mono galaxy titles ride the L2 plane so they track the
+                  framing + parallax exactly like the disks they annotate.
+                  Hover-only (#167 owner amend): invisible focusable hit-targets
+                  over the silhouettes reveal them; unmounts with the LG view,
+                  so the MW tier's memory-star hover is untouched. */}
+              {lgView && (
+                <LgGalaxyLabels
+                  labels={lgLabels()}
+                  targets={lgHitTargets()}
+                  lore={m.lore}
+                />
+              )}
             </div>
             {/* The L3 memory layer is MW-interior content: at the Local-Group
                 tier it fades with the threshold swap (motion-reduce snaps) and

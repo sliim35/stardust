@@ -105,9 +105,27 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
 
   // Slice I-2 (#112): the Local-Group tier is Layer-A territory — the L3 memory
   // layer (MW-interior content) hides there with its pointer + keyboard
-  // affordances, and the neighbours get serif/mono labels from the existing
-  // lore catalog. Now the LANDING state; the first dive restores L3.
-  it("the Local-Group landing hides the memory layer and labels the galaxies (I-2)", () => {
+  // affordances, and the galaxies carry serif/mono titles from the existing
+  // lore catalog. Hover-only since the #167 owner amend: the landing reads
+  // CLEAN (zero visible titles); the names live behind the silhouettes'
+  // hover/focus hit-targets. The first dive restores L3.
+  const LG_LORE_KEYS = [
+    "milkyWay",
+    "andromeda",
+    "triangulum",
+    "lmc",
+    "smc",
+  ] as const;
+  const lgLabelEl = (key: (typeof LG_LORE_KEYS)[number]) =>
+    screen
+      .getByText(en.lore[key].name)
+      .closest("[data-lg-label]") as HTMLElement;
+  const lgTarget = (key: (typeof LG_LORE_KEYS)[number]) =>
+    screen.getByRole("img", {
+      name: `${en.lore[key].name} · ${en.lore[key].sublabel}`,
+    });
+
+  it("the Local-Group landing hides the memory layer and shows zero visible titles (I-2 + #167 amend)", () => {
     stubReducedMotion(true);
     render(<GalaxyStage />);
     const stage = document.querySelector(".galaxy-stage") as HTMLElement;
@@ -117,30 +135,53 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(l3.className).toContain("invisible");
     expect(l3.className).toContain("opacity-0");
     expect(l3.className).toContain("pointer-events-none");
-    // …and the MW + every neighbour read their serif name + mono distance.
-    for (const key of [
-      "milkyWay",
-      "andromeda",
-      "triangulum",
-      "lmc",
-      "smc",
-    ] as const) {
-      expect(screen.getByText(en.lore[key].name)).toBeTruthy();
-      expect(screen.getByText(en.lore[key].sublabel)).toBeTruthy();
+    // …the MW + every neighbour mount their title FADED OUT (clean composition)
+    // with a focusable hit-target carrying the catalog-resolved name…
+    for (const key of LG_LORE_KEYS) {
+      expect(lgLabelEl(key).className).toContain("opacity-0");
+      expect(lgTarget(key).getAttribute("tabindex")).toBe("0");
     }
-    // Labels are decorative annotations — aria-hidden like the mem-star labels.
+    // …and the titles stay decorative annotations (aria-hidden), the
+    // accessible name living on the target like the mem-star hit-button.
     expect(
       screen.getByText(en.lore.andromeda.name).closest('[aria-hidden="true"]'),
     ).not.toBeNull();
-    // The first dive (scroll up) restores the memory layer and drops the labels…
+    // The first dive (scroll up) restores the memory layer and unmounts the
+    // LG titles AND their hover targets (MW hover stays the mem-star affair)…
     fireEvent.wheel(stage, { deltaY: -12 });
     expect(l3.className).not.toContain("invisible");
     expect(l3.className).not.toContain("pointer-events-none");
     expect(screen.queryByText(en.lore.andromeda.name)).toBeNull();
-    // …and scrolling back down returns to the labelled LG overview.
+    expect(
+      screen.queryByRole("img", {
+        name: `${en.lore.andromeda.name} · ${en.lore.andromeda.sublabel}`,
+      }),
+    ).toBeNull();
+    // …and scrolling back down returns to the (quiet) LG overview.
     fireEvent.wheel(stage, { deltaY: 12 });
     expect(l3.className).toContain("invisible");
-    expect(screen.getByText(en.lore.andromeda.name)).toBeTruthy();
+    expect(lgLabelEl("andromeda").className).toContain("opacity-0");
+  });
+
+  it("hovering a galaxy's hit-target fades ONLY its title up; un-hover restores (#167 amend)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    fireEvent.pointerEnter(lgTarget("andromeda"));
+    expect(lgLabelEl("andromeda").className).toContain("opacity-100");
+    for (const other of ["milkyWay", "triangulum", "lmc", "smc"] as const) {
+      expect(lgLabelEl(other).className).toContain("opacity-0");
+    }
+    fireEvent.pointerLeave(lgTarget("andromeda"));
+    expect(lgLabelEl("andromeda").className).toContain("opacity-0");
+  });
+
+  it("keyboard focus on a hit-target drives the same title reveal; blur restores (#167 amend)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    fireEvent.focus(lgTarget("triangulum"));
+    expect(lgLabelEl("triangulum").className).toContain("opacity-100");
+    fireEvent.blur(lgTarget("triangulum"));
+    expect(lgLabelEl("triangulum").className).toContain("opacity-0");
   });
 
   it("the wheel clamp at the LG ceiling stays a quiet no-op — no swap, no narration", () => {

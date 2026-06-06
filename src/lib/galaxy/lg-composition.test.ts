@@ -11,6 +11,7 @@ import {
   LG_MW_PLACEMENT,
   lgGalaxies,
   lgGoldAccents,
+  lgHitTargets,
   lgLabels,
   lgPlacementFor,
 } from "#/lib/galaxy/lg-composition";
@@ -206,6 +207,50 @@ describe("lgGoldAccents — Sol's amber mark + the globular-cluster sprinkles", 
     );
     expect(d).toBeLessThan(LG_MW_PLACEMENT.r);
     expect(sol.alpha).toBeGreaterThan(0.8); // the one bright amber mark
+  });
+});
+
+describe("lgHitTargets — hover/focus hit-targets over the placed silhouettes (#167)", () => {
+  /** Placement per labelled galaxy — the same map the label tests build. */
+  const placedById = () => {
+    const placed = new Map(
+      lgGalaxies().map(({ object, place }) => [object.id, place]),
+    );
+    placed.set(HOME_MILKY_WAY_ID, LG_MW_PLACEMENT);
+    return placed;
+  };
+
+  it("covers the MW and all 4 neighbours — one target per labelled galaxy", () => {
+    const targetIds = lgHitTargets()
+      .map((t) => t.id)
+      .sort();
+    expect(targetIds).toEqual(
+      lgLabels()
+        .map((l) => l.id)
+        .sort(),
+    );
+  });
+
+  it("centres each target on its placement and sizes it to the silhouette reach (placedExtent)", () => {
+    const placed = placedById();
+    for (const t of lgHitTargets()) {
+      const place = placed.get(t.id);
+      if (!place) throw new Error(`no placement for ${t.id}`);
+      // Derived through the composition module — constants changes flow here.
+      expect(t.x).toBe(place.cx);
+      expect(t.y).toBe(place.cy);
+      expect(t.halfW).toBe(placedExtent(place).x);
+      expect(t.halfH).toBe(placedExtent(place).y);
+    }
+  });
+
+  it("carries the existing lore catalog key — the aria-label resolves en AND ru", () => {
+    for (const t of lgHitTargets()) {
+      expect(en.lore[t.loreKey].name.length).toBeGreaterThan(0);
+      expect(en.lore[t.loreKey].sublabel.length).toBeGreaterThan(0);
+      expect(ru.lore[t.loreKey].name.length).toBeGreaterThan(0);
+      expect(ru.lore[t.loreKey].sublabel.length).toBeGreaterThan(0);
+    }
   });
 });
 

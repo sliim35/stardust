@@ -186,6 +186,45 @@ export const lgGoldAccents = (): readonly BackdropPoint[] => {
   return points;
 };
 
+/**
+ * A hover/focus hit-target over one placed silhouette (#167 hover-only titles):
+ * the disk's centre + its projected half-extents (`placedExtent` — the same
+ * silhouette bound the fit/label/separation contracts read). The stage renders
+ * these as invisible focusable elements that reveal the galaxy's title; #169
+ * upgrades the same targets to clickable (MW dive + lore cards).
+ */
+export type LgHitTarget = {
+  id: string;
+  loreKey: RealObject["loreKey"];
+  /** Disk centre (world px). */
+  x: number;
+  y: number;
+  /** The silhouette's projected half-extents (world px). */
+  halfW: number;
+  halfH: number;
+};
+
+const targetFor = (o: RealObject, place: DiskPlacement): LgHitTarget => {
+  const extent = placedExtent(place);
+  return {
+    id: o.id,
+    loreKey: o.loreKey,
+    x: place.cx,
+    y: place.cy,
+    halfW: extent.x,
+    halfH: extent.y,
+  };
+};
+
+/** One hover/focus target per labelled galaxy — the MW + every neighbour. */
+export const lgHitTargets = (): readonly LgHitTarget[] => {
+  const home = REAL_OBJECTS.find((o) => o.id === HOME_MILKY_WAY_ID);
+  return [
+    ...(home ? [targetFor(home, LG_MW_PLACEMENT)] : []),
+    ...lgGalaxies().map(({ object, place }) => targetFor(object, place)),
+  ];
+};
+
 /** A label anchor: world coords + which side of the disk the text hangs on. */
 export type LgLabel = {
   id: string;
