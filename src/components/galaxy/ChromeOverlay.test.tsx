@@ -40,4 +40,18 @@ describe("ChromeOverlay — wires the tier-aware scale net (#112)", () => {
     expect(screen.getByText("100k ly")).toBeTruthy();
     expect(screen.queryByText("2.5 Mly")).toBeNull();
   });
+
+  it("passes the tier-transition narration through to ASTRO's bubble (#125)", () => {
+    render(
+      <ChromeOverlay
+        count={3}
+        palette="auroral"
+        onPaletteChange={noop}
+        tier="galaxy"
+        narration="narration line"
+        onNarrationDismiss={noop}
+      />,
+    );
+    expect(screen.getByText("narration line")).toBeTruthy();
+  });
 });

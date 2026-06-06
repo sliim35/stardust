@@ -46,17 +46,23 @@ export type BackdropGeometry = {
 
 /**
  * Where a disk sits on the stage (ADR-0011 §1). The disk-polar → stage projection
- * scales by `r`, rotates by `pa` (position angle, radians), foreshortens the y axis
- * by `tilt`, and offsets to `(cx, cy)`. This lets the *same* generator paint the
- * home Milky Way and every Local-Group neighbour — one renderer, not two (the proof:
+ * scales by `r`, foreshortens the y axis by `tilt`, **then** rotates the projected
+ * ellipse by `pa` (a true sky position angle, radians) and offsets to `(cx, cy)`.
+ * This lets the *same* generator paint the home Milky Way and every Local-Group
+ * neighbour — one renderer, not two (the proof:
  * `docs/design/proofs/2026-06-06-neighbour-in-scene-proof.png`).
+ *
+ * `pa` rotating AFTER the squash is what makes a steeply-inclined disk read
+ * *diagonal* (the FINAL proof's Andromeda). A pre-squash rotation — the I-1
+ * version — only phase-shifts the arms inside an axis-aligned ellipse, which no
+ * authored data should ever need (slice I-2 fix).
  */
 export type DiskPlacement = {
   cx: number; // disk centre x (stage px)
   cy: number; // disk centre y (stage px)
   r: number; // disk radius (stage px) — was the locked GALAXY_R
   tilt: number; // y-axis foreshortening (disk inclination)
-  pa: number; // position angle — rotates the whole disk in-plane (radians)
+  pa: number; // position angle — rotates the projected ellipse on the sky (radians)
 };
 
 /**
@@ -79,10 +85,11 @@ const ARM_WIND = 1.8; // log-spiral winding: theta = base + ln(r/startR) * ARM_W
 const START_R = 0.12; // inner radius where the arms begin
 
 /**
- * Disk-polar (rNorm 0..1, theta rad) → stage pixels for one placement: scale by `r`,
- * rotate the in-plane angle by `pa`, foreshorten y by `tilt`, offset to `(cx, cy)`.
- * At `MW_PLACEMENT` (pa:0) this is the original `GALAXY_CENTER ± cos/sin·rNorm·GALAXY_R`
- * verbatim — the byte-identical default (ADR-0011 §1).
+ * Disk-polar (rNorm 0..1, theta rad) → stage pixels for one placement: scale by
+ * `r`, foreshorten y by `tilt`, rotate the squashed point by `pa` (true position
+ * angle — the ellipse itself turns), offset to `(cx, cy)`. At `MW_PLACEMENT`
+ * (pa:0) this is the original `GALAXY_CENTER ± cos/sin·rNorm·GALAXY_R` verbatim —
+ * the byte-identical default (ADR-0011 §1).
  */
 const toStage = (
   rNorm: number,
@@ -90,12 +97,52 @@ const toStage = (
   place: DiskPlacement,
 ): { x: number; y: number } => {
   const rr = rNorm * place.r;
-  const a = theta + place.pa;
+  const dx = Math.cos(theta) * rr;
+  const dy = Math.sin(theta) * rr * place.tilt;
+  const cosPa = Math.cos(place.pa);
+  const sinPa = Math.sin(place.pa);
   return {
-    x: place.cx + Math.cos(a) * rr,
-    y: place.cy + Math.sin(a) * rr * place.tilt,
+    x: place.cx + dx * cosPa - dy * sinPa,
+    y: place.cy + dx * sinPa + dy * cosPa,
   };
 };
+
+/**
+ * A placed disk's silhouette reach along one direction `(ux, uy)` (unit vector)
+ * — the support function of the ellipse with semi-axes `(r, r·tilt)` rotated by
+ * `pa`: how far the projected disk extends from its centre when measured along
+ * that axis. The pairwise-separation guarantee of the LG composition (#167
+ * sparseness) measures gaps along the centre-to-centre line with this — the
+ * axis-aligned `placedExtent` over-reaches on diagonals (it bounds the box, not
+ * the ellipse).
+ */
+export const placedSupport = (
+  place: DiskPlacement,
+  ux: number,
+  uy: number,
+): number => {
+  // Project the direction onto the ellipse's own axes (major e1 = pa, minor
+  // e2 = pa + 90°), then the support is √((r·u₁)² + (r·tilt·u₂)²).
+  const cosPa = Math.cos(place.pa);
+  const sinPa = Math.sin(place.pa);
+  const u1 = ux * cosPa + uy * sinPa;
+  const u2 = -ux * sinPa + uy * cosPa;
+  return Math.hypot(place.r * u1, place.r * place.tilt * u2);
+};
+
+/**
+ * The projected half-extents of a placed disk — the tight axis-aligned bounding
+ * box of the ellipse with semi-axes `(r, r·tilt)` rotated by `pa` (the support
+ * along the stage axes). The one place the silhouette bound lives: the LG
+ * composition (labels clear of the disk, fit inside the stage) and the tests
+ * read it instead of re-deriving the trig.
+ */
+export const placedExtent = (
+  place: DiskPlacement,
+): { x: number; y: number } => ({
+  x: placedSupport(place, 1, 0),
+  y: placedSupport(place, 0, 1),
+});
 
 /**
  * Project one disk-polar point into a placed, stage-clamped `BackdropPoint`. Exported

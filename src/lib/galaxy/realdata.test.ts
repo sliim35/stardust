@@ -125,6 +125,24 @@ describe("the 4 Local-Group neighbours (spec §5.1)", () => {
     expect(rs).toEqual(sorted);
   });
 
+  it("points each neighbour's authored angle into its FINAL-proof quadrant", () => {
+    // The locked composition (docs/design/proofs/2026-06-05-local-group-tier-FINAL.png):
+    // M31 upper-left · M33 upper-right · LMC lower-left · SMC lower-right.
+    // Screen convention (+y down), matching polarToXY / the LG ring projection.
+    const dir = (id: string) => {
+      const o = REAL_OBJECTS.find((x) => x.id === id);
+      if (!o) throw new Error(`no real object ${id}`);
+      return {
+        left: Math.cos(o.placement.angle) < 0,
+        up: Math.sin(o.placement.angle) < 0,
+      };
+    };
+    expect(dir("andromeda")).toEqual({ left: true, up: true });
+    expect(dir("triangulum")).toEqual({ left: false, up: true });
+    expect(dir("lmc")).toEqual({ left: true, up: false });
+    expect(dir("smc")).toEqual({ left: false, up: false });
+  });
+
   it("carries the real, published distances verbatim", () => {
     const byId = new Map(REAL_OBJECTS.map((o) => [o.id, o]));
     expect(byId.get("lmc")?.realDistance).toEqual({

@@ -13,7 +13,16 @@ import {
   focusCamera,
   resolveFocusTarget,
 } from "#/lib/galaxy/focus";
-import type { GalaxySky } from "#/lib/galaxy/types";
+import { HOME_TIER } from "#/lib/galaxy/tier-nav";
+import {
+  directionOf,
+  framingForTier,
+  planTierTransition,
+  type TierTransitionController,
+  type TierTransitionEvent,
+  type TierTransitionPlan,
+} from "#/lib/galaxy/tier-transition";
+import type { GalaxySky, Tier } from "#/lib/galaxy/types";
 import { gsap, useGalaxyGsap } from "./gsap-setup";
 
 /**
@@ -59,8 +68,30 @@ import { gsap, useGalaxyGsap } from "./gsap-setup";
  */
 export const FOCUS_TWEEN = { duration: 1.6, ease: "power3.out" } as const;
 
-/** The mount settle (zoom 1.06 → 1) — the visible "no snap" intro. */
+/** The mount settle (zoom ×1.06 → the landing rest) — the visible "no snap" intro. */
 export const INTRO_TWEEN = { duration: 1.2, ease: "power2.out" } as const;
+export const INTRO_OVERZOOM = 1.06;
+
+/**
+ * The landing rest the intro settles onto — the HOME_TIER framing (the LG
+ * overview; owner decision 2026-06-06, PR #167, overriding spec §1's MW-home).
+ * Derived, never authored here, so the camera and the nav spine can't disagree
+ * about where the page opens. The `??` arm is unreachable while HOME_TIER has a
+ * built framing — it guards the #127 (Solar-System) extension, not a real path.
+ */
+const HOME_FRAMING: Camera = framingForTier(HOME_TIER) ?? DEFAULT_FRAMING;
+
+/**
+ * The two phases of a tier transition (#125, ADR-0009 step 4): an ease-in toward
+ * the threshold framing (the scene swaps there), then a long soft landing onto
+ * the destination tier's rest. Continuous in zoom-space — there is no camera
+ * jump at the swap, so reversing the timeline retraces the same path. The *feel*
+ * gate stays the owner's preview spot-check.
+ */
+export const TIER_TWEEN = {
+  depart: { duration: 0.9, ease: "power2.in" },
+  arrive: { duration: 1.4, ease: "power3.out" },
+} as const;
 
 type CameraRefs = {
   l1: RefObject<HTMLDivElement | null>;
@@ -81,6 +112,13 @@ type Options = {
   focus?: FocusController;
   /** Reads the current sky so a focus request resolves its star's position live. */
   getSky?: () => GalaxySky;
+  /** The tier-transition request channel the nav state drives (#125). */
+  transitions?: TierTransitionController;
+  /**
+   * Transition lifecycle cues (#125): `threshold` is the scene-swap moment
+   * (display the new tier NOW); `depart`/`arrive` are the ASTRO narration cues.
+   */
+  onTransitionEvent?: (e: TierTransitionEvent) => void;
 };
 
 export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
@@ -98,7 +136,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
 
   // The focus machine lives in a ref: GSAP tweens toward its targets, never via
   // React state, so a focus move costs zero re-renders.
-  const focusState = useRef<FocusState>(createFocus(DEFAULT_FRAMING));
+  const focusState = useRef<FocusState>(createFocus(HOME_FRAMING));
 
   // ADR-0009: registration at hook scope, client-only — never at module scope
   // (Workers SSR safety). Returns the context-scoped `useGSAP` effect hook.
@@ -110,9 +148,41 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     // The GSAP tween target: a plain Camera object — no DOM needed. `onUpdate`
     // paints it through the pure `cameraTransform`; its `Math.round` is what
     // keeps the tween's fractional values from ever hitting the DOM raw.
-    const camera: Camera = { ...DEFAULT_FRAMING };
+    const camera: Camera = { ...HOME_FRAMING };
     const applyCamera = () => {
       if (cam.current) cam.current.style.transform = cameraTransform(camera);
+    };
+
+    // --- tier transitions (#125, ADR-0009 step 4) ---------------------------
+    // One interruptible gsap.timeline() per tier change, easing the camera
+    // between the pure per-tier framings (lib/galaxy/tier-transition). The
+    // in-flight timeline is tracked so a focus move can kill it (never a silent
+    // overwrite that would leave its labels/callbacks firing on a dead camera).
+    let transition: {
+      plan: TierTransitionPlan;
+      tl: gsap.core.Timeline;
+      /** A threshold event committed the displayed tier (scene swap, scale-net
+       * relabel) — the kill path must then resolve the lifecycle terminally
+       * (code-style: terminal events on kill/cancel, #167 review). */
+      thresholdFired: boolean;
+    } | null = null;
+    const emit = (e: TierTransitionEvent) =>
+      optsRef.current.onTransitionEvent?.(e);
+    const killTransition = () => {
+      if (!transition) return;
+      const { plan, tl, thresholdFired } = transition;
+      // The tier the timeline was heading toward — exactly where the nav state
+      // (the logical source of truth) already stepped: a request steps the nav
+      // first, a mid-flight reverse steps it back.
+      const heading = tl.reversed() ? plan.from : plan.to;
+      transition = null;
+      tl.kill();
+      // Killed AFTER the threshold committed the displayed tier → emit the
+      // terminal arrive so consumers settle on the nav tier. Killed BEFORE →
+      // stay silent: nothing was committed, and an arrive here would force a
+      // scene swap the camera never crossed (spec §1: the swap belongs to the
+      // threshold).
+      if (thresholdFired) emit({ kind: "arrive", tier: heading });
     };
 
     // One eased move toward `target`. `overwrite: "auto"` kills an in-flight
@@ -120,6 +190,9 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     // redirects from wherever the camera actually is — no jump, no stale tween.
     // Reduced motion is read live per move: snap, never tween.
     const tweenTo = (target: Camera) => {
+      // A focus move takes the camera over: an in-flight tier timeline dies
+      // here, not silently under `overwrite` (its callbacks must never fire on).
+      killTransition();
       if (mq.matches) {
         gsap.killTweensOf(camera);
         Object.assign(camera, target);
@@ -138,12 +211,14 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       });
     };
 
-    // Intro settle on load — a visible "no snap" demonstration (1.06 → 1.0).
-    // A focus request mid-settle simply overwrites this tween's zoom axis.
+    // Intro settle on load — a visible "no snap" demonstration easing onto the
+    // landing (HOME_TIER) rest from a slight overzoom; reduced motion mounts
+    // parked on the rest instead. A focus request mid-settle simply overwrites
+    // this tween's zoom axis.
     if (!mq.matches) {
-      camera.zoom = 1.06;
+      camera.zoom = HOME_FRAMING.zoom * INTRO_OVERZOOM;
       gsap.to(camera, {
-        zoom: DEFAULT_FRAMING.zoom,
+        zoom: HOME_FRAMING.zoom,
         ...INTRO_TWEEN,
         overwrite: "auto",
         onUpdate: applyCamera,
@@ -166,6 +241,12 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       tweenTo(focusState.current.target);
     };
     const requestBack = () => {
+      // ESC with nothing to back out of is inert (no prior focus, no focus in
+      // flight, no tier timeline): `back()`'s DEFAULT_FRAMING fallback would
+      // silently dive the camera to the MW framing while the scene/nav stay
+      // put — a first-touch desync now that the page lands on the LG tier.
+      const { prior, focusing } = focusState.current;
+      if (!prior && !focusing && !transition) return;
       focusState.current = back({
         ...focusState.current,
         current: { ...camera },
@@ -176,6 +257,93 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       if (req.kind === "focus") requestFocus(req.id, req.zoom);
       else requestBack();
     });
+
+    // --- tier-transition requests (#125) ------------------------------------
+    // The timeline eases depart → [threshold: scene swap] → arrive, tweening
+    // the SAME camera object through the pure plan's framings. Mid-flight, an
+    // opposite request *reverses* the live timeline (the breadcrumb case,
+    // ADR-0009) — the threshold swap re-fires on the way back, so the scene
+    // swaps back exactly where it swapped forward. Reduced motion is read
+    // live: snap to rest, swap, announce arrival — no ease, no timeline.
+    const requestTransition = (from: Tier, to: Tier) => {
+      // `transition` is non-null exactly while a timeline is in flight (nulled
+      // on complete / reverse-complete / kill) — deterministic, unlike
+      // `isActive()`, which is still false on the tick the timeline is born.
+      if (transition) {
+        const { plan, tl } = transition;
+        const heading = tl.reversed() ? plan.from : plan.to;
+        if (to === heading) return; // already on its way there
+        if (to === (tl.reversed() ? plan.to : plan.from)) {
+          // The opposite end → reverse in place: no jump, no second timeline.
+          tl.reversed(!tl.reversed());
+          const direction = directionOf(heading, to);
+          if (direction) emit({ kind: "depart", direction, from: heading, to });
+          return;
+        }
+      }
+      killTransition(); // a third-tier retarget (#127) never leaves a live timeline
+      const plan = planTierTransition(from, to);
+      if (!plan) return; // same tier / unbuilt tier (#127) degrades to a no-op
+      gsap.killTweensOf(camera); // the intro/focus tween never fights the timeline
+      if (mq.matches) {
+        Object.assign(camera, plan.rest);
+        applyCamera();
+        emit({ kind: "threshold", tier: plan.to });
+        emit({ kind: "arrive", tier: plan.to });
+        return;
+      }
+      emit({
+        kind: "depart",
+        direction: plan.direction,
+        from: plan.from,
+        to: plan.to,
+      });
+      const tl = gsap.timeline();
+      tl.to(camera, {
+        ...plan.threshold,
+        ...TIER_TWEEN.depart,
+        onUpdate: applyCamera,
+      })
+        .addLabel("threshold")
+        .to(camera, {
+          ...plan.rest,
+          ...TIER_TWEEN.arrive,
+          onUpdate: applyCamera,
+        });
+      // The scene swaps when the playhead crosses the threshold label — in
+      // EITHER direction (a reverse must swap back exactly where it swapped
+      // forward). Detected by which SIDE of the label the rendered time is on,
+      // not a zero-duration `.call`: GSAP skips a callback the playhead is
+      // parked on when flipped to reverse, which would strand the swap. `sync`
+      // also runs in the terminal callbacks: one large tick (event-loop stall)
+      // can jump the playhead clear across the label to an end with no
+      // intermediate onUpdate, which a per-update window check alone misses.
+      const swapAt = tl.labels.threshold;
+      const live = { plan, tl, thresholdFired: false };
+      let committed: Tier = plan.from; // the threshold side the scene shows
+      const sync = () => {
+        const side = tl.time() >= swapAt ? plan.to : plan.from;
+        if (side === committed) return;
+        committed = side;
+        live.thresholdFired = true;
+        emit({ kind: "threshold", tier: side });
+      };
+      tl.eventCallback("onUpdate", sync);
+      tl.eventCallback("onComplete", () => {
+        sync();
+        transition = null;
+        emit({ kind: "arrive", tier: plan.to });
+      });
+      tl.eventCallback("onReverseComplete", () => {
+        sync();
+        transition = null;
+        emit({ kind: "arrive", tier: plan.from });
+      });
+      transition = live;
+    };
+    const unsubscribeTransitions = optsRef.current.transitions?.subscribe(
+      (req) => requestTransition(req.from, req.to),
+    );
 
     // ESC / "back" — return to the prior framing (or zoomed-out default).
     const onKeyDown = (e: KeyboardEvent) => {
@@ -226,8 +394,10 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
 
     return () => {
       cancelAnimationFrame(raf);
+      killTransition();
       gsap.killTweensOf(camera);
       unsubscribe?.();
+      unsubscribeTransitions?.();
       window.removeEventListener("keydown", onKeyDown);
     };
   }, []);

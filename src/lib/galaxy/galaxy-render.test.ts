@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { DiskPlacement } from "#/lib/galaxy/backdrop";
 import {
   buildGalaxyGeometry,
   placementFor,
@@ -58,7 +59,7 @@ describe("placementFor — RealObject → DiskPlacement (ADR-0011 §1)", () => {
 describe("tuningFor — RealObject → GalaxyBackdrop tuning (ADR-0011 §1)", () => {
   it("maps arms → branches for spiral neighbours", () => {
     expect(tuningFor(byId("andromeda")).branches).toBe(2); // M31 arms:2
-    expect(tuningFor(byId("triangulum")).branches).toBe(2); // M33 arms:2
+    expect(tuningFor(byId("triangulum")).branches).toBe(4); // M33 pinwheel arms:4
     expect(tuningFor(byId(HOME_MILKY_WAY_ID)).branches).toBe(4); // MW arms:4
   });
 
@@ -137,5 +138,19 @@ describe("buildGalaxyGeometry — render-capability for one real object (ADR-001
     expect(buildGalaxyGeometry(byId("triangulum"))).toEqual(
       buildGalaxyGeometry(byId("triangulum")),
     );
+  });
+
+  it("accepts an explicit placement override — the tier-composition seam (I-2)", () => {
+    const o = byId("andromeda");
+    const custom: DiskPlacement = { cx: 220, cy: 580, r: 90, tilt: 0.6, pa: 0 };
+    const g = buildGalaxyGeometry(o, custom);
+    const pts = [...g.arms, ...g.bulge];
+    const meanX = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+    const meanY = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+    // The cloud clusters around the GIVEN centre, not the data placement…
+    expect(Math.abs(meanX - custom.cx)).toBeLessThanOrEqual(custom.r + 1);
+    expect(Math.abs(meanY - custom.cy)).toBeLessThanOrEqual(custom.r + 1);
+    // …and differs from the default data-placement build.
+    expect(g).not.toEqual(buildGalaxyGeometry(o));
   });
 });

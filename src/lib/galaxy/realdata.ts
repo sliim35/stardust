@@ -13,6 +13,10 @@
  * curated so the arrangement reads recognizable and is **ordered by real distance**
  * (nearer reads nearer) — NOT a survey-accurate projection. The real number rides
  * along in `realDistance` for the lore cards + the scale net. No `logScale` engine.
+ * The Local-Group angles are curated to the locked FINAL composition
+ * (`docs/design/proofs/2026-06-05-local-group-tier-FINAL.png`, slice I-2 #112) in
+ * screen convention (+y down): M31 upper-left · M33 upper-right · LMC lower-left ·
+ * SMC lower-right. The LG ring projection (`lg-composition.ts`) consumes them.
  *
  * **All user-facing copy is in the i18n catalog (`loreKey`, en+ru)** — never inline
  * here (the standing all-user-text-via-i18n rule + ADR-0010 §4). `loreKey` is the
@@ -73,7 +77,7 @@ const REAL_OBJECTS_DATA = [
     catalogue: "LMC",
     tier: "localGroup",
     realDistance: { value: 163000, unit: "ly" },
-    placement: { r: 0.22, angle: 3.78 },
+    placement: { r: 0.22, angle: 2.62 }, // lower-left (FINAL proof)
     shape: "magellanic",
     size: 0.42,
     brightness: 0.7,
@@ -87,7 +91,7 @@ const REAL_OBJECTS_DATA = [
     catalogue: "SMC",
     tier: "localGroup",
     realDistance: { value: 200000, unit: "ly" },
-    placement: { r: 0.3, angle: 4.32 },
+    placement: { r: 0.3, angle: 0.68 }, // lower-right (FINAL proof)
     shape: "irregular",
     size: 0.3,
     brightness: 0.58,
@@ -101,15 +105,15 @@ const REAL_OBJECTS_DATA = [
     catalogue: "M31",
     tier: "localGroup",
     realDistance: { value: 2.5, unit: "Mly" },
-    placement: { r: 0.62, angle: 2.18 },
+    placement: { r: 0.62, angle: 3.8 }, // upper-left (FINAL proof)
     shape: "barred-spiral",
     size: 0.78,
     brightness: 0.82,
     color: "#8fb0e4",
     loreKey: "andromeda",
     arms: 2,
-    barAngle: 0.5,
-    tilt: 1.2,
+    barAngle: -0.55, // sky position angle — the "/" diagonal of the FINAL proof
+    tilt: 0.42, // steep ~77° inclination → a thin tilted disk
     satellites: [
       {
         id: "m32",
@@ -119,7 +123,7 @@ const REAL_OBJECTS_DATA = [
         tier: "localGroup",
         parentId: ANDROMEDA_ID,
         realDistance: { value: 2.5, unit: "Mly" },
-        placement: { r: 0.56, angle: 2.06 },
+        placement: { r: 0.56, angle: 3.68 }, // flanks its host (v1.1)
         shape: "dwarf-spheroidal",
         size: 0.12,
         brightness: 0.4,
@@ -134,7 +138,7 @@ const REAL_OBJECTS_DATA = [
         tier: "localGroup",
         parentId: ANDROMEDA_ID,
         realDistance: { value: 2.7, unit: "Mly" },
-        placement: { r: 0.68, angle: 2.3 },
+        placement: { r: 0.68, angle: 3.92 }, // flanks its host (v1.1)
         shape: "dwarf-spheroidal",
         size: 0.14,
         brightness: 0.36,
@@ -150,13 +154,13 @@ const REAL_OBJECTS_DATA = [
     catalogue: "M33",
     tier: "localGroup",
     realDistance: { value: 2.7, unit: "Mly" },
-    placement: { r: 0.78, angle: 1.08 },
+    placement: { r: 0.78, angle: 5.66 }, // upper-right (FINAL proof)
     shape: "spiral",
-    size: 0.5,
+    size: 0.62, // legibility-curated: the proof's face-on pinwheel reads large
     brightness: 0.62,
     color: "#93b6dd",
     loreKey: "triangulum",
-    arms: 2,
+    arms: 4, // flocculent face-on pinwheel (FINAL proof), not a 2-arm sweep
     barAngle: 0,
     tilt: 0.9,
   },

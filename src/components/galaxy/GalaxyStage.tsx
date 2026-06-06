@@ -5,6 +5,8 @@ import {
   useRef,
   useState,
 } from "react";
+import type { BackdropPoint } from "#/lib/galaxy/backdrop";
+import { MW_PLACEMENT } from "#/lib/galaxy/backdrop";
 import {
   constellationNodes,
   constellationSegments,
@@ -13,9 +15,24 @@ import {
   hoverAffordanceFor,
 } from "#/lib/galaxy/constellation";
 import { createFocusController } from "#/lib/galaxy/focus";
+import type { PlacedGalaxy } from "#/lib/galaxy/galaxy-render";
+import {
+  LG_MW_PLACEMENT,
+  lgGalaxies,
+  lgGoldAccents,
+  lgHitTargets,
+  lgLabels,
+} from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
+import { HOME_TIER } from "#/lib/galaxy/tier-nav";
+import {
+  arrivalNarration,
+  createTierTransitionController,
+  departNarration,
+  type TierTransitionEvent,
+} from "#/lib/galaxy/tier-transition";
 import type { MemoryStar, Tier } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import type { Messages } from "#/lib/i18n/types";
@@ -25,6 +42,7 @@ import { ChromeOverlay } from "./ChromeOverlay";
 import { ConstellationOverlay } from "./ConstellationOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
+import { LgGalaxyLabels } from "./LgGalaxyLabels";
 import { MemoryStarLayer } from "./MemoryStarLayer";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { useObjectClick } from "./useObjectClick";
@@ -34,6 +52,10 @@ import { useTierNav } from "./useTierNav";
 
 /** Mirrors the `memIgnite` CSS animation duration (1.5s) — one ignite number. */
 const IGNITE_MS = 1500;
+
+/** Stable empty sets — the home/MW scene paints no Layer-A galaxies or gold. */
+const NO_NEIGHBOURS: readonly PlacedGalaxy[] = [];
+const NO_GOLD: readonly BackdropPoint[] = [];
 
 /**
  * The top-level galaxy scene (#4): composes L1 (deep starfield) · L2 (the disk)
@@ -101,23 +123,72 @@ export const GalaxyStage = () => {
     () => ({ ...sky.backdrop, palette }),
     [sky.backdrop, palette],
   );
-  // Layer-A neighbours are NOT rendered at the home/Milky-Way tier (memory-first).
-  // The render foundation (placement-aware generator + the `shape`→recipe mappers in
-  // galaxy-render.ts + the GalaxyBackdrop `neighbours` capability) is in place and
-  // tested; slice I-2 composes the actual Local-Group tier (MW shrunk + the 4
-  // neighbours spread + scaled per the FINAL proof) and feeds them to the disk there.
   const scale = useStageFit();
+  const m = getMessages(useLocale());
+
+  // The tier-transition seam (slice F, #125): the *displayed* tier (what the
+  // scene + scale net render) follows the timeline's threshold event, NOT the
+  // nav state — so the scene swaps mid-flight, exactly where the camera crosses
+  // the threshold framing. `narration` is ASTRO's transition line (depart on
+  // launch, on-arrival when the tier settles), resolved from the catalog by the
+  // pure lib routing — hardcoded i18n, the post-v1 ASTRO-AI swap seam.
+  const [transitions] = useState(() => createTierTransitionController());
+  const [displayedTier, setDisplayedTier] = useState<Tier>(HOME_TIER);
+  const [narration, setNarration] = useState<string | null>(null);
+  const onTransitionEvent = (e: TierTransitionEvent) => {
+    if (e.kind === "depart") {
+      setNarration(departNarration(m.astroNarration, e.direction, e.to));
+      return;
+    }
+    // Both `threshold` (the mid-flight scene swap) and `arrive` carry the
+    // authoritative displayed tier. `arrive` matters for the kill path: a
+    // focus move that kills a transition after its threshold fired resolves
+    // the displayed tier to the nav tier — the logical source of truth — via
+    // the terminal arrive (#167 review, code-style "terminal events on
+    // kill/cancel").
+    setDisplayedTier(e.tier);
+    if (e.kind === "arrive")
+      setNarration(arrivalNarration(m.astroNarration, e.tier));
+  };
+
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
   // #113 search) call to ease the camera onto a star by id. The camera hook
   // resolves the id against the live sky (`skyRef`) and drives the eased move.
   const [focus] = useState(() => createFocusController());
-  const cam = useGalaxyCamera({ focus, getSky: () => skyRef.current });
+  const cam = useGalaxyCamera({
+    focus,
+    getSky: () => skyRef.current,
+    transitions,
+    onTransitionEvent,
+  });
 
   // The guided-navigation spine (slice E, #153): scroll steps the tier-zoom state
-  // (the eased camera move arrives with slice F / #125; here the state + the
-  // wheel-debounce land), and `nav.diveTo` is the gateway-dive sink for clicks.
+  // and `nav.diveTo` is the gateway-dive sink for clicks. The camera *follows*
+  // the nav state (slice F): a tier flip requests the eased timeline below.
   const nav = useTierNav();
-  const m = getMessages(useLocale());
+  const prevTier = useRef(nav.state.tier);
+  useEffect(() => {
+    const from = prevTier.current;
+    const to = nav.state.tier;
+    if (from === to) return;
+    prevTier.current = to;
+    transitions.request(from, to);
+  }, [nav.state.tier, transitions]);
+
+  // The scene swap (#125 → composed by I-2 #112): at the Local-Group tier the
+  // disk paints the FINAL-proof composition — the MW shrunk (LG_MW_PLACEMENT) +
+  // the 4 neighbours spread per `lg-composition` + the gold accents — and the
+  // L3 memory layer (MW-interior content) hides below. Memoized so the canvas
+  // only redraws when the displayed tier actually swaps.
+  const lgView = displayedTier === "localGroup";
+  const neighbours = useMemo(
+    () => (lgView ? lgGalaxies() : NO_NEIGHBOURS),
+    [lgView],
+  );
+  const goldDust = useMemo(
+    () => (lgView ? lgGoldAccents() : NO_GOLD),
+    [lgView],
+  );
 
   // Hover (#154, spec §3 + owner rules 2026-06-06): the star under the pointer/
   // keyboard-focus. When it belongs to an AUTHORED mood-pure figure, the overlay
@@ -125,9 +196,11 @@ export const GalaxyStage = () => {
   // everything else dims; a solo star (Mom's, the figure-less moods) fades up
   // only its short description. Pure derivation — `constellation.ts` owns the
   // rules (mood-validated membership, never `deep`, authored edges only).
+  // Gated off the Local-Group view (I-2): L3 hides there, and a hover that was
+  // live when the ascend started must not strand the dim/overlay on Layer A.
   const [hovered, setHovered] = useState<MemoryStar | null>(null);
   const constellation = useMemo(() => {
-    if (hovered === null) return null;
+    if (lgView || hovered === null) return null;
     const affordance = hoverAffordanceFor(hovered);
     if (affordance.kind !== "memory" || affordance.group === null) return null;
     const figure = figureForGroup(affordance.group);
@@ -139,7 +212,7 @@ export const GalaxyStage = () => {
       color: figureColor(figure),
       litIds: new Set(constellationNodes(sky.stars, figure).map((n) => n.id)),
     };
-  }, [hovered, sky.stars]);
+  }, [lgView, hovered, sky.stars]);
   // The "dim everything else" cross-fade on the far layers (L1 + the disk) —
   // instant under prefers-reduced-motion (AC7).
   const dimClass = `transition-opacity duration-300 motion-reduce:transition-none ${
@@ -180,9 +253,36 @@ export const GalaxyStage = () => {
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
             <div className={`galaxy-l2-wrap ${dimClass}`} ref={cam.l2}>
-              <GalaxyBackdrop backdrop={backdrop} />
+              <GalaxyBackdrop
+                backdrop={backdrop}
+                homePlacement={lgView ? LG_MW_PLACEMENT : MW_PLACEMENT}
+                neighbours={neighbours}
+                goldDust={goldDust}
+              />
+              {/* Serif/mono galaxy titles ride the L2 plane so they track the
+                  framing + parallax exactly like the disks they annotate.
+                  Hover-only (#167 owner amend): invisible focusable hit-targets
+                  over the silhouettes reveal them; unmounts with the LG view,
+                  so the MW tier's memory-star hover is untouched. */}
+              {lgView && (
+                <LgGalaxyLabels
+                  labels={lgLabels()}
+                  targets={lgHitTargets()}
+                  lore={m.lore}
+                />
+              )}
             </div>
-            <div className="galaxy-l3-wrap" ref={cam.l3}>
+            {/* The L3 memory layer is MW-interior content: at the Local-Group
+                tier it fades with the threshold swap (motion-reduce snaps) and
+                drops its pointer + keyboard affordances (visibility removes the
+                star buttons from the tab order; pointer-events guards the fade
+                window). */}
+            <div
+              className={`galaxy-l3-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
+                lgView ? "pointer-events-none invisible opacity-0" : ""
+              }`}
+              ref={cam.l3}
+            >
               {constellation && (
                 <ConstellationOverlay
                   segments={constellation.segments}
@@ -208,7 +308,9 @@ export const GalaxyStage = () => {
           count={sky.stars.length}
           palette={palette}
           onPaletteChange={setPalette}
-          tier={nav.state.tier}
+          tier={displayedTier}
+          narration={narration}
+          onNarrationDismiss={() => setNarration(null)}
         />
       </CardHost>
     </div>
