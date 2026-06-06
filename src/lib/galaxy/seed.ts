@@ -1,7 +1,7 @@
 /**
  * The seed sky a stranger inherits: a default `GalaxyBackdrop` + a small curated
  * set of `MemoryStar`s (a subset of `stardust/project/memory-data.jsx`), including
- * the quiet `egg` and the deep "fly-home" star.
+ * the deep "fly-home" star — Mom's lone gold dedication star.
  *
  * Placement is a **pure function of the star's stable id** — that is *why*
  * appending a star never moves the others (the store only appends; positions are
@@ -37,7 +37,7 @@ const COPY = en.memoryStars;
  * seeding + validation only.
  */
 export const MOODS = {
-  joyful: { color: "#f0c987", angle: -1.15, spread: 0.62 },
+  joyful: { color: "#f3c24e", angle: -1.15, spread: 0.62 },
   tender: { color: "#f3b8b0", angle: -0.15, spread: 0.55 },
   grieving: { color: "#8aa0d8", angle: 0.95, spread: 0.6 },
   wistful: { color: "#c8d4e8", angle: 1.95, spread: 0.62 },
@@ -78,8 +78,8 @@ export const placeStar = (
 // Same-`group` seed stars connect into one constellation (in `createdAt` order). The
 // names are owner-facing constellation captions — but they are NOT user-visible copy
 // here; the group is a stable membership key consumed by the overlay (spec §3) which
-// reads the mood label from the i18n `moods` catalog. Mom's star + the egg stay
-// ungrouped (standalone), per ADR-0010 §1.
+// reads the mood label from the i18n `moods` catalog. Mom's star stays ungrouped
+// (standalone), per ADR-0010 §1 + the Mom's-star treatment (2026-06-06).
 export const CONSTELLATIONS = {
   brightDays: "bright-days",
   quietAche: "quiet-ache",
@@ -135,11 +135,14 @@ const SEED = [
 // Fixed backdated epoch so seed order is stable and clock-free.
 const SEED_EPOCH = 1748000000000;
 
-// ── the two special stars (fixed homes; not derived from the SEED loop) ────────
-// Both stay UNGROUPED (standalone) per ADR-0010 §1 — Mom's gold dedication star
-// never joins a mood constellation, and the egg is the hidden quiet one. Their
+// ── Mom's lone gold star (fixed home; not derived from the SEED loop) ──────────
+// Stays UNGROUPED (standalone) per ADR-0010 §1 + the Mom's-star treatment
+// (2026-06-06) — the gold dedication star never joins a mood constellation. Its
 // `name`/`text` resolve from the i18n catalog by id (no inline copy). Irina is the
-// biggest + brightest of the whole sky (brightness 1, the unique max — #146).
+// biggest + brightest of the whole sky (brightness 1, the unique max — #146), sits
+// near bottom-centre (r 0.92, angle ≈ π/2), and reserves the pale gold `#f5d6a0`
+// (no regular mood color sits near it). The hidden `egg` star is retired — its
+// dedication merged into Mom's copy (treatment §1/§2).
 const DEEP_STAR = {
   id: "irina",
   copyKey: "irina",
@@ -147,25 +150,10 @@ const DEEP_STAR = {
   who: null,
   mood: "nostalgic",
   color: "#f5d6a0",
-  r: 0.366,
-  angle: 0.423,
+  r: 0.92,
+  angle: 1.571,
   brightness: 1,
   createdAt: 1700000000000,
-} as const;
-
-// The egg — quiet, in a lower-right inter-arm pocket, a touch brighter than its
-// neighbours. Reveals its dedication only on click; the UI just honors the flag.
-const EGG_STAR = {
-  id: "egg",
-  copyKey: "egg",
-  egg: true,
-  who: null,
-  mood: "joyful",
-  color: "#f7dca8",
-  r: 0.95,
-  angle: 1.52,
-  brightness: 0.92,
-  createdAt: 0,
 } as const;
 
 /** Build the initial sky from the seed corpus. Stable ids → stable positions forever. */
@@ -189,8 +177,8 @@ export const buildSeedSky = (): GalaxySky => {
       group: s.group,
     };
   });
-  // The two special stars resolve their copy from the catalog and stay ungrouped.
-  for (const spec of [DEEP_STAR, EGG_STAR] as const) {
+  // Mom's lone gold star resolves its copy from the catalog and stays ungrouped.
+  for (const spec of [DEEP_STAR] as const) {
     const { copyKey, ...rest } = spec;
     stars.push({
       ...rest,

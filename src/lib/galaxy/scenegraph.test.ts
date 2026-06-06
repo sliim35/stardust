@@ -78,13 +78,13 @@ describe("buildLocalGroup", () => {
     }
   });
 
-  it("seats the seeded Irina + egg memory stars on the home galaxy (#126 AC3)", () => {
+  it("seats the seeded Irina memory star on the home galaxy (#126 AC3)", () => {
     const home = buildLocalGroup(UNIVERSE_SEED).galaxies.find(
       (g) => g.id === HOME_GALAXY_ID,
     );
     const byId = new Map((home?.stars ?? []).map((s) => [s.id, s]));
-    // The two special seed stars must live on home, each with a home placement.
-    for (const id of ["irina", "egg"]) {
+    // Mom's lone gold star must live on home, with a home placement.
+    for (const id of ["irina"]) {
       const s = byId.get(id);
       expect(
         s,

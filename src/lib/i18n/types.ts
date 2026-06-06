@@ -99,7 +99,6 @@ export type Messages = {
     s05: MemoryStarCopy;
     s06: MemoryStarCopy;
     irina: MemoryStarCopy;
-    egg: MemoryStarCopy;
   };
   /**
    * Mood-constellation labels (Layer B — the one-word MOOD caption beside a group).

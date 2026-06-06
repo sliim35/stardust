@@ -47,7 +47,13 @@ describe("bloomSizing", () => {
     const deep = bloomSizing(star({ deep: true, brightness: 1 }));
     const plain = bloomSizing(star({ brightness: 1 }));
     expect(deep.bloom).toBeGreaterThan(plain.bloom);
-    expect(deep.bloom).toBeCloseTo((13 + 11) * 1.2, 6); // 24 * 1.2
+    expect(deep.bloom).toBeCloseTo((13 + 11) * 1.25, 6); // 24 * 1.25 = 30
+  });
+
+  it("blooms the deep lodestar bigger than a dimmer regular star (b<1)", () => {
+    const deep = bloomSizing(star({ deep: true, brightness: 1 }));
+    const regular = bloomSizing(star({ brightness: 0.5 }));
+    expect(deep.bloom).toBeGreaterThan(regular.bloom);
   });
 
   it("never lets the core pixel fall below 2px", () => {

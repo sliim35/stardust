@@ -36,8 +36,10 @@ export type BloomSizing = {
 /** Bloom / flare / core sizing for a star, optionally in its active (hover/selected) state. */
 export const bloomSizing = (star: MemoryStar, active = false): BloomSizing => {
   const b = star.brightness;
-  // Mom's star (the deep dedication star) reads unmistakably the biggest (spec §2).
-  const base = star.egg ? 15 : (13 + b * 11) * (star.deep ? 1.2 : 1);
+  // Mom's star (the deep dedication star) reads unmistakably the biggest — a modest
+  // bump (b=1 → 30), the biggest lodestar but not a giant (treatment §4). The egg
+  // branch is retired dead code (the egg star no longer seeds).
+  const base = star.egg ? 15 : (13 + b * 11) * (star.deep ? 1.25 : 1);
   const bloom = base * (active ? 1.3 : 1);
   const flareW = bloom * 2.5;
   return {
