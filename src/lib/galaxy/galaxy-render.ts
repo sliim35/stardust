@@ -20,6 +20,7 @@
 import {
   type BackdropGeometry,
   type BackdropPoint,
+  buildArmsAndBulge,
   type DiskPlacement,
   pointAt,
 } from "#/lib/galaxy/backdrop";
@@ -72,68 +73,19 @@ export const tuningFor = (o: RealObject): GalaxyBackdrop => ({
   palette: "ember",
 });
 
-const ARM_WIND = 1.8;
-const START_R = 0.12;
-
 /**
- * The spiral recipe (barred-spiral / spiral) — the *same* log-spiral arm + core
- * generator as the home disk, but placement-aware and WITHOUT the full-stage `bgStars`
- * deep field (the MW backdrop owns the one deep field; neighbours only contribute
- * their own disk, so we never multiply the stipple per neighbour). Mirrors
- * `buildBackdropGeometry`'s arm/bulge passes so both stay in the same visual family.
+ * The spiral recipe (barred-spiral / spiral) — delegates to the shared
+ * `buildArmsAndBulge` (the SAME arm + core generator as the home disk), placement-
+ * aware, WITHOUT the full-stage `bgStars` deep field (the MW backdrop owns the one
+ * deep field; a neighbour contributes only its own disk). One generator, no drift.
  */
 const buildSpiralGeometry = (
   tuning: GalaxyBackdrop,
   place: DiskPlacement,
 ): BackdropGeometry => {
-  const { seed, branches, spin, randomnessPower } = tuning;
-  const armRng = mulberry32(seed);
-  const bulgeRng = mulberry32(seed ^ 0xc2b2ae35);
-
-  const arms: BackdropPoint[] = [];
-  for (let arm = 0; arm < branches; arm++) {
-    const primary = arm % 2 === 0;
-    const armBase = (arm / branches) * TAU;
-    const count = primary ? 560 : 260;
-    const spread = primary ? 0.14 : 0.26;
-    const fade = primary ? 1 : 0.62;
-    for (let i = 0; i < count; i++) {
-      const rNorm = START_R + (1 - START_R) * armRng() ** 0.85;
-      const theta =
-        armBase +
-        Math.log(rNorm / START_R) * ARM_WIND * spin +
-        (armRng() - 0.5) * spread;
-      arms.push(
-        pointAt(
-          rNorm,
-          theta,
-          armRng,
-          (0.42 + armRng() * 0.48) * fade,
-          0.35 + armRng() * 0.6,
-          0.12,
-          place,
-        ),
-      );
-    }
-  }
-
-  const bulge: BackdropPoint[] = [];
-  for (let i = 0; i < 560; i++) {
-    const rNorm = bulgeRng() ** randomnessPower * 0.24;
-    const theta = bulgeRng() * TAU;
-    bulge.push(
-      pointAt(
-        rNorm,
-        theta,
-        bulgeRng,
-        0.5 + bulgeRng() * 0.45,
-        0.6 + bulgeRng() * 0.4,
-        0.4,
-        place,
-      ),
-    );
-  }
-
+  // Reuse the SAME arm+bulge generator as the home disk (one visual family); a
+  // neighbour contributes no full-stage deep field, so bgStars stays empty.
+  const { arms, bulge } = buildArmsAndBulge(tuning, place);
   return { bgStars: [], arms, bulge };
 };
 

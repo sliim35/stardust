@@ -123,29 +123,21 @@ export const pointAt = (
   };
 };
 
-export const buildBackdropGeometry = (
-  backdrop: GalaxyBackdrop,
-  place: DiskPlacement = MW_PLACEMENT,
-): BackdropGeometry => {
-  const { seed, branches, spin, randomnessPower } = backdrop;
-
-  // Independent streams per layer (xor-folded seed) so tuning one layer's count
-  // never reshuffles another.
-  const bgRng = mulberry32(seed ^ 0x9e3779b9);
+/**
+ * The placed arm + bulge point clouds — the disk *body* shared by the home Milky Way
+ * (`buildBackdropGeometry`) and every Local-Group neighbour (`galaxy-render.ts`'s
+ * spiral recipe), so the two stay in ONE visual family by construction (no drift if
+ * the arm/core tuning ever changes). Independent seeded streams (xor-folded) so
+ * tuning one never reshuffles the other; `place` decides where/how it lands on the
+ * stage. Pure + SSR-safe. (Extracted in the I-1 review — was copied between callers.)
+ */
+export const buildArmsAndBulge = (
+  tuning: GalaxyBackdrop,
+  place: DiskPlacement,
+): { arms: BackdropPoint[]; bulge: BackdropPoint[] } => {
+  const { seed, branches, spin, randomnessPower } = tuning;
   const armRng = mulberry32(seed);
   const bulgeRng = mulberry32(seed ^ 0xc2b2ae35);
-
-  const bgStars: BackdropPoint[] = [];
-  for (let i = 0; i < 560; i++) {
-    bgStars.push({
-      x: Math.round(bgRng() * STAGE_W),
-      y: Math.round(bgRng() * STAGE_H),
-      size: bgRng() < 0.1 ? 2 : 1,
-      alpha: 0.1 + bgRng() * 0.32,
-      phase: bgRng(),
-      warm: bgRng(),
-    });
-  }
 
   const arms: BackdropPoint[] = [];
   for (let arm = 0; arm < branches; arm++) {
@@ -193,5 +185,29 @@ export const buildBackdropGeometry = (
     );
   }
 
+  return { arms, bulge };
+};
+
+export const buildBackdropGeometry = (
+  backdrop: GalaxyBackdrop,
+  place: DiskPlacement = MW_PLACEMENT,
+): BackdropGeometry => {
+  // The full-stage deep field is the home backdrop's alone (a neighbour never adds
+  // its own stipple) — its own xor-folded stream. The disk body (arms + bulge) comes
+  // from the shared `buildArmsAndBulge`, so the home + neighbours never drift apart.
+  const bgRng = mulberry32(backdrop.seed ^ 0x9e3779b9);
+  const bgStars: BackdropPoint[] = [];
+  for (let i = 0; i < 560; i++) {
+    bgStars.push({
+      x: Math.round(bgRng() * STAGE_W),
+      y: Math.round(bgRng() * STAGE_H),
+      size: bgRng() < 0.1 ? 2 : 1,
+      alpha: 0.1 + bgRng() * 0.32,
+      phase: bgRng(),
+      warm: bgRng(),
+    });
+  }
+
+  const { arms, bulge } = buildArmsAndBulge(backdrop, place);
   return { bgStars, arms, bulge };
 };
