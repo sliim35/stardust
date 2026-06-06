@@ -7,7 +7,6 @@ import {
 } from "react";
 import { createFocusController } from "#/lib/galaxy/focus";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
-import { localGroupNeighbours } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import type { MemoryStar, Tier } from "#/lib/galaxy/types";
@@ -93,14 +92,11 @@ export const GalaxyStage = () => {
     () => ({ ...sky.backdrop, palette }),
     [sky.backdrop, palette],
   );
-  // The 4 real Local-Group neighbours (ADR-0011 §1, I-1): rendered via the same
-  // soft-glow generator. They belong to the LOCAL-GROUP tier — the home Milky-Way
-  // view stays memory-first (MW + memory stars), so we only feed them to the disk
-  // when the tier is `localGroup` (gated at the render below). Stable identity (the
-  // curated dataset never changes). The clean diorama framing (spread + scale per
-  // the FINAL proof) + depth bands are I-2 / I-3.
-  const neighbours = useMemo(() => localGroupNeighbours(), []);
-
+  // Layer-A neighbours are NOT rendered at the home/Milky-Way tier (memory-first).
+  // The render foundation (placement-aware generator + the `shape`→recipe mappers in
+  // galaxy-render.ts + the GalaxyBackdrop `neighbours` capability) is in place and
+  // tested; slice I-2 composes the actual Local-Group tier (MW shrunk + the 4
+  // neighbours spread + scaled per the FINAL proof) and feeds them to the disk there.
   const scale = useStageFit();
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
   // #113 search) call to ease the camera onto a star by id. The camera hook
@@ -148,10 +144,7 @@ export const GalaxyStage = () => {
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
             <div className="galaxy-l2-wrap" ref={cam.l2}>
-              <GalaxyBackdrop
-                backdrop={backdrop}
-                neighbours={nav.state.tier === "localGroup" ? neighbours : []}
-              />
+              <GalaxyBackdrop backdrop={backdrop} />
             </div>
             <div className="galaxy-l3-wrap" ref={cam.l3}>
               <InteractiveStars
