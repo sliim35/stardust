@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from "react";
+import { type RefObject, useRef } from "react";
 import {
   type Camera,
   cameraTransform,
@@ -12,32 +12,55 @@ import {
   type FocusState,
   focusCamera,
   resolveFocusTarget,
-  stepFocus,
 } from "#/lib/galaxy/focus";
 import type { GalaxySky } from "#/lib/galaxy/types";
+import { gsap, useGalaxyGsap } from "./gsap-setup";
 
 /**
- * Drives the eased camera + 3-layer parallax (#4 AC5) and the focus-on-star move
- * (#111) imperatively via refs, so the RAF loop never re-renders React. The scene
- * drifts gently opposite the pointer (and on a slow idle sine when the pointer is
- * away); the nearest layer moves most.
+ * Drives the camera + 3-layer parallax (#4 AC5) and the focus-on-star move
+ * (#111) imperatively via refs, so no camera move ever re-renders React.
  *
- * Focus (#111) is the pure `FocusState` machine from `lib/galaxy/focus` stepped
- * here each frame — this hook owns RAF + key events, the lib owns the numbers. A
- * `FocusController` lets other features (#5 deep-link, #113 search) request a
- * focus *by star id*; the id is resolved against the live sky via `getSky()`. The
- * ease is interruptible: a new focus retargets in flight. `Escape` returns to the
- * prior framing (or the zoomed-out default).
+ * **GSAP owns the time domain (ADR-0009, step 2).** Every eased camera move —
+ * the intro settle and the focus/back click-dive — is a `gsap.to` tween of a
+ * plain `Camera { cx, cy, zoom }` object; `onUpdate` paints it through the pure
+ * `cameraTransform` (whose `Math.round` keeps fractional tween values off the
+ * DOM — the SSR sub-pixel hydration fix). The pure spatial seam is untouched:
+ * `focusOn` / `resolveFocusTarget` compute *where* the camera goes, GSAP only
+ * decides *when* it gets there. The retired hand-rolled stepping
+ * (`stepFocus` / `lerpCamera` / `lerp`) is gone with its RAF wiring.
+ *
+ * Focus bookkeeping (target · prior framing · in-flight flag) stays the pure
+ * `FocusState` machine from `lib/galaxy/focus`: the hook syncs the machine's
+ * `current` from the live tweened camera at each request boundary, so the
+ * prior-framing rules (first focus records it, an interrupting focus preserves
+ * it, back consumes it) remain headless-tested. A new focus while a tween is in
+ * flight retargets smoothly: `overwrite: "auto"` kills the conflicting tween at
+ * start and the new one eases from wherever the camera actually is — no jump,
+ * no stale tween. `Escape` returns to the prior framing (or the zoomed-out
+ * default).
  *
  * The galaxy is **guided, not free** (interaction spec, 2026-06-05): there is NO
  * drag-to-pan (#109, retired) and NO free wheel/pinch zoom-to-cursor (#110,
  * retired). Within a tier the framing is fixed — only the gentle idle drift /
- * parallax and the eased focus moves animate it; scroll becomes discrete
- * tier-zoom in a later wave, not a continuous pointer-driven zoom.
+ * parallax and the eased focus moves animate it; scroll is discrete tier-zoom
+ * (#153), whose eased transition timelines land with #125.
  *
- * Under `prefers-reduced-motion` the parallax/idle drift is pinned static and a
- * focus *snaps* (drives `t = 1`) instead of easing (design spec §A11y).
+ * `prefers-reduced-motion` is read live per move: a focus/back *snaps* (direct
+ * set, any in-flight tween killed) instead of easing (design spec §A11y). The
+ * parallax/idle drift loop and the intro settle still honor only the mount-time
+ * value — the known #4 limitation, now narrowed to the decorative layer.
  */
+
+/**
+ * The focus / back click-dive tween (#111 → spec §1 gateway dive): duration (s)
+ * + ease for one `gsap.to` toward the pure focus target. Tuned to read like the
+ * 5%-per-frame exponential step it replaces — fast start, long soft landing
+ * (`power3.out`). The *feel* gate stays the owner's preview spot-check.
+ */
+export const FOCUS_TWEEN = { duration: 1.6, ease: "power3.out" } as const;
+
+/** The mount settle (zoom 1.06 → 1) — the visible "no snap" intro. */
+export const INTRO_TWEEN = { duration: 1.2, ease: "power2.out" } as const;
 
 type CameraRefs = {
   l1: RefObject<HTMLDivElement | null>;
@@ -69,53 +92,85 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
   const fit = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: 0, y: 0, active: false });
 
-  // Keep the latest controller/getSky without re-subscribing the RAF effect.
+  // Keep the latest controller/getSky without re-subscribing the GSAP effect.
   const optsRef = useRef(options);
   optsRef.current = options;
 
-  // The focus machine lives in a ref: stepped by RAF (or snapped under reduce),
-  // never via React state, so a focus move costs zero re-renders.
+  // The focus machine lives in a ref: GSAP tweens toward its targets, never via
+  // React state, so a focus move costs zero re-renders.
   const focusState = useRef<FocusState>(createFocus(DEFAULT_FRAMING));
 
-  useEffect(() => {
-    // Read once at mount. A *mid-session* OS toggle of reduced-motion is not
-    // honored here (nor in DeepStarfield / GalaxyBackdrop) — a known #4
-    // limitation (review F2); initial load is correct. Revisit if needed.
-    const reduce = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+  // ADR-0009: registration at hook scope, client-only — never at module scope
+  // (Workers SSR safety). Returns the context-scoped `useGSAP` effect hook.
+  const useGSAP = useGalaxyGsap();
 
-    const applyCamera = (c: Camera) => {
-      if (cam.current) cam.current.style.transform = cameraTransform(c);
+  useGSAP(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    // The GSAP tween target: a plain Camera object — no DOM needed. `onUpdate`
+    // paints it through the pure `cameraTransform`; its `Math.round` is what
+    // keeps the tween's fractional values from ever hitting the DOM raw.
+    const camera: Camera = { ...DEFAULT_FRAMING };
+    const applyCamera = () => {
+      if (cam.current) cam.current.style.transform = cameraTransform(camera);
     };
 
-    // Intro settle on load — a visible "no snap" demonstration (eases 1.06 → 1.0).
-    if (!reduce) {
-      focusState.current = {
-        ...createFocus({ ...DEFAULT_FRAMING, zoom: 1.06 }),
-        target: { ...DEFAULT_FRAMING },
-      };
+    // One eased move toward `target`. `overwrite: "auto"` kills an in-flight
+    // tween's conflicting axes the moment the new one starts, so a retarget
+    // redirects from wherever the camera actually is — no jump, no stale tween.
+    // Reduced motion is read live per move: snap, never tween.
+    const tweenTo = (target: Camera) => {
+      if (mq.matches) {
+        gsap.killTweensOf(camera);
+        Object.assign(camera, target);
+        focusState.current = { ...focusState.current, focusing: false };
+        applyCamera();
+        return;
+      }
+      gsap.to(camera, {
+        ...target,
+        ...FOCUS_TWEEN,
+        overwrite: "auto",
+        onUpdate: applyCamera,
+        onComplete: () => {
+          focusState.current = { ...focusState.current, focusing: false };
+        },
+      });
+    };
+
+    // Intro settle on load — a visible "no snap" demonstration (1.06 → 1.0).
+    // A focus request mid-settle simply overwrites this tween's zoom axis.
+    if (!mq.matches) {
+      camera.zoom = 1.06;
+      gsap.to(camera, {
+        zoom: DEFAULT_FRAMING.zoom,
+        ...INTRO_TWEEN,
+        overwrite: "auto",
+        onUpdate: applyCamera,
+      });
     }
-    applyCamera(focusState.current.current);
+    applyCamera();
 
     // --- focus-by-id seam (#5/#113) ----------------------------------------
+    // The machine's `current` is synced from the live tweened camera at each
+    // request boundary, so the pure prior-framing rules in `lib/galaxy/focus`
+    // keep deciding *where* back() returns to.
     const requestFocus = (id: string, zoom?: number) => {
       const sky = optsRef.current.getSky?.();
       const target = sky ? resolveFocusTarget(sky, id, zoom) : null;
       if (!target) return; // unknown id degrades gracefully (no throw, no move)
-      focusState.current = focusCamera(focusState.current, target);
-      if (reduce) {
-        // No RAF under reduced motion: snap to the target immediately.
-        focusState.current = stepFocus(focusState.current, 1, true);
-        applyCamera(focusState.current.current);
-      }
+      focusState.current = focusCamera(
+        { ...focusState.current, current: { ...camera } },
+        target,
+      );
+      tweenTo(focusState.current.target);
     };
     const requestBack = () => {
-      focusState.current = back(focusState.current);
-      if (reduce) {
-        focusState.current = stepFocus(focusState.current, 1, true);
-        applyCamera(focusState.current.current);
-      }
+      focusState.current = back({
+        ...focusState.current,
+        current: { ...camera },
+      });
+      tweenTo(focusState.current.target);
     };
     const unsubscribe = optsRef.current.focus?.subscribe((req) => {
       if (req.kind === "focus") requestFocus(req.id, req.zoom);
@@ -128,54 +183,50 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     };
     window.addEventListener("keydown", onKeyDown);
 
-    if (reduce) {
-      // Static parallax; focus / back requests above snap. No RAF.
-      return () => {
-        unsubscribe?.();
-        window.removeEventListener("keydown", onKeyDown);
+    // --- 3-layer parallax (decorative) --------------------------------------
+    // The one remaining RAF concern: a continuous follow toward a moving
+    // pointer/idle-sine target — not a tween toward a fixed end, so it stays a
+    // hand-stepped loop. The camera no longer steps here; GSAP's own ticker
+    // drives its tweens. Mount-time reduced motion pins parallax static (no RAF).
+    let raf = 0;
+    if (!mq.matches) {
+      const cur = {
+        l1: { x: 0, y: 0 },
+        l2: { x: 0, y: 0 },
+        l3: { x: 0, y: 0 },
       };
+      const els = { l1, l2, l3 } as const;
+
+      const frame = (ms: number) => {
+        const t = ms * 0.001;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        // Idle sine drift only when the pointer is away; the pointer drives the
+        // parallax while it is over the stage.
+        const idle = !pointer.current.active;
+        const px = idle
+          ? vw * (0.5 + Math.sin(t * 0.16) * 0.12)
+          : pointer.current.x;
+        const py = idle
+          ? vh * (0.5 + Math.cos(t * 0.12) * 0.1)
+          : pointer.current.y;
+        const tgt = parallaxOffsets({ x: px, y: py }, { w: vw, h: vh });
+
+        for (const key of ["l1", "l2", "l3"] as const) {
+          cur[key].x += (tgt[key].x - cur[key].x) * 0.06;
+          cur[key].y += (tgt[key].y - cur[key].y) * 0.06;
+          const el = els[key].current;
+          if (el)
+            el.style.transform = `translate3d(${cur[key].x}px, ${cur[key].y}px, 0)`;
+        }
+        raf = requestAnimationFrame(frame);
+      };
+      raf = requestAnimationFrame(frame);
     }
 
-    const cur = {
-      l1: { x: 0, y: 0 },
-      l2: { x: 0, y: 0 },
-      l3: { x: 0, y: 0 },
-    };
-    const els = { l1, l2, l3 } as const;
-    let raf = 0;
-
-    const frame = (ms: number) => {
-      const t = ms * 0.001;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      // Idle sine drift only when the pointer is away; the pointer drives the
-      // parallax while it is over the stage.
-      const idle = !pointer.current.active;
-      const px = idle
-        ? vw * (0.5 + Math.sin(t * 0.16) * 0.12)
-        : pointer.current.x;
-      const py = idle
-        ? vh * (0.5 + Math.cos(t * 0.12) * 0.1)
-        : pointer.current.y;
-      const tgt = parallaxOffsets({ x: px, y: py }, { w: vw, h: vh });
-
-      for (const key of ["l1", "l2", "l3"] as const) {
-        cur[key].x += (tgt[key].x - cur[key].x) * 0.06;
-        cur[key].y += (tgt[key].y - cur[key].y) * 0.06;
-        const el = els[key].current;
-        if (el)
-          el.style.transform = `translate3d(${cur[key].x}px, ${cur[key].y}px, 0)`;
-      }
-
-      // Step the focus ease (intro settle, then any requested focus/back) and
-      // paint the camera. lerpCamera factor matches the prior intro feel.
-      focusState.current = stepFocus(focusState.current, 0.05);
-      applyCamera(focusState.current.current);
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
+      gsap.killTweensOf(camera);
       unsubscribe?.();
       window.removeEventListener("keydown", onKeyDown);
     };

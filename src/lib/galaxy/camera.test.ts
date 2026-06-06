@@ -3,39 +3,14 @@ import {
   type Camera,
   cameraTransform,
   focusOn,
-  lerp,
-  lerpCamera,
   PARALLAX_MAX,
   parallaxOffsets,
   type StageRect,
   screenToStage,
 } from "#/lib/galaxy/camera";
 
-describe("lerp (eased interpolation — never snaps)", () => {
-  it("returns the endpoints at t=0 and t=1", () => {
-    expect(lerp(0, 10, 0)).toBe(0);
-    expect(lerp(0, 10, 1)).toBe(10);
-  });
-
-  it("returns an intermediate value strictly between for 0 < t < 1", () => {
-    const v = lerp(0, 10, 0.5);
-    expect(v).toBeGreaterThan(0);
-    expect(v).toBeLessThan(10);
-    expect(v).toBeCloseTo(5, 6);
-  });
-});
-
-describe("lerpCamera", () => {
-  it("eases every axis toward the target", () => {
-    const cur: Camera = { cx: 0, cy: 0, zoom: 1 };
-    const target: Camera = { cx: 100, cy: 200, zoom: 2 };
-    expect(lerpCamera(cur, target, 0.5)).toEqual({
-      cx: 50,
-      cy: 100,
-      zoom: 1.5,
-    });
-  });
-});
+// The temporal stepping (`lerp` / `lerpCamera`) and its tests were retired with
+// ADR-0009 step 2 (#143): GSAP tweens toward the targets this module computes.
 
 describe("focusOn", () => {
   it("centers the camera on a stage position", () => {

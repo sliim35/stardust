@@ -7,10 +7,9 @@ import {
   createFocusController,
   DEFAULT_FRAMING,
   type FocusRequest,
+  type FocusState,
   focusCamera,
-  isArrived,
   resolveFocusTarget,
-  stepFocus,
 } from "#/lib/galaxy/focus";
 import { polarToXY } from "#/lib/galaxy/place";
 import type { GalaxySky, MemoryStar } from "#/lib/galaxy/types";
@@ -102,7 +101,9 @@ describe("focusCamera interrupt — a new focus cancels the in-flight move", () 
   it("retargets mid-ease and keeps the ORIGINAL prior framing for back()", () => {
     const s0 = createFocus(DEFAULT_FRAMING);
     const s1 = focusCamera(s0, cam(760, 440, 1.8)); // focus A
-    const mid = stepFocus(s1, 0.3); // partway to A — never reached A
+    // Partway to A — never reached A. The hook syncs `current` from the live
+    // GSAP-tweened camera at the request boundary (ADR-0009).
+    const mid: FocusState = { ...s1, current: cam(676, 412, 1.24) };
     const s2 = focusCamera(mid, cam(200, 200, 2)); // focus B interrupts
     expect(s2.target).toEqual(cam(200, 200, 2));
     expect(s2.focusing).toBe(true);
@@ -117,7 +118,13 @@ describe("back (ESC) — return to the prior framing", () => {
   it("eases back toward the saved prior framing and clears it", () => {
     const s0 = createFocus(DEFAULT_FRAMING);
     const s1 = focusCamera(s0, cam(760, 440, 1.8));
-    const arrived = stepFocus(s1, 1); // fully on the star
+    // Fully on the star — the tween completed (the hook's onComplete clears
+    // `focusing` and the live camera sits on the target).
+    const arrived: FocusState = {
+      ...s1,
+      current: { ...s1.target },
+      focusing: false,
+    };
     const b = back(arrived);
     expect(b.target).toEqual(DEFAULT_FRAMING); // heading home
     expect(b.focusing).toBe(true);
@@ -133,46 +140,14 @@ describe("back (ESC) — return to the prior framing", () => {
   });
 });
 
-describe("stepFocus — eased frame stepping (composes lerpCamera)", () => {
-  it("moves current strictly toward the target without overshooting", () => {
-    const s0 = focusCamera(createFocus(cam(0, 0, 1)), cam(100, 200, 2));
-    const s1 = stepFocus(s0, 0.5);
-    expect(s1.current).toEqual({ cx: 50, cy: 100, zoom: 1.5 });
-    expect(s1.focusing).toBe(true); // not arrived yet
-  });
-
-  it("settles focusing=false once the target is reached", () => {
-    const s0 = focusCamera(createFocus(cam(0, 0, 1)), cam(100, 200, 2));
-    const s1 = stepFocus(s0, 1); // t=1 lands exactly on target
-    expect(s1.current).toEqual(cam(100, 200, 2));
-    expect(s1.focusing).toBe(false);
-  });
-});
-
-describe("reduced motion — snap instead of animate (drive t=1)", () => {
-  it("snaps current straight to the target in one step", () => {
-    const s0 = focusCamera(createFocus(cam(0, 0, 1)), cam(100, 200, 2));
-    const snapped = stepFocus(s0, 0.05, true); // small t, but reduce=true → snaps
-    expect(snapped.current).toEqual(cam(100, 200, 2));
-    expect(snapped.focusing).toBe(false);
-  });
-});
+// `stepFocus`/`isArrived` and the reduced-motion `t = 1` snap were retired with
+// ADR-0009 step 2 (#143): GSAP owns the tween, and the reduced-motion snap is
+// covered end-to-end in `components/galaxy/useGalaxyCamera.test.tsx`.
 
 describe("DEFAULT_FRAMING — the zoomed-out home view", () => {
   it("is a valid, zoomed-out camera within the clamp range", () => {
     expect(DEFAULT_FRAMING.zoom).toBeGreaterThanOrEqual(ZOOM_MIN);
     expect(DEFAULT_FRAMING.zoom).toBeLessThan(1.8); // more zoomed out than focus zoom
-  });
-});
-
-describe("isArrived — frame-loop settle predicate", () => {
-  it("is true within an epsilon of the target", () => {
-    expect(isArrived(cam(100, 200, 2), cam(100, 200, 2))).toBe(true);
-    expect(isArrived(cam(100.0001, 200, 2), cam(100, 200, 2))).toBe(true);
-  });
-
-  it("is false while still meaningfully far from the target", () => {
-    expect(isArrived(cam(50, 100, 1.5), cam(100, 200, 2))).toBe(false);
   });
 });
 

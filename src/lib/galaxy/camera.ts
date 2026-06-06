@@ -1,12 +1,15 @@
 /**
- * Pure camera math for the eased zoom / pan / parallax of the galaxy stage (#4).
- * Components own the RAF loop and the DOM; this module owns the numbers, so the
- * easing and the 3-layer parallax are unit-testable headless
- * (`docs/design/2026-06-02-explorable-galaxy.md` §"Camera" + §"3-layer parallax").
+ * Pure **spatial** camera math for the galaxy stage (#4): targets, transforms,
+ * parallax and screen↔stage inversion. Components own the DOM, and GSAP owns
+ * the time domain (ADR-0009) — it tweens *toward* the targets computed here;
+ * the hand-rolled temporal stepping (`lerp` / `lerpCamera`) is retired. This
+ * module owns the numbers, so every coordinate decision stays unit-testable
+ * headless (`docs/design/2026-06-02-explorable-galaxy.md` §"Camera" + §"3-layer
+ * parallax").
  *
- * The camera never snaps: every move is an eased `lerp` toward a target. Under
- * reduced motion the hook drives `t = 1` (instant) and passes `reduce` here to
- * flatten parallax.
+ * The camera never snaps: the component layer eases every move (a GSAP tween).
+ * Under reduced motion it snaps directly and passes `reduce` here to flatten
+ * parallax.
  */
 
 import { GALAXY_CENTER, type Point } from "#/lib/galaxy/place";
@@ -22,17 +25,6 @@ export const PARALLAX_MAX = { l1: 6, l2: 14, l3: 22 } as const;
 /** Zoom clamps — you can never lose the disk. */
 export const ZOOM_MIN = 0.8;
 export const ZOOM_MAX = 4;
-
-/** Scalar ease. `t=0` → `a`, `t=1` → `b`, in between → strictly between. */
-export const lerp = (a: number, b: number, t: number): number =>
-  a + (b - a) * t;
-
-/** Ease a whole camera toward a target (used each RAF frame). */
-export const lerpCamera = (cur: Camera, target: Camera, t: number): Camera => ({
-  cx: lerp(cur.cx, target.cx, t),
-  cy: lerp(cur.cy, target.cy, t),
-  zoom: lerp(cur.zoom, target.zoom, t),
-});
 
 /**
  * A `Camera` → CSS `transform` for `.galaxy-stage__camera` (`transform-origin:
