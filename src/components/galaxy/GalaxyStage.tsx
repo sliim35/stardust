@@ -92,7 +92,11 @@ export const GalaxyStage = () => {
     () => ({ ...sky.backdrop, palette }),
     [sky.backdrop, palette],
   );
-
+  // Layer-A neighbours are NOT rendered at the home/Milky-Way tier (memory-first).
+  // The render foundation (placement-aware generator + the `shape`→recipe mappers in
+  // galaxy-render.ts + the GalaxyBackdrop `neighbours` capability) is in place and
+  // tested; slice I-2 composes the actual Local-Group tier (MW shrunk + the 4
+  // neighbours spread + scaled per the FINAL proof) and feeds them to the disk there.
   const scale = useStageFit();
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
   // #113 search) call to ease the camera onto a star by id. The camera hook

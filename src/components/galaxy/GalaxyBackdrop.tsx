@@ -3,6 +3,7 @@ import {
   type BackdropPoint,
   buildBackdropGeometry,
 } from "#/lib/galaxy/backdrop";
+import { buildGalaxyGeometry } from "#/lib/galaxy/galaxy-render";
 import {
   buildShooters,
   SHOOTER_ALPHA_CAP,
@@ -10,7 +11,10 @@ import {
 } from "#/lib/galaxy/meteors";
 import { paletteFor } from "#/lib/galaxy/palette";
 import { STAGE_H, STAGE_W } from "#/lib/galaxy/place";
-import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
+import type {
+  GalaxyBackdrop as Backdrop,
+  RealObject,
+} from "#/lib/galaxy/types";
 
 /**
  * L2 — the spiral disk (no central bar). **Soft-glow direction** (owner-chosen 2026-06-03,
@@ -82,19 +86,42 @@ const paintGlow = (
  * the tint shows through everywhere — no background fill, no rectangle, no seam.
  * The browser composites this transparent-backed canvas over that tint, so the
  * additive `lighter` light lands over the nebula exactly as before.
+ *
+ * Neighbours (ADR-0011 §1, I-1) paint on the SAME static base canvas with the SAME
+ * `paintGlow` + palette sprites, one extra `buildGalaxyGeometry` call each — so the
+ * home Milky Way and every Local-Group neighbour read as one coherent soft-glow scene
+ * (one renderer, not two). Each neighbour's geometry carries no `bgStars` (the MW owns
+ * the one deep field), so we paint only its `arms` + `bulge`.
  */
 const drawBase = (
   ctx: CanvasRenderingContext2D,
   geom: ReturnType<typeof buildBackdropGeometry>,
   sprites: Sprites,
+  neighbours: readonly RealObject[],
 ): void => {
   ctx.clearRect(0, 0, STAGE_W, STAGE_H);
   paintGlow(ctx, geom.bgStars, sprites);
   paintGlow(ctx, geom.arms, sprites);
   paintGlow(ctx, geom.bulge, sprites);
+  for (const o of neighbours) {
+    const ng = buildGalaxyGeometry(o);
+    paintGlow(ctx, ng.arms, sprites);
+    paintGlow(ctx, ng.bulge, sprites);
+  }
 };
 
-export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
+export const GalaxyBackdrop = ({
+  backdrop,
+  neighbours = [],
+}: {
+  backdrop: Backdrop;
+  /**
+   * Layer-A real galaxies to paint alongside the home disk (ADR-0011 §1, I-1). Each
+   * renders through the same generator + `paintGlow`, differing only in placement +
+   * tuning. Defaults to none → the home-only render is byte-identical to today.
+   */
+  neighbours?: readonly RealObject[];
+}) => {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const liveRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -120,7 +147,7 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
       makeGlowSprite(p.starHot),
     ];
     const geom = buildBackdropGeometry(backdrop);
-    drawBase(bctx, geom, sprites);
+    drawBase(bctx, geom, sprites, neighbours);
 
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -174,7 +201,7 @@ export const GalaxyBackdrop = ({ backdrop }: { backdrop: Backdrop }) => {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [backdrop]);
+  }, [backdrop, neighbours]);
 
   return (
     <div className="galaxy-l2" aria-hidden="true">
