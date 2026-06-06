@@ -163,8 +163,11 @@ export type TierTransitionRequest = { from: Tier; to: Tier };
  * the timeline's threshold, not at request time:
  * - `depart` — a transition (or a mid-flight reverse) started easing;
  * - `threshold` — the camera crossed the swap point: display `tier` now;
- * - `arrive` — the timeline settled on `tier` (also fired by the
- *   reduced-motion snap).
+ * - `arrive` — the transition resolved on `tier`: the timeline settled, the
+ *   reduced-motion snap landed, or a kill (focus move) after the threshold
+ *   terminally resolved to the tier the timeline was heading toward — which
+ *   is the nav tier, the logical source of truth (code-style: terminal
+ *   events on kill/cancel).
  */
 export type TierTransitionEvent =
   | { kind: "depart"; direction: TransitionDirection; from: Tier; to: Tier }

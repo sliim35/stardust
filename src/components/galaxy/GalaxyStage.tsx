@@ -121,10 +121,19 @@ export const GalaxyStage = () => {
   const [displayedTier, setDisplayedTier] = useState<Tier>(HOME_TIER);
   const [narration, setNarration] = useState<string | null>(null);
   const onTransitionEvent = (e: TierTransitionEvent) => {
-    if (e.kind === "threshold") setDisplayedTier(e.tier);
-    else if (e.kind === "depart")
+    if (e.kind === "depart") {
       setNarration(departNarration(m.astroNarration, e.direction, e.to));
-    else setNarration(arrivalNarration(m.astroNarration, e.tier));
+      return;
+    }
+    // Both `threshold` (the mid-flight scene swap) and `arrive` carry the
+    // authoritative displayed tier. `arrive` matters for the kill path: a
+    // focus move that kills a transition after its threshold fired resolves
+    // the displayed tier to the nav tier — the logical source of truth — via
+    // the terminal arrive (#167 review, code-style "terminal events on
+    // kill/cancel").
+    setDisplayedTier(e.tier);
+    if (e.kind === "arrive")
+      setNarration(arrivalNarration(m.astroNarration, e.tier));
   };
 
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,

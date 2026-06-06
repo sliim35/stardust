@@ -149,13 +149,29 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     let transition: {
       plan: TierTransitionPlan;
       tl: gsap.core.Timeline;
+      /** A threshold event committed the displayed tier (scene swap, scale-net
+       * relabel) — the kill path must then resolve the lifecycle terminally
+       * (code-style: terminal events on kill/cancel, #167 review). */
+      thresholdFired: boolean;
     } | null = null;
-    const killTransition = () => {
-      transition?.tl.kill();
-      transition = null;
-    };
     const emit = (e: TierTransitionEvent) =>
       optsRef.current.onTransitionEvent?.(e);
+    const killTransition = () => {
+      if (!transition) return;
+      const { plan, tl, thresholdFired } = transition;
+      // The tier the timeline was heading toward — exactly where the nav state
+      // (the logical source of truth) already stepped: a request steps the nav
+      // first, a mid-flight reverse steps it back.
+      const heading = tl.reversed() ? plan.from : plan.to;
+      transition = null;
+      tl.kill();
+      // Killed AFTER the threshold committed the displayed tier → emit the
+      // terminal arrive so consumers settle on the nav tier. Killed BEFORE →
+      // stay silent: nothing was committed, and an arrive here would force a
+      // scene swap the camera never crossed (spec §1: the swap belongs to the
+      // threshold).
+      if (thresholdFired) emit({ kind: "arrive", tier: heading });
+    };
 
     // One eased move toward `target`. `overwrite: "auto"` kills an in-flight
     // tween's conflicting axes the moment the new one starts, so a retarget
@@ -226,9 +242,9 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     // The timeline eases depart → [threshold: scene swap] → arrive, tweening
     // the SAME camera object through the pure plan's framings. Mid-flight, an
     // opposite request *reverses* the live timeline (the breadcrumb case,
-    // ADR-0009) — the `.call` at the threshold label re-fires on the way back,
-    // so the scene swaps back exactly where it swapped forward. Reduced motion
-    // is read live: snap to rest, swap, announce arrival — no ease, no timeline.
+    // ADR-0009) — the threshold swap re-fires on the way back, so the scene
+    // swaps back exactly where it swapped forward. Reduced motion is read
+    // live: snap to rest, swap, announce arrival — no ease, no timeline.
     const requestTransition = (from: Tier, to: Tier) => {
       // `transition` is non-null exactly while a timeline is in flight (nulled
       // on complete / reverse-complete / kill) — deterministic, unlike
@@ -262,16 +278,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
         from: plan.from,
         to: plan.to,
       });
-      const tl = gsap.timeline({
-        onComplete: () => {
-          transition = null;
-          emit({ kind: "arrive", tier: plan.to });
-        },
-        onReverseComplete: () => {
-          transition = null;
-          emit({ kind: "arrive", tier: plan.from });
-        },
-      });
+      const tl = gsap.timeline();
       tl.to(camera, {
         ...plan.threshold,
         ...TIER_TWEEN.depart,
@@ -285,21 +292,34 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
         });
       // The scene swaps when the playhead crosses the threshold label — in
       // EITHER direction (a reverse must swap back exactly where it swapped
-      // forward). Detected off the rendered time, not a zero-duration `.call`:
-      // GSAP skips a callback the playhead is parked on when flipped to
-      // reverse, which would strand the swap.
+      // forward). Detected by which SIDE of the label the rendered time is on,
+      // not a zero-duration `.call`: GSAP skips a callback the playhead is
+      // parked on when flipped to reverse, which would strand the swap. `sync`
+      // also runs in the terminal callbacks: one large tick (event-loop stall)
+      // can jump the playhead clear across the label to an end with no
+      // intermediate onUpdate, which a per-update window check alone misses.
       const swapAt = tl.labels.threshold;
-      let lastTime = tl.time();
-      tl.eventCallback("onUpdate", () => {
-        const now = tl.time();
-        if (lastTime < swapAt && now >= swapAt) {
-          emit({ kind: "threshold", tier: plan.to });
-        } else if (lastTime > swapAt && now <= swapAt) {
-          emit({ kind: "threshold", tier: plan.from });
-        }
-        lastTime = now;
+      const live = { plan, tl, thresholdFired: false };
+      let committed: Tier = plan.from; // the threshold side the scene shows
+      const sync = () => {
+        const side = tl.time() >= swapAt ? plan.to : plan.from;
+        if (side === committed) return;
+        committed = side;
+        live.thresholdFired = true;
+        emit({ kind: "threshold", tier: side });
+      };
+      tl.eventCallback("onUpdate", sync);
+      tl.eventCallback("onComplete", () => {
+        sync();
+        transition = null;
+        emit({ kind: "arrive", tier: plan.to });
       });
-      transition = { plan, tl };
+      tl.eventCallback("onReverseComplete", () => {
+        sync();
+        transition = null;
+        emit({ kind: "arrive", tier: plan.from });
+      });
+      transition = live;
     };
     const unsubscribeTransitions = optsRef.current.transitions?.subscribe(
       (req) => requestTransition(req.from, req.to),

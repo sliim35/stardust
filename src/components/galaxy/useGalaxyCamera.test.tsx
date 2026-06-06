@@ -318,7 +318,11 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
       { timeout: TIMEOUT },
     );
     // …and STICKS: the reversed timeline never re-asserts itself.
-    await new Promise((r) => setTimeout(r, 120));
+    // Deterministic (review #167 nit): pump the gsap ticker instead of a
+    // wall-clock sleep — a surviving timeline would move the camera on tick.
+    act(() => {
+      for (let i = 0; i < 10; i++) gsap.ticker.tick();
+    });
     expect(el.style.transform).toBe(HOME_TRANSFORM);
   });
 
@@ -351,8 +355,91 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
       timeout: TIMEOUT,
     });
     // The killed timeline never fights the camera back toward the LG framing.
-    await new Promise((r) => setTimeout(r, 120));
+    // Deterministic (review #167 nit): pump the gsap ticker instead of a
+    // wall-clock sleep — a surviving timeline would move the camera on tick.
+    act(() => {
+      for (let i = 0; i < 10; i++) gsap.ticker.tick();
+    });
     expect(el.style.transform).toBe(framingOf("a"));
+  });
+
+  it("a focus kill after the threshold emits the terminal arrive for the nav tier (#167 review)", async () => {
+    const { focus, transitions, events, el } = mountWithTransitions();
+    await settled(el);
+    act(() => transitions.request("galaxy", "localGroup"));
+    // The threshold committed the displayed tier (scene swap, scale-net relabel)…
+    await waitFor(
+      () => expect(events.some((e) => e.kind === "threshold")).toBe(true),
+      { timeout: TIMEOUT },
+    );
+    // …so the focus-kill must terminally resolve it — to the tier the timeline
+    // was heading toward, which is exactly where the nav already stepped
+    // (code-style: terminal events on kill/cancel).
+    act(() => focus.focusStar("a"));
+    expect(events.at(-1)).toEqual({ kind: "arrive", tier: "localGroup" });
+    await waitFor(() => expect(el.style.transform).toBe(framingOf("a")), {
+      timeout: TIMEOUT,
+    });
+    // Exactly one terminal event — the killed timeline never re-arrives.
+    act(() => {
+      for (let i = 0; i < 10; i++) gsap.ticker.tick();
+    });
+    expect(events.filter((e) => e.kind === "arrive")).toHaveLength(1);
+  });
+
+  it("a focus kill after a mid-flight reverse resolves to the reversed heading (#167 review)", () => {
+    // Deterministic choreography: the auto ticker can complete the timeline
+    // before the reverse lands under load, so GSAP's root clock is driven by
+    // hand (the documented manual mode) — the playhead parks exactly where
+    // the scenario needs it, no wall-clock races.
+    gsap.ticker.remove(gsap.updateRoot);
+    try {
+      const { focus, transitions, events, el } = mountWithTransitions();
+      let t = gsap.ticker.time;
+      const advance = (s: number) => {
+        t += s;
+        act(() => {
+          gsap.updateRoot(t);
+        });
+      };
+      advance(0); // sync the frozen root clock to "now"
+      act(() => transitions.request("galaxy", "localGroup"));
+      advance(0.1); // ×10 timeScale → 1 s of timeline: past the 0.9 s threshold
+      expect(events.some((e) => e.kind === "threshold")).toBe(true);
+      // Reverse (the nav stepped back to the galaxy) and kill in ONE act: no
+      // tick can re-cross the threshold in between, so the swap-back never
+      // fired — the kill alone must resolve the displayed tier to the heading.
+      act(() => {
+        transitions.request("localGroup", "galaxy");
+        focus.focusStar("a");
+      });
+      expect(events.at(-1)).toEqual({ kind: "arrive", tier: "galaxy" });
+      expect(events.filter((e) => e.kind === "threshold")).toEqual([
+        { kind: "threshold", tier: "localGroup" },
+      ]);
+      advance(0.2); // the focus tween (1.6 s ÷ 10) lands on the star
+      expect(el.style.transform).toBe(framingOf("a"));
+    } finally {
+      gsap.ticker.add(gsap.updateRoot);
+    }
+  });
+
+  it("a focus kill before the threshold stays silent — nothing was committed", async () => {
+    const { focus, transitions, events, el } = mountWithTransitions();
+    await settled(el);
+    // Request + kill back-to-back: no tick crossed the threshold, the scene
+    // never swapped — a terminal arrive here would force a swap the camera
+    // never reached (spec §1: the swap belongs to the threshold).
+    act(() => {
+      transitions.request("galaxy", "localGroup");
+      focus.focusStar("a");
+    });
+    expect(events).toEqual([
+      { kind: "depart", direction: "ascend", from: "galaxy", to: "localGroup" },
+    ]);
+    await waitFor(() => expect(el.style.transform).toBe(framingOf("a")), {
+      timeout: TIMEOUT,
+    });
   });
 
   it("prefers-reduced-motion: a tier change snaps — threshold + arrive, no ease, no depart", () => {
