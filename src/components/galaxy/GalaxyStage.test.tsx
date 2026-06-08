@@ -121,7 +121,7 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
       .getByText(en.lore[key].name)
       .closest("[data-lg-label]") as HTMLElement;
   const lgTarget = (key: (typeof LG_LORE_KEYS)[number]) =>
-    screen.getByRole("img", {
+    screen.getByRole("button", {
       name: `${en.lore[key].name} · ${en.lore[key].sublabel}`,
     });
 
@@ -136,10 +136,12 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(l3.className).toContain("opacity-0");
     expect(l3.className).toContain("pointer-events-none");
     // …the MW + every neighbour mount their title FADED OUT (clean composition)
-    // with a focusable hit-target carrying the catalog-resolved name…
+    // with a focusable <button> hit-target carrying the catalog-resolved name
+    // (a native button is tab-reachable + Enter/Space-activatable, #169)…
     for (const key of LG_LORE_KEYS) {
       expect(lgLabelEl(key).className).toContain("opacity-0");
-      expect(lgTarget(key).getAttribute("tabindex")).toBe("0");
+      expect(lgTarget(key).tagName).toBe("BUTTON");
+      expect(lgTarget(key).getAttribute("type")).toBe("button");
     }
     // …and the titles stay decorative annotations (aria-hidden), the
     // accessible name living on the target like the mem-star hit-button.
@@ -153,7 +155,7 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(l3.className).not.toContain("pointer-events-none");
     expect(screen.queryByText(en.lore.andromeda.name)).toBeNull();
     expect(
-      screen.queryByRole("img", {
+      screen.queryByRole("button", {
         name: `${en.lore.andromeda.name} · ${en.lore.andromeda.sublabel}`,
       }),
     ).toBeNull();
@@ -182,6 +184,70 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(lgLabelEl("triangulum").className).toContain("opacity-100");
     fireEvent.blur(lgTarget("triangulum"));
     expect(lgLabelEl("triangulum").className).toContain("opacity-0");
+  });
+
+  // Slice I / #169: the LG hit-targets are now clickable controls routing through
+  // the SAME seam memory stars use (`useObjectClick` → `resolveClick`): the MW
+  // gateway dives (reusing the #167 descend timeline — no new camera math), a
+  // neighbour opens its lore card in place (one at a time). Hover/focus also
+  // paints the subtle #154 clickable highlight alongside the title.
+  it("clicking the Milky Way target dives into the galaxy tier — no card opens (#169)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    expect(screen.getByText("2.5 Mly")).toBeTruthy(); // the LG landing
+    fireEvent.click(lgTarget("milkyWay"));
+    // The dive reuses the #167 timeline (snap under reduced motion) → the MW
+    // tier: scale net relabels and the LG layer unmounts (its buttons gone)…
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    expect(screen.queryByText("2.5 Mly")).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: `${en.lore.andromeda.name} · ${en.lore.andromeda.sublabel}`,
+      }),
+    ).toBeNull();
+    // …and a gateway dive is NOT a card.
+    expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
+  });
+
+  it("clicking a neighbour opens its lore card in place — no dive; one at a time; ESC + × dismiss (#169)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    fireEvent.click(lgTarget("andromeda"));
+    // The lore card opens (its unique catalog lore line) over the dismiss scrim…
+    expect(screen.getByText(en.lore.andromeda.line)).toBeTruthy();
+    expect(document.querySelectorAll(".galaxy-card-backdrop")).toHaveLength(1);
+    // …with NO dive: still the LG tier (scale net + the neighbour targets stay).
+    expect(screen.getByText("2.5 Mly")).toBeTruthy();
+    expect(lgTarget("triangulum")).toBeTruthy();
+    // A second neighbour REPLACES the first (one card at a time, the reducer).
+    fireEvent.click(lgTarget("triangulum"));
+    expect(screen.getByText(en.lore.triangulum.line)).toBeTruthy();
+    expect(screen.queryByText(en.lore.andromeda.line)).toBeNull();
+    expect(document.querySelectorAll(".galaxy-card-backdrop")).toHaveLength(1);
+    // Escape (on the focused dialog) dismisses it.
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
+    // Re-open and dismiss via the × close button.
+    fireEvent.click(lgTarget("lmc"));
+    expect(screen.getByText(en.lore.lmc.line)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: en.card.close }));
+    expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
+  });
+
+  it("real-object hover/focus paints the #154 clickable highlight alongside the title (#169)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const glow = (id: string) =>
+      document.querySelector(`[data-lg-glow="${id}"]`) as HTMLElement;
+    fireEvent.pointerEnter(lgTarget("andromeda"));
+    // Both the title AND the clickable highlight light up for the active target.
+    expect(lgLabelEl("andromeda").className).toContain("opacity-100");
+    expect(glow("andromeda").className).toContain("opacity-100");
+    // The MW (id "home") stays dark.
+    expect(glow("home").className).toContain("opacity-0");
+    fireEvent.pointerLeave(lgTarget("andromeda"));
+    expect(glow("andromeda").className).toContain("opacity-0");
   });
 
   it("the wheel clamp at the LG ceiling stays a quiet no-op — no swap, no narration", () => {

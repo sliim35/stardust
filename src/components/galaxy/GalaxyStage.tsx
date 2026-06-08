@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -24,6 +25,7 @@ import {
   lgLabels,
 } from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
+import { HOME_MILKY_WAY_ID, REAL_OBJECTS } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { HOME_TIER } from "#/lib/galaxy/tier-nav";
@@ -261,15 +263,12 @@ export const GalaxyStage = () => {
               />
               {/* Serif/mono galaxy titles ride the L2 plane so they track the
                   framing + parallax exactly like the disks they annotate.
-                  Hover-only (#167 owner amend): invisible focusable hit-targets
-                  over the silhouettes reveal them; unmounts with the LG view,
-                  so the MW tier's memory-star hover is untouched. */}
+                  Hover reveals the title (#167); a click routes through the
+                  shared object-click seam — the MW gateway dives, a neighbour
+                  opens its lore card (#169). Unmounts with the LG view, so the
+                  MW tier's memory-star interaction is untouched. */}
               {lgView && (
-                <LgGalaxyLabels
-                  labels={lgLabels()}
-                  targets={lgHitTargets()}
-                  lore={m.lore}
-                />
+                <LgInteractiveLabels diveTo={nav.diveTo} lore={m.lore} />
               )}
             </div>
             {/* The L3 memory layer is MW-interior content: at the Local-Group
@@ -351,6 +350,52 @@ const InteractiveStars = ({
       moodLabels={moodLabels}
       onHoverChange={onHoverChange}
       litIds={litIds}
+    />
+  );
+};
+
+/**
+ * The Local-Group titles made interactive (#169) — a child of `<CardHost>` so it
+ * can read the card context via `useObjectClick`, the SAME seam memory stars use:
+ * `resolveClick` sends the MW gateway to `nav.diveTo` (→ the #167 descend
+ * timeline, no new camera math) and a neighbour to `openCard` (its lore card).
+ *
+ * The seam needs the full `RealObject`, but a pure `LgHitTarget` deliberately
+ * carries only `{ id, loreKey, … }` (keeping `lg-composition.ts` pure). So the
+ * id→object resolution lives here at the wiring layer: each LG hit-target id maps
+ * back to its Layer-A `RealObject` — the home Milky Way + the 4 placed
+ * neighbours. `hoverAffordanceFor` is the #154 gate: a real object affords the
+ * clickable highlight + an effect (the memory branch never reaches this layer).
+ */
+const LgInteractiveLabels = ({
+  diveTo,
+  lore,
+}: {
+  diveTo: (id: string, tier: Tier) => void;
+  lore: Messages["lore"];
+}) => {
+  const objectClick = useObjectClick(diveTo);
+  const byId = useMemo(() => {
+    const home = REAL_OBJECTS.find((o) => o.id === HOME_MILKY_WAY_ID);
+    return new Map(
+      [...(home ? [home] : []), ...lgGalaxies().map((g) => g.object)].map(
+        (o) => [o.id, o] as const,
+      ),
+    );
+  }, []);
+  const onSelect = useCallback(
+    (id: string) => {
+      const real = byId.get(id);
+      if (real && hoverAffordanceFor(real).kind === "real") objectClick(real);
+    },
+    [byId, objectClick],
+  );
+  return (
+    <LgGalaxyLabels
+      labels={lgLabels()}
+      targets={lgHitTargets()}
+      lore={lore}
+      onSelect={onSelect}
     />
   );
 };
