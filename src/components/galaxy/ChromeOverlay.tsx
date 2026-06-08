@@ -10,9 +10,10 @@ type Props = {
   palette: Palette;
   onPaletteChange: (p: Palette) => void;
   /**
-   * The *displayed* tier — drives the bottom-left scale net's labels (#112,
-   * §5.3). During a tier transition (#125) it swaps at the timeline's threshold,
-   * not at request time, so the net relabels exactly when the scene does.
+   * The *displayed* tier — drives both the top-right breadcrumb's active segment
+   * and the bottom-left scale net's labels (#112, §5.3). During a tier transition
+   * (#125) it swaps at the timeline's threshold, not at request time, so the
+   * breadcrumb + net relabel in lockstep, exactly when the scene does.
    */
   tier: Tier;
   /** The active tier-transition narration line for ASTRO's bubble (#125). */
@@ -48,7 +49,7 @@ export const ChromeOverlay = ({
   onNarrationDismiss,
 }: Props) => (
   <div className="galaxy-chrome-overlay">
-    <GalaxyChrome count={count} />
+    <GalaxyChrome count={count} tier={tier} />
     <Astro narration={narration} onNarrationDismiss={onNarrationDismiss} />
     <PaletteSwitcher value={palette} onChange={onPaletteChange} />
     <ScaleNet tier={tier} label={getMessages(useLocale()).scaleNet.label} />

@@ -18,8 +18,19 @@ export type Messages = {
     forMom: string;
     subtitle: string;
     srOnly: string;
-    breadcrumbMilkyWay: string;
-    breadcrumbSolEarth: string;
+    /**
+     * The top-right wayfinding breadcrumb (interaction spec §5.3, #112) — the
+     * live 3-tier trail `LOCAL GROUP › MILKY WAY › SOL`, one segment label per
+     * `Tier`. The component renders the segment whose tier === the displayed
+     * tier as the active (bright) link and dims the rest. `solarSystem` is the
+     * deferred tier (#127) — never the active tier in v1, shown as the dim
+     * reserved tail. Keys mirror the `Tier` union (`lib/galaxy/types`).
+     */
+    breadcrumb: {
+      localGroup: string;
+      galaxy: string;
+      solarSystem: string;
+    };
     /** Carries the `{count}` placeholder — see `interpolate` in `index.ts`. */
     countLabel: string;
   };

@@ -41,6 +41,23 @@ describe("ChromeOverlay — wires the tier-aware scale net (#112)", () => {
     expect(screen.queryByText("2.5 Mly")).toBeNull();
   });
 
+  it("drives the top-right breadcrumb from the displayed tier (LG active, MW dim)", () => {
+    render(
+      <ChromeOverlay
+        count={3}
+        palette="auroral"
+        onPaletteChange={noop}
+        tier="localGroup"
+      />,
+    );
+    expect(
+      screen.getByText(en.chrome.breadcrumb.localGroup).className,
+    ).not.toContain("is-dim");
+    expect(screen.getByText(en.chrome.breadcrumb.galaxy).className).toContain(
+      "is-dim",
+    );
+  });
+
   it("passes the tier-transition narration through to ASTRO's bubble (#125)", () => {
     render(
       <ChromeOverlay
