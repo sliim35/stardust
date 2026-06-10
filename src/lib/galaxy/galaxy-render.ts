@@ -21,10 +21,13 @@ import {
   type BackdropGeometry,
   type BackdropPoint,
   buildArmsAndBulge,
+  buildBackdropGeometry,
   type DiskPlacement,
+  MW_PLACEMENT,
   pointAt,
 } from "#/lib/galaxy/backdrop";
 import { DISK_TILT, GALAXY_R, polarToXY } from "#/lib/galaxy/place";
+import { HOME_MILKY_WAY_ID } from "#/lib/galaxy/realdata";
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import type { GalaxyBackdrop, RealObject } from "#/lib/galaxy/types";
 
@@ -203,4 +206,49 @@ export const buildGalaxyGeometry = (
       // magellanic / irregular / dwarf-spheroidal (+ any non-disk fallthrough)
       return buildClumpyGeometry(tuning, place);
   }
+};
+
+/**
+ * Bloom tuning for the LG hover highlight (#174): the hovered galaxy's own point
+ * cloud lights up via a SECOND additive pass over the same `arms`+`bulge`. The
+ * spread (`×1.25`) widens each glow sprite a touch and `×0.9` (clamped at 1 in the
+ * paint) lifts its alpha — bright enough to read as "this is the one you're
+ * pointing at" without re-approaching the rejected flat gradient blob (#151/#155).
+ * Kept here as the single source for the constants the canvas paints with.
+ */
+export const BLOOM_TUNING = { diameterScale: 1.25, alphaScale: 0.9 } as const;
+
+/**
+ * The bloom payload for an LG hover (#174): given the highlighted hit-target id,
+ * resolve the points to re-paint brighter — that silhouette's own `arms`+`bulge`,
+ * and **never `bgStars`** (the deep field must not flash). The id space is the
+ * `lgHitTargets()` space: the MW gateway is `HOME_MILKY_WAY_ID`, blooming its
+ * LG-placement disk geometry (`homePlacement` — the shrunk `LG_MW_PLACEMENT` at
+ * the LG tier); every other id matches a placed neighbour's `object.id` and blooms
+ * that neighbour's geometry at the placement the composition chose. No match (or
+ * no highlight) → no bloom. Pure + deterministic, like every render mapper here.
+ */
+export const bloomPointsFor = (
+  highlight: string | null | undefined,
+  {
+    backdrop,
+    homePlacement = MW_PLACEMENT,
+    neighbours,
+  }: {
+    backdrop: GalaxyBackdrop;
+    homePlacement?: DiskPlacement;
+    neighbours: readonly PlacedGalaxy[];
+  },
+): readonly BackdropPoint[] => {
+  if (!highlight) return [];
+  // The MW gateway blooms its home disk — arms + bulge only, dropping the one
+  // full-stage `bgStars` field the home backdrop owns (it must never light up).
+  if (highlight === HOME_MILKY_WAY_ID) {
+    const { arms, bulge } = buildBackdropGeometry(backdrop, homePlacement);
+    return [...arms, ...bulge];
+  }
+  const hit = neighbours.find((n) => n.object.id === highlight);
+  if (!hit) return [];
+  const { arms, bulge } = buildGalaxyGeometry(hit.object, hit.place);
+  return [...arms, ...bulge];
 };

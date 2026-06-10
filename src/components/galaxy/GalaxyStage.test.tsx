@@ -235,19 +235,43 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
   });
 
-  it("real-object hover/focus paints the #154 clickable highlight alongside the title (#169)", () => {
+  // #174: the in-DOM `data-lg-glow` wash (a boxy clipped "oreol") is gone. The
+  // hover highlight is now the hovered galaxy's own point cloud blooming on a
+  // dedicated backdrop canvas; the stage feeds the active id down as `highlight`
+  // via the canvas's `data-lg-bloom` signal (the bloom render is canvas-only).
+  const bloomCanvas = () =>
+    document.querySelector("[data-lg-bloom]") as HTMLElement | null;
+
+  it("real-object hover/focus blooms the hovered galaxy's point cloud — no in-DOM oreol (#174)", () => {
     stubReducedMotion(true);
     render(<GalaxyStage />);
-    const glow = (id: string) =>
-      document.querySelector(`[data-lg-glow="${id}"]`) as HTMLElement;
+    // The #169 DOM wash is gone — not a single glow span in the tree.
+    expect(document.querySelector("[data-lg-glow]")).toBeNull();
     fireEvent.pointerEnter(lgTarget("andromeda"));
-    // Both the title AND the clickable highlight light up for the active target.
+    // The title still fades up, and the active id flows to the backdrop canvas.
     expect(lgLabelEl("andromeda").className).toContain("opacity-100");
-    expect(glow("andromeda").className).toContain("opacity-100");
-    // The MW (id "home") stays dark.
-    expect(glow("home").className).toContain("opacity-0");
+    expect(bloomCanvas()?.getAttribute("data-lg-bloom")).toBe("andromeda");
     fireEvent.pointerLeave(lgTarget("andromeda"));
-    expect(glow("andromeda").className).toContain("opacity-0");
+    // Un-hover clears the bloom (empty signal) but the canvas stays mounted.
+    expect(bloomCanvas()?.getAttribute("data-lg-bloom")).toBe("");
+  });
+
+  it("highlight flows only while on the LG tier — diving in clears it (#174)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.pointerEnter(lgTarget("andromeda"));
+    expect(bloomCanvas()?.getAttribute("data-lg-bloom")).toBe("andromeda");
+    expect(bloomCanvas()?.getAttribute("data-active")).toBe("true");
+    // Dive into the MW tier: the LG layer unmounts and the highlight prop is gated
+    // off — the bloom canvas (always mounted) reverts to an empty/inactive signal,
+    // so nothing strands the highlight across the descend.
+    fireEvent.wheel(stage, { deltaY: -12 });
+    expect(bloomCanvas()?.getAttribute("data-lg-bloom")).toBe("");
+    expect(bloomCanvas()?.getAttribute("data-active")).toBeNull();
+    // Ascend back to the LG overview: still an empty (un-highlighted) bloom.
+    fireEvent.wheel(stage, { deltaY: 12 });
+    expect(bloomCanvas()?.getAttribute("data-lg-bloom")).toBe("");
   });
 
   it("the wheel clamp at the LG ceiling stays a quiet no-op — no swap, no narration", () => {

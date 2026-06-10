@@ -192,6 +192,23 @@ export const GalaxyStage = () => {
     [lgView],
   );
 
+  // The hovered LG galaxy (#174): its id flows to `GalaxyBackdrop` as `highlight`,
+  // blooming that galaxy's own point cloud (replacing the removed in-DOM `oreol`).
+  // Gated by `lgView` exactly like the #154 hover above: the backdrop only blooms
+  // while we're on the LG tier, so a hover live at descend-start can't strand a
+  // bloom across the dive (the LgGalaxyLabels layer unmounts with the tier anyway,
+  // but gating the prop keeps the highlight from outliving the view in any race).
+  const [lgHovered, setLgHovered] = useState<string | null>(null);
+  const lgHighlight = lgView ? lgHovered : null;
+  // Reset the stale hover id whenever we leave the LG tier. The labels layer
+  // unmounts on the descend, so its pointer-leave never fires — without this, a
+  // hover live at descend-start would re-bloom that same galaxy on the next ascend
+  // (the pointer long gone from it). Clearing the source state keeps the return to
+  // the LG overview clean.
+  useEffect(() => {
+    if (!lgView) setLgHovered(null);
+  }, [lgView]);
+
   // Hover (#154, spec §3 + owner rules 2026-06-06): the star under the pointer/
   // keyboard-focus. When it belongs to an AUTHORED mood-pure figure, the overlay
   // draws the figure's designed edges in the figure's ONE mood colour and
@@ -260,6 +277,7 @@ export const GalaxyStage = () => {
                 homePlacement={lgView ? LG_MW_PLACEMENT : MW_PLACEMENT}
                 neighbours={neighbours}
                 goldDust={goldDust}
+                highlight={lgHighlight}
               />
               {/* Serif/mono galaxy titles ride the L2 plane so they track the
                   framing + parallax exactly like the disks they annotate.
@@ -268,7 +286,11 @@ export const GalaxyStage = () => {
                   opens its lore card (#169). Unmounts with the LG view, so the
                   MW tier's memory-star interaction is untouched. */}
               {lgView && (
-                <LgInteractiveLabels diveTo={nav.diveTo} lore={m.lore} />
+                <LgInteractiveLabels
+                  diveTo={nav.diveTo}
+                  lore={m.lore}
+                  onActiveChange={setLgHovered}
+                />
               )}
             </div>
             {/* The L3 memory layer is MW-interior content: at the Local-Group
@@ -370,9 +392,12 @@ const InteractiveStars = ({
 const LgInteractiveLabels = ({
   diveTo,
   lore,
+  onActiveChange,
 }: {
   diveTo: (id: string, tier: Tier) => void;
   lore: Messages["lore"];
+  /** Hover/focus sink (#174): the active galaxy id → the backdrop's point-cloud bloom. */
+  onActiveChange: (id: string | null) => void;
 }) => {
   const objectClick = useObjectClick(diveTo);
   const byId = useMemo(() => {
@@ -396,6 +421,7 @@ const LgInteractiveLabels = ({
       targets={lgHitTargets()}
       lore={lore}
       onSelect={onSelect}
+      onActiveChange={onActiveChange}
     />
   );
 };

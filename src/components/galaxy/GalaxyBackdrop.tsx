@@ -7,6 +7,8 @@ import {
   MW_PLACEMENT,
 } from "#/lib/galaxy/backdrop";
 import {
+  BLOOM_TUNING,
+  bloomPointsFor,
   buildGalaxyGeometry,
   type PlacedGalaxy,
 } from "#/lib/galaxy/galaxy-render";
@@ -27,14 +29,20 @@ import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
  * blending), so the arms read as smooth luminous bands rather than crisp
  * pixel-art grit. Geometry + density are unchanged; only the surface is soft.
  *
- * Two stacked canvases at the fixed 1280×800 internal resolution, both
+ * Three stacked canvases at the fixed 1280×800 internal resolution, all
  * transparent-backed: a static `base` (the disk-glow point clouds — bgStars +
- * arms + bulge — drawn once per backdrop) and a `live` overlay (RAF twinkle + a
- * few thin shooting stars). The nebula haze + core washes moved out to the
+ * arms + bulge — drawn once per backdrop), a `live` overlay (RAF twinkle + a few
+ * thin shooting stars), and a `hover` layer (#174) that blooms ONLY the hovered
+ * LG galaxy's own point cloud. The nebula haze + core washes moved out to the
  * full-bleed `BackdropTint` (Layer A, #76), so this canvas paints only additive
  * glow and the tint shows through with no rectangular seam. Deterministic from
  * `backdrop.seed`. Client-only (draws in effects); reduced motion paints the
  * base and stops.
+ *
+ * The hover layer lives in its OWN effect (keyed on `highlight`) so a hover never
+ * repaints the costly base scene — it just re-blooms the one highlighted geometry
+ * (~1.4k points) and fades in via a CSS opacity transition (`.galaxy-l2__hover`,
+ * snapping under `prefers-reduced-motion`); the empty highlight fades it back out.
  */
 
 const SPRITE_PX = 16; // offscreen glow-sprite resolution
@@ -83,6 +91,30 @@ const paintGlow = (
 };
 
 /**
+ * The hover bloom (#174): a SECOND additive pass over a galaxy's own `arms`+`bulge`
+ * — same `paintGlow` sprites + palette, same `lighter` blend, just widened
+ * (`diameterScale`) and a touch brighter (`alphaScale`, clamped at 1 so a fully-lit
+ * point can't push past the additive ceiling). Painted on the dedicated hover
+ * canvas, it makes the hovered silhouette glow without ever touching the base
+ * scene — and, by construction, never the deep field (`bloomPointsFor` returns
+ * arms+bulge only).
+ */
+const paintBloom = (
+  ctx: CanvasRenderingContext2D,
+  points: readonly BackdropPoint[],
+  sprites: Sprites,
+): void => {
+  ctx.globalCompositeOperation = "lighter";
+  for (const s of points) {
+    const d = (s.size === 2 ? 5.6 : 3.6) * BLOOM_TUNING.diameterScale;
+    ctx.globalAlpha = Math.min(1, s.alpha * BLOOM_TUNING.alphaScale);
+    ctx.drawImage(sprites[bucketOf(s.warm)], s.x - d / 2, s.y - d / 2, d, d);
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+};
+
+/**
  * The disk glow only (#76): a transparent canvas of additive point-sprite
  * clouds — `bgStars` → `arms` → `bulge`. The nebula haze + core full-rect washes
  * that used to fill this 1280×800 canvas (their rectangular edge was the seam)
@@ -124,6 +156,7 @@ export const GalaxyBackdrop = ({
   homePlacement = MW_PLACEMENT,
   neighbours = [],
   goldDust = [],
+  highlight = null,
 }: {
   backdrop: Backdrop;
   /**
@@ -143,9 +176,17 @@ export const GalaxyBackdrop = ({
    * reserved-gold sprite so they never re-tint with the theme palette.
    */
   goldDust?: readonly BackdropPoint[];
+  /**
+   * The hovered LG hit-target id (#174): the MW gateway (`HOME_MILKY_WAY_ID`) or
+   * a neighbour's `object.id`. Its own `arms`+`bulge` bloom on the hover canvas;
+   * `null` fades the bloom out. The stage clears it when leaving the LG tier, so
+   * nothing strands across the descend.
+   */
+  highlight?: string | null;
 }) => {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const liveRef = useRef<HTMLCanvasElement | null>(null);
+  const hoverRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const base = baseRef.current;
@@ -235,10 +276,52 @@ export const GalaxyBackdrop = ({
     return () => cancelAnimationFrame(raf);
   }, [backdrop, homePlacement, neighbours, goldDust]);
 
+  // The hover bloom (#174) in its OWN effect — deliberately NOT keyed on the base
+  // deps, so a hover never repaints the base scene (AC6). It rebuilds just the one
+  // highlighted geometry (~1.4k points) and paints it brighter on the hover canvas;
+  // an empty `highlight` clears the canvas and the CSS fade takes it out. The
+  // canvas always paints fully opaque — the `.galaxy-l2__hover` opacity transition
+  // (driven by `data-active` below) owns the 200 ms fade / reduced-motion snap.
+  useEffect(() => {
+    const hover = hoverRef.current;
+    if (!hover) return;
+    const hctx = hover.getContext("2d");
+    if (!hctx) return;
+    hover.width = STAGE_W;
+    hover.height = STAGE_H;
+    hctx.imageSmoothingEnabled = true;
+    hctx.clearRect(0, 0, STAGE_W, STAGE_H);
+
+    const points = bloomPointsFor(highlight, {
+      backdrop,
+      homePlacement,
+      neighbours,
+    });
+    if (points.length === 0) return;
+
+    const p = paletteFor(backdrop.palette);
+    const sprites: Sprites = [
+      makeGlowSprite(p.starCool),
+      makeGlowSprite(p.starWarm),
+      makeGlowSprite(p.starHot),
+    ];
+    paintBloom(hctx, points, sprites);
+  }, [highlight, backdrop, homePlacement, neighbours]);
+
   return (
     <div className="galaxy-l2" aria-hidden="true">
       <canvas ref={baseRef} className="galaxy-l2__canvas" />
       <canvas ref={liveRef} className="galaxy-l2__canvas" />
+      {/* The hover bloom layer (#174): visibility is the `.galaxy-l2__hover`
+          opacity fade, driven by `data-active` so the fade-OUT works (it stays
+          mounted, painted, just transparent). `data-lg-bloom` carries the active
+          id as a test/QA signal (empty when nothing is highlighted). */}
+      <canvas
+        ref={hoverRef}
+        className="galaxy-l2__canvas galaxy-l2__hover"
+        data-lg-bloom={highlight ?? ""}
+        data-active={highlight ? "true" : undefined}
+      />
     </div>
   );
 };

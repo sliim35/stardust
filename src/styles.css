@@ -477,6 +477,16 @@ body {
   /* Smooth upscaling — the disk is soft glow, not pixel-art (2026-06-03). */
   image-rendering: auto;
 }
+/* #174 — the hover-bloom layer: the hovered LG galaxy's own point cloud lights
+   up on this dedicated canvas. It stays mounted + painted; visibility is this
+   opacity fade so the fade-OUT works (toggled by `data-active`). ~200 ms in/out. */
+.galaxy-l2__hover {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.galaxy-l2__hover[data-active] {
+  opacity: 1;
+}
 
 /* L3 — memory stars (nearest plane). */
 .galaxy-l3-wrap {
@@ -840,6 +850,10 @@ body {
   .mem-star__flare-h,
   .mem-star__flare-v,
   .mem-star__label {
+    transition: none;
+  }
+  /* #174 — the LG hover bloom snaps in/out (no fade) under reduced motion. */
+  .galaxy-l2__hover {
     transition: none;
   }
   /* #154 — the hover affordance cross-fades instantly: the constellation lines
