@@ -41,9 +41,10 @@ export type Messages = {
     countLabel: string;
     /**
      * The backdrop theme switcher (owner redesign 2026-06-10; research note
-     * `docs/research/2026-06-10-theme-switcher.md`): the radiogroup's accessible
-     * name + one reveal-on-hover label per palette (keys mirror the `Palette`
-     * union — the former hardcoded `PALETTE_LABELS`, now localized).
+     * `docs/research/2026-06-10-theme-switcher.md`): the group's accessible
+     * name (the fieldset's sr-only legend — native radios, role `group`) + one
+     * reveal-on-hover label per palette (keys mirror the `Palette` union — the
+     * former hardcoded `PALETTE_LABELS`, now localized).
      */
     backdrop: {
       label: string;

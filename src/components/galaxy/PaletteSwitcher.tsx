@@ -39,6 +39,11 @@ export const PaletteSwitcher = ({ value, onChange }: Props) => {
           <input
             type="radio"
             name="backdrop-theme"
+            // The explicit accname: at rest the label text is display:none, so
+            // name-from-content computes empty and the accname would fall back
+            // to the label's title tooltip — the weakest mechanism in the
+            // algorithm (review nit). aria-label is stable in every state.
+            aria-label={m.chrome.backdrop[p]}
             className="peer sr-only"
             checked={p === value}
             onChange={() => onChange(p)}
