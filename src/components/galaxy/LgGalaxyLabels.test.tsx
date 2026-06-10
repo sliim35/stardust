@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { LgGalaxyLabels } from "#/components/galaxy/LgGalaxyLabels";
 import {
   type LgHitTarget,
@@ -12,18 +12,28 @@ import { ru } from "#/lib/i18n/messages/ru";
 import type { Messages } from "#/lib/i18n/types";
 
 /**
- * The hover-only LG titles (#167 owner amend): at rest the scene shows NO
- * titles; hovering or keyboard-focusing a galaxy's invisible hit-target fades
- * its serif name + mono distance up — exactly the memory-star label pattern
- * (state-driven opacity, `motion-reduce:transition-none` snaps).
+ * The Local-Group titles, now CLICKABLE (#169). The hover-only title reveal
+ * (#167) is preserved verbatim — at rest the scene shows NO titles; hovering or
+ * keyboard-focusing a galaxy's hit-target fades its serif name + mono distance up
+ * — but the hit-target is now a real `<button>` that DOES something: a click
+ * routes through the shared `useObjectClick` seam (MW dive · neighbour lore card),
+ * and hover/focus also paints the subtle #154 "clickable" highlight.
  *
  * Everything below derives from the composition module (`lgHitTargets` /
  * `lgLabels`) and the lore catalog — no magic positions or strings.
  */
 
-const renderLabels = (lore: Messages["lore"] = en.lore) =>
+const renderLabels = (
+  lore: Messages["lore"] = en.lore,
+  onSelect: (id: string) => void = () => {},
+) =>
   render(
-    <LgGalaxyLabels labels={lgLabels()} targets={lgHitTargets()} lore={lore} />,
+    <LgGalaxyLabels
+      labels={lgLabels()}
+      targets={lgHitTargets()}
+      lore={lore}
+      onSelect={onSelect}
+    />,
   );
 
 /** The target's accessible name — composed from the catalog, like the DOM label. */
@@ -44,7 +54,14 @@ const labelEl = (key: LgHitTarget["loreKey"]): HTMLElement => {
   return el;
 };
 
-describe("LgGalaxyLabels — hover-only titles (#167)", () => {
+/** The per-target clickable-highlight glow (#154 "real" affordance, #169). */
+const glowEl = (id: string): HTMLElement => {
+  const el = document.querySelector(`[data-lg-glow="${id}"]`);
+  if (!(el instanceof HTMLElement)) throw new Error(`no glow node for ${id}`);
+  return el;
+};
+
+describe("LgGalaxyLabels — hover-only titles preserved (#167)", () => {
   it("shows zero visible titles at rest — every label starts faded out", () => {
     renderLabels();
     for (const l of lgLabels()) {
@@ -55,7 +72,7 @@ describe("LgGalaxyLabels — hover-only titles (#167)", () => {
 
   it("hovering a target fades ONLY its title up; un-hover restores", () => {
     renderLabels();
-    const andromeda = screen.getByRole("img", {
+    const andromeda = screen.getByRole("button", {
       name: ariaName(en.lore, targetByKey("andromeda")),
     });
     fireEvent.pointerEnter(andromeda);
@@ -69,7 +86,7 @@ describe("LgGalaxyLabels — hover-only titles (#167)", () => {
 
   it("keyboard focus drives the same reveal; blur restores", () => {
     renderLabels();
-    const mw = screen.getByRole("img", {
+    const mw = screen.getByRole("button", {
       name: ariaName(en.lore, targetByKey("milkyWay")),
     });
     fireEvent.focus(mw);
@@ -78,19 +95,11 @@ describe("LgGalaxyLabels — hover-only titles (#167)", () => {
     expect(labelEl("milkyWay").className).toContain("opacity-0");
   });
 
-  it("every target is in the tab order with a catalog-resolved aria-label (en)", () => {
-    renderLabels();
-    for (const t of lgHitTargets()) {
-      const target = screen.getByRole("img", { name: ariaName(en.lore, t) });
-      expect(target.getAttribute("tabindex")).toBe("0");
-    }
-  });
-
   it("aria-labels resolve from the ru catalog too — no new strings", () => {
     renderLabels(ru.lore);
     for (const t of lgHitTargets()) {
       expect(
-        screen.getByRole("img", { name: ariaName(ru.lore, t) }),
+        screen.getByRole("button", { name: ariaName(ru.lore, t) }),
       ).toBeTruthy();
     }
   });
@@ -98,7 +107,7 @@ describe("LgGalaxyLabels — hover-only titles (#167)", () => {
   it("positions + sizes each target from the composition's silhouette reach", () => {
     renderLabels();
     for (const t of lgHitTargets()) {
-      const target = screen.getByRole("img", { name: ariaName(en.lore, t) });
+      const target = screen.getByRole("button", { name: ariaName(en.lore, t) });
       expect(target.style.left).toBe(`${Math.round(t.x)}px`);
       expect(target.style.top).toBe(`${Math.round(t.y)}px`);
       expect(target.style.width).toBe(`${Math.round(t.halfW * 2)}px`);
@@ -120,5 +129,76 @@ describe("LgGalaxyLabels — hover-only titles (#167)", () => {
     expect(
       screen.getByText(en.lore.andromeda.name).closest('[aria-hidden="true"]'),
     ).not.toBeNull();
+  });
+});
+
+describe("LgGalaxyLabels — clickable controls (#169)", () => {
+  it("every target is a focusable <button type=button> with a catalog-resolved aria-label (en)", () => {
+    renderLabels();
+    for (const t of lgHitTargets()) {
+      const target = screen.getByRole("button", { name: ariaName(en.lore, t) });
+      // A native <button> is in the tab order AND Enter/Space-activatable for
+      // free — that is the keyboard parity the #167 role="img" div faked.
+      expect(target.tagName).toBe("BUTTON");
+      expect(target.getAttribute("type")).toBe("button");
+    }
+  });
+
+  it("clicking a target reports its composition id up through onSelect", () => {
+    const onSelect = vi.fn();
+    renderLabels(en.lore, onSelect);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: ariaName(en.lore, targetByKey("andromeda")),
+      }),
+    );
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    // The neighbour's id == its loreKey; the MW's id is "home" (≠ loreKey).
+    expect(onSelect).toHaveBeenCalledWith("andromeda");
+  });
+
+  it("the Milky Way target reports the gateway id 'home' (not the loreKey)", () => {
+    const onSelect = vi.fn();
+    renderLabels(en.lore, onSelect);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: ariaName(en.lore, targetByKey("milkyWay")),
+      }),
+    );
+    expect(onSelect).toHaveBeenCalledWith("home");
+  });
+
+  it("hover paints ONLY the active target's clickable highlight; un-hover restores", () => {
+    renderLabels();
+    const andromeda = screen.getByRole("button", {
+      name: ariaName(en.lore, targetByKey("andromeda")),
+    });
+    fireEvent.pointerEnter(andromeda);
+    expect(glowEl("andromeda").className).toContain("opacity-100");
+    for (const id of ["home", "triangulum", "lmc", "smc"]) {
+      expect(glowEl(id).className).toContain("opacity-0");
+    }
+    fireEvent.pointerLeave(andromeda);
+    expect(glowEl("andromeda").className).toContain("opacity-0");
+  });
+
+  it("keyboard focus paints the same clickable highlight; blur restores", () => {
+    renderLabels();
+    const triangulum = screen.getByRole("button", {
+      name: ariaName(en.lore, targetByKey("triangulum")),
+    });
+    fireEvent.focus(triangulum);
+    expect(glowEl("triangulum").className).toContain("opacity-100");
+    fireEvent.blur(triangulum);
+    expect(glowEl("triangulum").className).toContain("opacity-0");
+  });
+
+  it("the clickable highlight cross-fades but snaps under prefers-reduced-motion", () => {
+    renderLabels();
+    for (const t of lgHitTargets()) {
+      const glow = glowEl(t.id);
+      expect(glow.className).toContain("transition-opacity");
+      expect(glow.className).toContain("motion-reduce:transition-none");
+    }
   });
 });
