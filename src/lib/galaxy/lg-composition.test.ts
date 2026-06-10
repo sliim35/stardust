@@ -47,18 +47,19 @@ describe("LG_FRAMING — the Local-Group resting camera (I-2, FINAL proof)", () 
     expect(LG_FRAMING.zoom).toBeGreaterThan(0);
   });
 
-  it("frames the MW slightly below the screen centre (the proof's anchor)", () => {
+  it("frames the MW near the screen centre, slightly low (owner relayout 2026-06-10)", () => {
     // Screen position of a world point W under {cx, cy, zoom}:
     // S = stage-centre + zoom · (W − camera-centre)  (cameraTransform math).
     const sx =
       GALAXY_CENTER.x + LG_FRAMING.zoom * (LG_MW_PLACEMENT.cx - LG_FRAMING.cx);
     const sy =
       GALAXY_CENTER.y + LG_FRAMING.zoom * (LG_MW_PLACEMENT.cy - LG_FRAMING.cy);
-    // FINAL proof: the MW reads roughly centred horizontally, ~70px low.
+    // Owner relayout: the composition rose from the FINAL proof's ~70px-low
+    // anchor — roughly centred, a touch low so the top chrome breathes.
     expect(sx).toBeGreaterThan(600);
     expect(sx).toBeLessThan(680);
-    expect(sy).toBeGreaterThan(430);
-    expect(sy).toBeLessThan(510);
+    expect(sy).toBeGreaterThan(395);
+    expect(sy).toBeLessThan(440);
   });
 });
 

@@ -70,7 +70,7 @@
   --text-eyebrow: 10px; /* mono sub/breadcrumb */
   --text-eyebrow--letter-spacing: 0.2em;
   --text-count: 11px; /* live-count line */
-  --text-title: 28px; /* "For Mom" — Fraunces upright display */
+  --text-title: 28px; /* the "Stardust" brand wordmark — Fraunces upright display */
 
   /* spacing → p-*, gap-*, m-* utilities (handoff scale) */
   --spacing-gutter: 60px;
@@ -289,8 +289,10 @@ body {
    (GALAXY_ASTRO_SCALE = 112px) sits in the corner; offsets give it + the bubble room. */
 .galaxy-astro {
   position: absolute;
-  right: 64px; /* offset from the viewport right edge (nudged in for the bigger sprite) */
-  bottom: 80px; /* offset from the bottom — clears the bottom-center count */
+  right: max(48px, env(safe-area-inset-right)); /* offset from the viewport right edge */
+  /* Border-hugging (owner relayout 2026-06-10): the bottom-center count is gone,
+     so ASTRO drops toward the edge — close, but with bob/shadow room. */
+  bottom: max(24px, env(safe-area-inset-bottom));
   z-index: 4; /* above stars/captions, below the palette switcher (6) + panels */
   pointer-events: none; /* decorative; never captures mouse/touch */
 }
@@ -690,73 +692,12 @@ body {
   pointer-events: none;
 }
 
-/* Chrome (title · breadcrumb · live count). Offsets are viewport px + safe-area,
-   so they clear notches and stay put as the stage scales. */
-.galaxy-chrome {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.galaxy-chrome__title {
-  position: absolute;
-  left: max(28px, env(safe-area-inset-left));
-  top: max(22px, env(safe-area-inset-top));
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-weight: 400;
-}
-.galaxy-chrome__for {
-  font-family: var(--font-serif);
-  font-style: normal;
-  font-weight: 600;
-  font-variation-settings: "opsz" 56, "SOFT" 100, "WONK" 0;
-  font-size: 28px;
-  /* The dedication rides the single accent thread (spec §3 conflict table +
-     §4: title #f5d6a0 → var(--color-accent)); it re-tints with the active sky. */
-  color: var(--color-accent);
-  text-shadow: 0 0 18px var(--color-accent-soft);
-}
-.galaxy-chrome__sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--color-dim-2);
-}
-.galaxy-chrome__breadcrumb {
-  position: absolute;
-  right: max(28px, env(safe-area-inset-right));
-  top: max(24px, env(safe-area-inset-top));
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--color-accent);
-}
-.galaxy-chrome__breadcrumb .is-dim {
-  color: var(--color-dim-3);
-}
-.galaxy-chrome__count {
-  position: absolute;
-  left: 50%;
-  bottom: max(26px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: var(--color-dim-2);
-}
-
-/* Narrow widths (#76 AC7): drop the decorative breadcrumb so the top-right
-   palette dots never collide with the top-left title. Title + count + palette
-   dots stay visible; this is the only narrow-width degradation (1100px is the
-   design min — below it is usable, not pixel-perfect). */
-@media (max-width: 620px) {
-  .galaxy-chrome__breadcrumb {
-    display: none;
-  }
-}
+/* Chrome (brand title · live count · clickable breadcrumb) is DOM chrome: it
+   lives in src/components/galaxy/GalaxyChrome.tsx as Tailwind utilities reading
+   the @theme tokens above (#75 boundary). The legacy .galaxy-chrome__* block —
+   incl. the retired "For Mom" dedication + the bottom-center count — was removed
+   in the 2026-06-10 owner relayout. The narrow-width breadcrumb hide (#76 AC7)
+   is `max-[620px]:hidden` on the nav. No CSS here. */
 
 /* Backdrop theme picker (#44 — sea glass · amber · moonlit) is DOM chrome:
    it lives in src/components/galaxy/PaletteSwitcher.tsx as Tailwind utilities

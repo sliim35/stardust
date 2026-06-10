@@ -60,38 +60,41 @@ describe("catalog parity + non-empty values (guards AC4 beyond the type check)",
 
 describe("owner-confirmed final strings (the authoritative table)", () => {
   it("carries the exact en chrome + meta strings (source of truth)", () => {
-    expect(en.chrome.forMom).toBe("For Mom");
-    expect(en.chrome.subtitle).toBe("A QUIET PLACE IN THE MILKY WAY");
+    // Owner rebrand + relayout 2026-06-10: Memory Galaxy → Stardust; the
+    // "For Mom" dedication + subtitle are retired (must not pull attention).
+    expect(en.chrome.brand).toBe("Stardust");
     expect(en.chrome.srOnly).toBe(
-      "Memory Galaxy — a sky of stars, each one a memory.",
+      "Stardust — a sky of stars, each one a memory.",
     );
     expect(en.chrome.breadcrumb).toEqual({
       localGroup: "LOCAL GROUP",
       galaxy: "MILKY WAY",
       solarSystem: "SOL",
     });
+    expect(en.chrome.breadcrumbNav).toBe("Sky navigation");
     expect(en.chrome.countLabel).toBe("{count} memories, still growing");
-    expect(en.meta.title).toBe("Memory Galaxy");
+    expect(en.meta.title).toBe("Stardust");
     expect(en.meta.description).toBe(
       "A growing galaxy of memories — each star is a memory someone shared.",
     );
   });
 
   it("carries the exact owner-confirmed ru translations", () => {
-    expect(ru.chrome.forMom).toBe("Маме");
-    expect(ru.chrome.subtitle).toBe("ТИХИЙ УГОЛОК В МЛЕЧНОМ ПУТИ");
+    // The brand wordmark stays latin in every locale (owner rebrand 2026-06-10).
+    expect(ru.chrome.brand).toBe("Stardust");
     expect(ru.chrome.srOnly).toBe(
-      "Галактика воспоминаний — небо из звёзд, и каждая — чьё-то воспоминание.",
+      "Stardust — небо из звёзд, и каждая — чьё-то воспоминание.",
     );
     expect(ru.chrome.breadcrumb).toEqual({
       localGroup: "МЕСТНАЯ ГРУППА",
       galaxy: "МЛЕЧНЫЙ ПУТЬ",
       solarSystem: "СОЛНЦЕ",
     });
+    expect(ru.chrome.breadcrumbNav).toBe("Навигация по небу");
     expect(ru.chrome.countLabel).toBe(
       "{count} воспоминаний и продолжает расти",
     );
-    expect(ru.meta.title).toBe("Галактика воспоминаний");
+    expect(ru.meta.title).toBe("Stardust");
     expect(ru.meta.description).toBe(
       "Растущая галактика воспоминаний — каждая звезда хранит чьё-то воспоминание.",
     );

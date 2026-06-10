@@ -15,22 +15,28 @@ export type Messages = {
     description: string;
   };
   chrome: {
-    forMom: string;
-    subtitle: string;
+    /**
+     * The product brand wordmark (owner rebrand 2026-06-10: Memory Galaxy →
+     * Stardust). Stays the latin wordmark in every locale.
+     */
+    brand: string;
     srOnly: string;
     /**
      * The top-right wayfinding breadcrumb (interaction spec §5.3, #112) — the
      * live 3-tier trail `LOCAL GROUP › MILKY WAY › SOL`, one segment label per
-     * `Tier`. The component renders the segment whose tier === the displayed
-     * tier as the active (bright) link and dims the rest. `solarSystem` is the
-     * deferred tier (#127) — never the active tier in v1, shown as the dim
-     * reserved tail. Keys mirror the `Tier` union (`lib/galaxy/types`).
+     * `Tier`. The segment whose tier === the displayed tier is the active
+     * (bright, `aria-current`) one; the other reachable tiers are clickable nav
+     * (owner 2026-06-10). `solarSystem` is the deferred tier (#127) — never
+     * active nor clickable in v1, shown as the dim reserved tail. Keys mirror
+     * the `Tier` union (`lib/galaxy/types`).
      */
     breadcrumb: {
       localGroup: string;
       galaxy: string;
       solarSystem: string;
     };
+    /** Accessible name of the breadcrumb `<nav>` (it is real navigation now). */
+    breadcrumbNav: string;
     /** Carries the `{count}` placeholder — see `interpolate` in `index.ts`. */
     countLabel: string;
   };

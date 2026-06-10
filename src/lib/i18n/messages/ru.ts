@@ -5,7 +5,8 @@ import type { Messages } from "#/lib/i18n/types";
  * table). `as const satisfies Messages` enforces parity with `en.ts` (AC4/AC9).
  *
  * Notes from the spec §7 flags, resolved by the owner:
- * - `forMom`: "Маме" (the warmer/shorter dedication register) over "Для мамы".
+ * - `brand`: the latin wordmark "Stardust" in every locale (owner rebrand
+ *   2026-06-10; the "Маме"/"For Mom" dedication is retired).
  * - `breadcrumb`: the live tier trail (§5.3) — SOL is the natural Russian
  *   "Солнце" (Sun); "ЗЕМЛЯ"/EARTH from the old static placeholder is dropped
  *   (the 3-tier model has no 4th Earth tier — #112 residue).
@@ -15,20 +16,19 @@ import type { Messages } from "#/lib/i18n/types";
  */
 export const ru = {
   meta: {
-    title: "Галактика воспоминаний",
+    title: "Stardust",
     description:
       "Растущая галактика воспоминаний — каждая звезда хранит чьё-то воспоминание.",
   },
   chrome: {
-    forMom: "Маме",
-    subtitle: "ТИХИЙ УГОЛОК В МЛЕЧНОМ ПУТИ",
-    srOnly:
-      "Галактика воспоминаний — небо из звёзд, и каждая — чьё-то воспоминание.",
+    brand: "Stardust",
+    srOnly: "Stardust — небо из звёзд, и каждая — чьё-то воспоминание.",
     breadcrumb: {
       localGroup: "МЕСТНАЯ ГРУППА",
       galaxy: "МЛЕЧНЫЙ ПУТЬ",
       solarSystem: "СОЛНЦЕ",
     },
+    breadcrumbNav: "Навигация по небу",
     countLabel: "{count} воспоминаний и продолжает расти",
   },
   // Метки доступности для интерактивных элементов галактики (не видимый текст).

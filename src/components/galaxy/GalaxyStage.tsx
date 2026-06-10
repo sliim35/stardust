@@ -168,6 +168,17 @@ export const GalaxyStage = () => {
   // and `nav.diveTo` is the gateway-dive sink for clicks. The camera *follows*
   // the nav state (slice F): a tier flip requests the eased timeline below.
   const nav = useTierNav();
+  // Breadcrumb nav (owner 2026-06-10): a click on a non-active reachable segment
+  // routes through the SAME spine — LOCAL GROUP ascends, MILKY WAY dives home —
+  // so the breadcrumb gets the #167 eased timelines + narration for free.
+  const { ascend, diveTo } = nav;
+  const onTierSelect = useCallback(
+    (target: Tier) => {
+      if (target === "localGroup") ascend();
+      else if (target === "galaxy") diveTo(HOME_MILKY_WAY_ID, "galaxy");
+    },
+    [ascend, diveTo],
+  );
   const prevTier = useRef(nav.state.tier);
   useEffect(() => {
     const from = prevTier.current;
@@ -330,6 +341,7 @@ export const GalaxyStage = () => {
           palette={palette}
           onPaletteChange={setPalette}
           tier={displayedTier}
+          onTierSelect={onTierSelect}
           narration={narration}
           onNarrationDismiss={() => setNarration(null)}
         />

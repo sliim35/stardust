@@ -47,10 +47,12 @@ const TAU = Math.PI * 2;
 const LG_ZOOM = 0.85;
 
 /**
- * Where the MW reads on screen at the LG rest (the FINAL proof's anchor: roughly
- * centred, ~70px low). The framing below is derived from it, never authored raw.
+ * Where the MW reads on screen at the LG rest. The FINAL proof anchored it ~70px
+ * low; the 2026-06-10 owner relayout raised the whole composition (~15px low now
+ * — near-centred, slightly weighted down so the top chrome breathes). The framing
+ * below is derived from it, never authored raw.
  */
-const LG_MW_SCREEN = { x: 632, y: 470 } as const;
+const LG_MW_SCREEN = { x: 632, y: 415 } as const;
 
 /**
  * The LG resting camera, derived so the world-invariant MW (`GALAXY_CENTER`)
