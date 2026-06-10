@@ -6,8 +6,9 @@ import type { Messages } from "#/lib/i18n/types";
  *
  * Notes from the spec §7 flags, resolved by the owner:
  * - `forMom`: "Маме" (the warmer/shorter dedication register) over "Для мамы".
- * - `breadcrumbSolEarth`: "СОЛНЦЕ › ЗЕМЛЯ" — SOL rendered as the natural Russian
- *   "Солнце" (Sun); leading " › " separator + spacing kept identical to en.
+ * - `breadcrumb`: the live tier trail (§5.3) — SOL is the natural Russian
+ *   "Солнце" (Sun); "ЗЕМЛЯ"/EARTH from the old static placeholder is dropped
+ *   (the 3-tier model has no 4th Earth tier — #112 residue).
  * - `countLabel`: genitive-plural form (no ICU plurals — story §Out-of-scope).
  * - `astro.*`: ASTRO narration (#72), AI-generated Russian matching ASTRO's
  *   wistful, first-person, sentence-case voice. Folded into #103.
@@ -23,8 +24,11 @@ export const ru = {
     subtitle: "ТИХИЙ УГОЛОК В МЛЕЧНОМ ПУТИ",
     srOnly:
       "Галактика воспоминаний — небо из звёзд, и каждая — чьё-то воспоминание.",
-    breadcrumbMilkyWay: "МЛЕЧНЫЙ ПУТЬ",
-    breadcrumbSolEarth: " › СОЛНЦЕ › ЗЕМЛЯ",
+    breadcrumb: {
+      localGroup: "МЕСТНАЯ ГРУППА",
+      galaxy: "МЛЕЧНЫЙ ПУТЬ",
+      solarSystem: "СОЛНЦЕ",
+    },
     countLabel: "{count} воспоминаний и продолжает расти",
   },
   // Метки доступности для интерактивных элементов галактики (не видимый текст).

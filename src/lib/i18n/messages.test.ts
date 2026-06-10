@@ -65,8 +65,11 @@ describe("owner-confirmed final strings (the authoritative table)", () => {
     expect(en.chrome.srOnly).toBe(
       "Memory Galaxy — a sky of stars, each one a memory.",
     );
-    expect(en.chrome.breadcrumbMilkyWay).toBe("MILKY WAY");
-    expect(en.chrome.breadcrumbSolEarth).toBe(" › SOL › EARTH");
+    expect(en.chrome.breadcrumb).toEqual({
+      localGroup: "LOCAL GROUP",
+      galaxy: "MILKY WAY",
+      solarSystem: "SOL",
+    });
     expect(en.chrome.countLabel).toBe("{count} memories, still growing");
     expect(en.meta.title).toBe("Memory Galaxy");
     expect(en.meta.description).toBe(
@@ -80,8 +83,11 @@ describe("owner-confirmed final strings (the authoritative table)", () => {
     expect(ru.chrome.srOnly).toBe(
       "Галактика воспоминаний — небо из звёзд, и каждая — чьё-то воспоминание.",
     );
-    expect(ru.chrome.breadcrumbMilkyWay).toBe("МЛЕЧНЫЙ ПУТЬ");
-    expect(ru.chrome.breadcrumbSolEarth).toBe(" › СОЛНЦЕ › ЗЕМЛЯ");
+    expect(ru.chrome.breadcrumb).toEqual({
+      localGroup: "МЕСТНАЯ ГРУППА",
+      galaxy: "МЛЕЧНЫЙ ПУТЬ",
+      solarSystem: "СОЛНЦЕ",
+    });
     expect(ru.chrome.countLabel).toBe(
       "{count} воспоминаний и продолжает расти",
     );

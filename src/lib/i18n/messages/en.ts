@@ -15,8 +15,14 @@ export const en = {
     forMom: "For Mom",
     subtitle: "A QUIET PLACE IN THE MILKY WAY",
     srOnly: "Memory Galaxy — a sky of stars, each one a memory.",
-    breadcrumbMilkyWay: "MILKY WAY",
-    breadcrumbSolEarth: " › SOL › EARTH",
+    // Live tier-driven wayfinding trail (§5.3) — one segment per Tier; the
+    // active segment is the displayed tier. The old static placeholder's "EARTH"
+    // is intentionally dropped (no 4th tier; the solarSystem label is "SOL").
+    breadcrumb: {
+      localGroup: "LOCAL GROUP",
+      galaxy: "MILKY WAY",
+      solarSystem: "SOL",
+    },
     countLabel: "{count} memories, still growing",
   },
   // Accessibility labels for interactive galaxy elements (not visible copy).
