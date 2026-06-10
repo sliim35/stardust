@@ -202,6 +202,7 @@ export type RealKind = "galaxy" | "nebula" | "star" | "marker" | "armLabel";
 export type RealShape =
   | "barred-spiral"
   | "spiral"
+  | "flocculent-spiral"
   | "magellanic"
   | "irregular"
   | "dwarf-spheroidal"

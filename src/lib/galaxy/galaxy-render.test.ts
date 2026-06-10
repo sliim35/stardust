@@ -66,7 +66,7 @@ describe("placementFor — RealObject → DiskPlacement (ADR-0011 §1)", () => {
 describe("tuningFor — RealObject → GalaxyBackdrop tuning (ADR-0011 §1)", () => {
   it("maps arms → branches for spiral neighbours", () => {
     expect(tuningFor(byId("andromeda")).branches).toBe(2); // M31 arms:2
-    expect(tuningFor(byId("triangulum")).branches).toBe(4); // M33 pinwheel arms:4
+    expect(tuningFor(byId("triangulum")).branches).toBe(5); // M33 flocculent fragments (2026-06-10)
     expect(tuningFor(byId(HOME_MILKY_WAY_ID)).branches).toBe(4); // MW arms:4
   });
 
@@ -129,6 +129,20 @@ describe("buildGalaxyGeometry — render-capability for one real object (ADR-001
       expect(Math.abs(meanX - place.cx)).toBeLessThanOrEqual(place.r + 1);
       expect(Math.abs(meanY - place.cy)).toBeLessThanOrEqual(place.r + 1);
     }
+  });
+
+  it("renders M33 with its OWN flocculent recipe — not the grand-design twin (2026-06-10)", () => {
+    const m33 = byId("triangulum");
+    expect(m33.shape).toBe("flocculent-spiral");
+    const floc = buildGalaxyGeometry(m33);
+    // The same object forced through the grand-design recipe must diverge —
+    // the owner's complaint was exactly that the two were indistinguishable.
+    const grand = buildGalaxyGeometry({ ...m33, shape: "spiral" });
+    expect(floc.arms).not.toEqual(grand.arms);
+    // Real M33's nucleus is tiny: the flocculent core stays well under the
+    // MW-family bulge budget (560 points).
+    expect(floc.bulge.length).toBeLessThan(grand.bulge.length);
+    expect(floc.arms.length).toBeGreaterThan(0);
   });
 
   it("renders the magellanic / irregular clouds as a clumpy cloud (no clean spiral arms)", () => {
