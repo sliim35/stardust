@@ -16,8 +16,13 @@ import type { Messages } from "#/lib/i18n/types";
  * (#167) is preserved verbatim — at rest the scene shows NO titles; hovering or
  * keyboard-focusing a galaxy's hit-target fades its serif name + mono distance up
  * — but the hit-target is now a real `<button>` that DOES something: a click
- * routes through the shared `useObjectClick` seam (MW dive · neighbour lore card),
- * and hover/focus also paints the subtle #154 "clickable" highlight.
+ * routes through the shared `useObjectClick` seam (MW dive · neighbour lore card).
+ *
+ * The #169 in-DOM `data-lg-glow` wash is GONE (#174): on a non-square hit-box the
+ * `rounded-full` + farthest-corner circle gradient clipped into a boxy "oreol".
+ * The clickable highlight now lives on a canvas (the hovered galaxy's own point
+ * cloud blooms — `GalaxyBackdrop`); this layer just reports the active id up
+ * through `onActiveChange`, leaving the bloom render to the backdrop.
  *
  * Everything below derives from the composition module (`lgHitTargets` /
  * `lgLabels`) and the lore catalog — no magic positions or strings.
@@ -26,6 +31,7 @@ import type { Messages } from "#/lib/i18n/types";
 const renderLabels = (
   lore: Messages["lore"] = en.lore,
   onSelect: (id: string) => void = () => {},
+  onActiveChange: (id: string | null) => void = () => {},
 ) =>
   render(
     <LgGalaxyLabels
@@ -33,6 +39,7 @@ const renderLabels = (
       targets={lgHitTargets()}
       lore={lore}
       onSelect={onSelect}
+      onActiveChange={onActiveChange}
     />,
   );
 
@@ -51,13 +58,6 @@ const targetByKey = (key: LgHitTarget["loreKey"]): LgHitTarget => {
 const labelEl = (key: LgHitTarget["loreKey"]): HTMLElement => {
   const el = screen.getByText(en.lore[key].name).closest("[data-lg-label]");
   if (!(el instanceof HTMLElement)) throw new Error(`no label node for ${key}`);
-  return el;
-};
-
-/** The per-target clickable-highlight glow (#154 "real" affordance, #169). */
-const glowEl = (id: string): HTMLElement => {
-  const el = document.querySelector(`[data-lg-glow="${id}"]`);
-  if (!(el instanceof HTMLElement)) throw new Error(`no glow node for ${id}`);
   return el;
 };
 
@@ -168,37 +168,56 @@ describe("LgGalaxyLabels — clickable controls (#169)", () => {
     expect(onSelect).toHaveBeenCalledWith("home");
   });
 
-  it("hover paints ONLY the active target's clickable highlight; un-hover restores", () => {
+  // #174: the highlight moved off the DOM. The boxy `data-lg-glow` span — a
+  // `rounded-full` circle-gradient that clipped into a pill "oreol" on a
+  // non-square hit-box — is gone; the bloom now lives on the backdrop canvas. The
+  // label layer no longer paints any in-DOM highlight at all.
+  it("renders NO in-DOM clickable-highlight span (the #169 data-lg-glow wash is removed)", () => {
     renderLabels();
+    expect(document.querySelector("[data-lg-glow]")).toBeNull();
+    fireEvent.pointerEnter(
+      screen.getByRole("button", {
+        name: ariaName(en.lore, targetByKey("andromeda")),
+      }),
+    );
+    // …and hovering a target mints no glow node either.
+    expect(document.querySelector("[data-lg-glow]")).toBeNull();
+  });
+});
+
+describe("LgGalaxyLabels — active-id reporting drives the canvas bloom (#174)", () => {
+  it("reports ONLY the hovered target's id on pointerenter; null on pointerleave", () => {
+    const onActiveChange = vi.fn();
+    renderLabels(en.lore, undefined, onActiveChange);
     const andromeda = screen.getByRole("button", {
       name: ariaName(en.lore, targetByKey("andromeda")),
     });
     fireEvent.pointerEnter(andromeda);
-    expect(glowEl("andromeda").className).toContain("opacity-100");
-    for (const id of ["home", "triangulum", "lmc", "smc"]) {
-      expect(glowEl(id).className).toContain("opacity-0");
-    }
+    expect(onActiveChange).toHaveBeenLastCalledWith("andromeda");
     fireEvent.pointerLeave(andromeda);
-    expect(glowEl("andromeda").className).toContain("opacity-0");
+    expect(onActiveChange).toHaveBeenLastCalledWith(null);
   });
 
-  it("keyboard focus paints the same clickable highlight; blur restores", () => {
-    renderLabels();
+  it("reports the MW gateway id 'home' (not its loreKey) on hover", () => {
+    const onActiveChange = vi.fn();
+    renderLabels(en.lore, undefined, onActiveChange);
+    fireEvent.pointerEnter(
+      screen.getByRole("button", {
+        name: ariaName(en.lore, targetByKey("milkyWay")),
+      }),
+    );
+    expect(onActiveChange).toHaveBeenLastCalledWith("home");
+  });
+
+  it("keyboard focus reports the id too; blur reports null", () => {
+    const onActiveChange = vi.fn();
+    renderLabels(en.lore, undefined, onActiveChange);
     const triangulum = screen.getByRole("button", {
       name: ariaName(en.lore, targetByKey("triangulum")),
     });
     fireEvent.focus(triangulum);
-    expect(glowEl("triangulum").className).toContain("opacity-100");
+    expect(onActiveChange).toHaveBeenLastCalledWith("triangulum");
     fireEvent.blur(triangulum);
-    expect(glowEl("triangulum").className).toContain("opacity-0");
-  });
-
-  it("the clickable highlight cross-fades but snaps under prefers-reduced-motion", () => {
-    renderLabels();
-    for (const t of lgHitTargets()) {
-      const glow = glowEl(t.id);
-      expect(glow.className).toContain("transition-opacity");
-      expect(glow.className).toContain("motion-reduce:transition-none");
-    }
+    expect(onActiveChange).toHaveBeenLastCalledWith(null);
   });
 });

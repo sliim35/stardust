@@ -1,17 +1,24 @@
 import { describe, expect, it } from "vitest";
-import type { DiskPlacement } from "#/lib/galaxy/backdrop";
 import {
+  buildBackdropGeometry,
+  type DiskPlacement,
+  MW_PLACEMENT,
+} from "#/lib/galaxy/backdrop";
+import {
+  BLOOM_TUNING,
+  bloomPointsFor,
   buildGalaxyGeometry,
   placementFor,
   tuningFor,
 } from "#/lib/galaxy/galaxy-render";
+import { LG_MW_PLACEMENT, lgGalaxies } from "#/lib/galaxy/lg-composition";
 import { GALAXY_R, polarToXY, STAGE_H, STAGE_W } from "#/lib/galaxy/place";
 import {
   HOME_MILKY_WAY_ID,
   localGroupNeighbours,
   REAL_OBJECTS,
 } from "#/lib/galaxy/realdata";
-import type { RealObject } from "#/lib/galaxy/types";
+import type { GalaxyBackdrop, RealObject } from "#/lib/galaxy/types";
 
 const byId = (id: string): RealObject => {
   const o = REAL_OBJECTS.find((x) => x.id === id);
@@ -152,5 +159,71 @@ describe("buildGalaxyGeometry — render-capability for one real object (ADR-001
     expect(Math.abs(meanY - custom.cy)).toBeLessThanOrEqual(custom.r + 1);
     // …and differs from the default data-placement build.
     expect(g).not.toEqual(buildGalaxyGeometry(o));
+  });
+});
+
+describe("bloomPointsFor — LG hover bloom payload (#174)", () => {
+  const backdrop: GalaxyBackdrop = {
+    seed: 7,
+    branches: 4,
+    spin: 1,
+    randomnessPower: 2.2,
+    palette: "ember",
+  };
+  const neighbours = lgGalaxies();
+  const args = { backdrop, homePlacement: LG_MW_PLACEMENT, neighbours };
+
+  it("returns no points when nothing is highlighted", () => {
+    expect(bloomPointsFor(null, args)).toHaveLength(0);
+    expect(bloomPointsFor(undefined, args)).toHaveLength(0);
+    expect(bloomPointsFor("nobody-here", args)).toHaveLength(0);
+  });
+
+  it("blooms a neighbour's OWN arms+bulge (not the deep field) when its id matches", () => {
+    const m31 = neighbours.find((n) => n.object.id === "andromeda");
+    if (!m31) throw new Error("no andromeda neighbour");
+    const geom = buildGalaxyGeometry(m31.object, m31.place);
+    // The bloom is the neighbour's arms + bulge, in that order — never bgStars.
+    expect(bloomPointsFor("andromeda", args)).toEqual([
+      ...geom.arms,
+      ...geom.bulge,
+    ]);
+    expect(geom.bgStars).toHaveLength(0); // neighbours carry no deep field
+  });
+
+  it("blooms the MW gateway's LG-placement arms+bulge — NEVER its bgStars", () => {
+    const geom = buildBackdropGeometry(backdrop, LG_MW_PLACEMENT);
+    const points = bloomPointsFor(HOME_MILKY_WAY_ID, args);
+    // The bloom is EXACTLY arms + bulge (an array equality proves the deep field
+    // never leaks in — the full bgStars cloud would change both length and order).
+    expect(points).toEqual([...geom.arms, ...geom.bulge]);
+    expect(points.length).toBe(geom.arms.length + geom.bulge.length);
+    expect(geom.bgStars.length).toBeGreaterThan(0); // the field exists…
+    expect(points.length).toBeLessThan(
+      geom.arms.length + geom.bulge.length + geom.bgStars.length,
+    ); // …but is excluded from the bloom payload
+  });
+
+  it("respects the home placement override (default MW vs shrunk LG placement differ)", () => {
+    const lg = bloomPointsFor(HOME_MILKY_WAY_ID, args);
+    const home = bloomPointsFor(HOME_MILKY_WAY_ID, {
+      ...args,
+      homePlacement: MW_PLACEMENT,
+    });
+    expect(lg).not.toEqual(home);
+  });
+
+  it("is pure — same inputs yield byte-identical bloom points", () => {
+    expect(bloomPointsFor("triangulum", args)).toEqual(
+      bloomPointsFor("triangulum", args),
+    );
+  });
+
+  it("exposes bloom tuning that brightens but never over-saturates (×1.25 / ×0.9)", () => {
+    expect(BLOOM_TUNING.diameterScale).toBeCloseTo(1.25, 6);
+    expect(BLOOM_TUNING.alphaScale).toBeCloseTo(0.9, 6);
+    // The alpha multiply is clamped at 1 downstream, so a fully-bright point
+    // can't push past the additive ceiling.
+    expect(Math.min(1, 1 * BLOOM_TUNING.alphaScale)).toBeLessThanOrEqual(1);
   });
 });

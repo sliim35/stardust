@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { LgHitTarget, LgLabel } from "#/lib/galaxy/lg-composition";
 import type { Messages } from "#/lib/i18n/types";
 
@@ -16,9 +16,11 @@ import type { Messages } from "#/lib/i18n/types";
  *    through the shared `useObjectClick` seam (the MW gateway dives, a neighbour
  *    opens its lore card). A button is correct now — it DOES something — so it
  *    keeps the keyboard parity (Tab to focus, Enter/Space to activate) for free,
- *    no faked `role="img"`/`tabIndex`. Hover/focus also paints the subtle #154
- *    "clickable" highlight (a soft accent glow) alongside the title, so the
- *    galaxy reads as "you can click this" (snaps under `prefers-reduced-motion`).
+ *    no faked `role="img"`/`tabIndex`. Hover/focus also reports the active galaxy
+ *    up through `onActiveChange` so the backdrop can bloom that galaxy's own point
+ *    cloud (#174 — the "you can click this" cue). This layer paints NO highlight
+ *    of its own: the #169 in-DOM `data-lg-glow` wash clipped into a boxy "oreol"
+ *    on the non-square hit-boxes, so the highlight moved onto the disk canvas.
  *
  * **Hit-targets** are sized/positioned by the pure composition (`lgHitTargets`
  * — centre + `placedExtent` silhouette reach, no geometry invented here) and
@@ -39,17 +41,33 @@ export const LgGalaxyLabels = ({
   targets,
   lore,
   onSelect,
+  onActiveChange,
 }: {
   labels: readonly LgLabel[];
   targets: readonly LgHitTarget[];
   lore: Messages["lore"];
   /** Click sink: the composition `id` of the clicked galaxy (the stage resolves it). */
   onSelect: (id: string) => void;
+  /**
+   * Active-galaxy sink (#174): the hovered/focused hit-target `id`, or `null` on
+   * leave/blur. The stage forwards it to `GalaxyBackdrop` as `highlight`, which
+   * blooms that galaxy's own point cloud — replacing the removed in-DOM glow.
+   */
+  onActiveChange?: (id: string | null) => void;
 }) => {
   // One active galaxy at a time — pointer enter/leave and focus/blur both feed
-  // it, last event wins (the MemoryStarView onHoverChange semantics). Drives both
-  // the title reveal and the clickable highlight.
+  // it, last event wins (the MemoryStarView onHoverChange semantics). Drives the
+  // title reveal here AND, via `onActiveChange`, the backdrop's point-cloud bloom.
   const [active, setActive] = useState<string | null>(null);
+  // Set + notify in one step so the parent stays in lockstep with the local
+  // reveal — no `useEffect` round-trip, the bloom tracks the hover frame-for-frame.
+  const setActiveAndNotify = useCallback(
+    (id: string | null) => {
+      setActive(id);
+      onActiveChange?.(id);
+    },
+    [onActiveChange],
+  );
   return (
     <div className="pointer-events-none absolute inset-0">
       {targets.map((t) => (
@@ -64,23 +82,12 @@ export const LgGalaxyLabels = ({
             width: `${Math.round(t.halfW * 2)}px`,
             height: `${Math.round(t.halfH * 2)}px`,
           }}
-          onPointerEnter={() => setActive(t.id)}
-          onPointerLeave={() => setActive(null)}
-          onFocus={() => setActive(t.id)}
-          onBlur={() => setActive(null)}
+          onPointerEnter={() => setActiveAndNotify(t.id)}
+          onPointerLeave={() => setActiveAndNotify(null)}
+          onFocus={() => setActiveAndNotify(t.id)}
+          onBlur={() => setActiveAndNotify(null)}
           onClick={() => onSelect(t.id)}
-        >
-          {/* The #154 "real" clickable highlight: a soft, restrained accent glow
-              that fades in on hover/focus — the cue that the silhouette is
-              interactive (matching the mem-star restraint, not a loud new visual). */}
-          <span
-            data-lg-glow={t.id}
-            aria-hidden="true"
-            className={`pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--color-accent)_22%,transparent),transparent_70%)] transition-opacity duration-200 motion-reduce:transition-none ${
-              active === t.id ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        </button>
+        />
       ))}
       <div aria-hidden="true">
         {labels.map((l) => (
