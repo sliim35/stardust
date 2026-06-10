@@ -20,6 +20,7 @@
 import {
   type BackdropGeometry,
   type BackdropPoint,
+  BULGE_STREAM_XOR,
   buildArmsAndBulge,
   buildBackdropGeometry,
   type DiskPlacement,
@@ -183,7 +184,7 @@ const buildFlocculentGeometry = (
   }
 
   // The tiny nucleus — much smaller + quieter than the MW-family bulge.
-  const bulgeRng = mulberry32(tuning.seed ^ 0xc2b2ae35);
+  const bulgeRng = mulberry32(tuning.seed ^ BULGE_STREAM_XOR);
   const bulge: BackdropPoint[] = [];
   for (let i = 0; i < FLOC.coreCount; i++) {
     const rNorm = bulgeRng() ** 2.4 * FLOC.coreReach;
@@ -300,7 +301,8 @@ export type PlacedGalaxy = {
  * existing `paintGlow` + `paletteFor`. `bgStars` is always empty — the home MW
  * backdrop owns the one deep field; a neighbour contributes only its own disk.
  *
- * v1 recipe map: barred-spiral / spiral reuse the arm+core generator; magellanic /
+ * v1 recipe map: barred-spiral / spiral reuse the arm+core generator;
+ * flocculent-spiral (M33, 2026-06-10) gets the beaded-knot builder; magellanic /
  * irregular use the clumpy variant; dwarf-spheroidal (M31's satellites) falls through
  * to the clumpy variant too (a small structureless blob). The map is the seam #155 /
  * #127 extend later.

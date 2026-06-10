@@ -293,4 +293,20 @@ describe("lgLabels — serif name + mono distance anchors (FINAL proof)", () => 
       expect(l.y).toBeLessThanOrEqual(STAGE_H);
     }
   });
+
+  it("anchors M33's label at FULL extent + gap — flocculent is rim-reaching, not clumpy (#177 review)", () => {
+    // The flocculent knot ladder runs to ~0.93·r + spread: its seen mass fills
+    // the disk like a spiral. The old spiral-or-not boolean dropped the new
+    // shape into the 0.72 clumpy factor and collapsed the LG_LABEL_GAP
+    // breathing room into the outer beads — pin the full-extent contract.
+    const m33 = lgLabels().find((l) => l.id === "triangulum");
+    if (!m33) throw new Error("no triangulum label");
+    const place = lgGalaxies().find(
+      ({ object }) => object.id === "triangulum",
+    )?.place;
+    if (!place) throw new Error("no triangulum placement");
+    expect(m33.side).toBe("above");
+    // gap = full projected half-extent + the authored 26px breathing room.
+    expect(place.cy - m33.y).toBeGreaterThanOrEqual(placedExtent(place).y + 26);
+  });
 });

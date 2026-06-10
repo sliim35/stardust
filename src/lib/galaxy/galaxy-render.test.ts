@@ -138,6 +138,11 @@ describe("buildGalaxyGeometry — render-capability for one real object (ADR-001
     // The same object forced through the grand-design recipe must diverge —
     // the owner's complaint was exactly that the two were indistinguishable.
     const grand = buildGalaxyGeometry({ ...m33, shape: "spiral" });
+    // Structural divergence, not just any-point delta: the flocculent budget
+    // (knots·points + field sprinkle) ≠ the grand generator's per-arm budget —
+    // a knob change that quietly reroutes M33 back through the spiral recipe
+    // fails loudly here.
+    expect(floc.arms.length).not.toBe(grand.arms.length);
     expect(floc.arms).not.toEqual(grand.arms);
     // Real M33's nucleus is tiny: the flocculent core stays well under the
     // MW-family bulge budget (560 points).

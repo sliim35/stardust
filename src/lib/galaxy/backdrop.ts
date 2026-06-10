@@ -171,6 +171,14 @@ export const pointAt = (
 };
 
 /**
+ * The xor fold that derives a recipe's *bulge/core* rng stream from its arm
+ * seed — independent streams, so tuning one never reshuffles the other. One
+ * owner for the convention: every geometry recipe (here + `galaxy-render.ts`)
+ * folds with this same constant.
+ */
+export const BULGE_STREAM_XOR = 0xc2b2ae35;
+
+/**
  * The placed arm + bulge point clouds — the disk *body* shared by the home Milky Way
  * (`buildBackdropGeometry`) and every Local-Group neighbour (`galaxy-render.ts`'s
  * spiral recipe), so the two stay in ONE visual family by construction (no drift if
@@ -184,7 +192,7 @@ export const buildArmsAndBulge = (
 ): { arms: BackdropPoint[]; bulge: BackdropPoint[] } => {
   const { seed, branches, spin, randomnessPower } = tuning;
   const armRng = mulberry32(seed);
-  const bulgeRng = mulberry32(seed ^ 0xc2b2ae35);
+  const bulgeRng = mulberry32(seed ^ BULGE_STREAM_XOR);
 
   const arms: BackdropPoint[] = [];
   for (let arm = 0; arm < branches; arm++) {
