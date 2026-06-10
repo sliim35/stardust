@@ -58,24 +58,31 @@ export const GalaxyChrome = ({
   const m = getMessages(useLocale());
   return (
     <div className="pointer-events-none absolute inset-0">
-      <h1 className="absolute top-[max(22px,env(safe-area-inset-top))] left-[max(28px,env(safe-area-inset-left))] m-0 flex flex-col gap-[5px] font-normal">
-        <span className="font-serif text-title font-semibold text-accent [font-variation-settings:'opsz'_56,'SOFT'_100,'WONK'_0] [text-shadow:0_0_18px_var(--color-accent-soft)]">
+      {/* The h1 is the wordmark ALONE — the live count and the sr-only line are
+          siblings, so the page heading stays a stable "Stardust" instead of a
+          mutating brand+count+brand concatenation (review nit, 2026-06-10). */}
+      <div className="absolute top-[max(22px,env(safe-area-inset-top))] left-[max(28px,env(safe-area-inset-left))] flex flex-col gap-[5px]">
+        <h1 className="m-0 font-serif text-title font-semibold text-accent [font-variation-settings:'opsz'_56,'SOFT'_100,'WONK'_0] [text-shadow:0_0_18px_var(--color-accent-soft)]">
           {m.chrome.brand}
-        </span>
-        <span className="font-mono text-count tracking-[1px] text-dim-2">
+        </h1>
+        <p className="m-0 font-mono text-count tracking-[1px] text-dim-2">
           {interpolate(m.chrome.countLabel, { count })}
-        </span>
-        <span className="sr-only">{m.chrome.srOnly}</span>
-      </h1>
+        </p>
+        <p className="sr-only">{m.chrome.srOnly}</p>
+      </div>
       <nav
         aria-label={m.chrome.breadcrumbNav}
         className="absolute top-[max(24px,env(safe-area-inset-top))] right-[max(28px,env(safe-area-inset-right))] max-[620px]:hidden"
       >
         {BREADCRUMB_TRAIL.map((segment, i) => (
           <Fragment key={segment}>
-            {/* The ` › ` separators are always dim — never part of a link. */}
+            {/* Separators are visual-only: dim, never part of a link, and
+                aria-hidden — the nav is real now, so AT must not read them. */}
             {i > 0 && (
-              <span className={`${BREADCRUMB_SEGMENT_BASE} text-dim-3`}>
+              <span
+                aria-hidden="true"
+                className={`${BREADCRUMB_SEGMENT_BASE} text-dim-3`}
+              >
                 {" › "}
               </span>
             )}
