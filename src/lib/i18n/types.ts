@@ -39,6 +39,18 @@ export type Messages = {
     breadcrumbNav: string;
     /** Carries the `{count}` placeholder — see `interpolate` in `index.ts`. */
     countLabel: string;
+    /**
+     * The backdrop theme switcher (owner redesign 2026-06-10; research note
+     * `docs/research/2026-06-10-theme-switcher.md`): the radiogroup's accessible
+     * name + one reveal-on-hover label per palette (keys mirror the `Palette`
+     * union — the former hardcoded `PALETTE_LABELS`, now localized).
+     */
+    backdrop: {
+      label: string;
+      auroral: string;
+      ember: string;
+      ice: string;
+    };
   };
   /** Accessibility labels for interactive galaxy elements (not visible copy). */
   a11y: {

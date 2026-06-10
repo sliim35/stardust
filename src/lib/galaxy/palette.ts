@@ -115,12 +115,8 @@ export const paletteAccentRgb = (
  */
 export const PALETTE_ORDER = ["auroral", "ember", "ice"] as const;
 
-/** Human swatch labels — resolves the #44 amber-vs-green call as a user choice. */
-export const PALETTE_LABELS = {
-  auroral: "sea glass",
-  ember: "amber",
-  ice: "moonlit",
-} as const satisfies Record<Palette, string>;
+// The human swatch labels moved to the i18n catalog (`chrome.backdrop.*`,
+// en+ru) with the 2026-06-10 switcher redesign — the #103 no-hardcoded-copy rule.
 
 /** Guard for persisted / user-supplied palette values (e.g. from localStorage). */
 export const isPalette = (v: unknown): v is Palette =>
