@@ -18,6 +18,9 @@ On a planning pass, when the backlog drifts, or when asked "what's next?".
 ## Procedure
 1. **Reconcile** stories ↔ issues: every open story has a live issue and vice-versa.
    Flag/fix drift (missing issue, stale `status:*` label, closed issue with `todo` story).
+   Also scan merged PRs for **`base ≠ main`** (`gh pr list --state merged --json
+   number,baseRefName`) — a hit means stacked-PR content that never reached `main`
+   (stranded; recover by cherry-picking the stranded squash onto `main`, cf. #178→#179).
 2. **Prioritize**: assign/adjust `priority:P0..P3` based on value, risk, and dependencies.
 3. **Dedupe & label**: merge duplicates; ensure each issue has type/priority/status/role labels.
 4. **Update** story frontmatter `status` to mirror the issue (issue = source of truth).

@@ -125,6 +125,11 @@ issue bodies must duplicate goal + acceptance criteria. See
 - **Branches:** `<type>/<issue#>-<short-description>` — the conventional-commit type, the
   story's issue number, then a kebab slug (e.g. `chore/99-qa-stage-split`,
   `feat/71-astro-interactive-states`, `fix/86-starfield-hydration`). Branch off `main`.
+- **Stacked PRs:** GitHub only retargets a child PR to `main` when its base **branch is
+  deleted** on merge — merging a child into an already-merged-but-undeleted base strands
+  the content off `main` silently (#178 → re-land #179). When stacking: state the required
+  merge order in **both** PR bodies, and after the base merges, retarget the child to
+  `main` before it is merged.
 - **Labels:** `type:{epic,story,bug,spike}` · `priority:{P0..P3}` ·
   `status:{todo,in-progress,in-review,blocked}` (done = closed) ·
   `role:{research,architecture,design,dev,qa,devops}`. Defined in `.github/labels.yml`.
