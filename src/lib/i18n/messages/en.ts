@@ -27,6 +27,13 @@ export const en = {
     },
     breadcrumbNav: "Sky navigation",
     countLabel: "{count} memories, still growing",
+    // The backdrop theme switcher (former hardcoded PALETTE_LABELS, localized).
+    backdrop: {
+      label: "Backdrop theme",
+      auroral: "sea glass",
+      ember: "amber",
+      ice: "moonlit",
+    },
   },
   // Accessibility labels for interactive galaxy elements (not visible copy).
   a11y: {
