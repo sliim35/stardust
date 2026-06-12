@@ -155,12 +155,15 @@ const REAL_OBJECTS_DATA = [
     tier: "localGroup",
     realDistance: { value: 2.7, unit: "Mly" },
     placement: { r: 0.78, angle: 5.66 }, // upper-right (FINAL proof)
-    shape: "spiral",
+    // Real M33 is the textbook FLOCCULENT spiral — loose, patchy, beaded arm
+    // fragments and a tiny core, no bar. Its own recipe since the owner pass
+    // 2026-06-10 (it read as a MW twin under the shared grand-design generator).
+    shape: "flocculent-spiral",
     size: 0.62, // legibility-curated: the proof's face-on pinwheel reads large
     brightness: 0.62,
     color: "#93b6dd",
     loreKey: "triangulum",
-    arms: 4, // flocculent face-on pinwheel (FINAL proof), not a 2-arm sweep
+    arms: 5, // many short arm fragments, not the MW's 4 grand sweeps
     barAngle: 0,
     tilt: 0.9,
   },

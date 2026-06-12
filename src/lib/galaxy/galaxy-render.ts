@@ -20,6 +20,7 @@
 import {
   type BackdropGeometry,
   type BackdropPoint,
+  BULGE_STREAM_XOR,
   buildArmsAndBulge,
   buildBackdropGeometry,
   type DiskPlacement,
@@ -89,6 +90,118 @@ const buildSpiralGeometry = (
   // Reuse the SAME arm+bulge generator as the home disk (one visual family); a
   // neighbour contributes no full-stage deep field, so bgStars stays empty.
   const { arms, bulge } = buildArmsAndBulge(tuning, place);
+  return { bgStars: [], arms, bulge };
+};
+
+/**
+ * Flocculent tuning (M33, owner pass 2026-06-10). One knob set = one look; the
+ * variant bake-off values live in the PR. The character vs the grand-design MW:
+ * arms are LOOSE (less wound), BEADED (short patchy knots strung along the
+ * spiral flow, not continuous lanes), the core is tiny, and a faint inter-arm
+ * sprinkle blends the patches into one disk.
+ */
+const FLOC = {
+  startR: 0.14, // arms start just off the small core
+  wind: 0.95, // log-spiral winding — much looser than the MW's 1.8
+  knotsPerArm: 7,
+  pointsPerKnot: 58,
+  knotSpread: { min: 0.07, max: 0.15 }, // per-knot fuzz (disk fraction)
+  knotJitter: 0.22, // angular scatter off the exact spiral path (radians)
+  fieldPoints: 260, // faint inter-arm sprinkle (one disk, not loose beads)
+  coreCount: 200, // real M33's nucleus is tiny next to the MW bulge
+  coreReach: 0.12,
+} as const;
+
+/**
+ * The flocculent recipe (M33) — short star-forming patches *beaded along* a
+ * loosely-wound spiral flow, instead of the MW generator's continuous arms.
+ * Knot centres follow `theta = base + ln(r/startR)·wind` (the same log-spiral
+ * family, so it still reads as a pinwheel in motion direction), but each knot
+ * scatters its own round fuzz and the arm between knots stays dark — the
+ * patchy, broken look that separates M33 from a grand-design twin. Same
+ * `pointAt` path as every other recipe (soft glow, clamp, SSR-safe quantize).
+ */
+const buildFlocculentGeometry = (
+  tuning: GalaxyBackdrop,
+  place: DiskPlacement,
+): BackdropGeometry => {
+  const rng = mulberry32(tuning.seed);
+  const arms: BackdropPoint[] = [];
+
+  for (let arm = 0; arm < tuning.branches; arm++) {
+    const armBase = (arm / tuning.branches) * TAU;
+    for (let k = 0; k < FLOC.knotsPerArm; k++) {
+      // Even radial ladder + jitter → beads from the core edge to the rim.
+      const t = (k + 0.35 + rng() * 0.5) / FLOC.knotsPerArm;
+      const kr = FLOC.startR + (0.95 - FLOC.startR) * t;
+      const ktheta =
+        armBase +
+        Math.log(kr / FLOC.startR) * FLOC.wind +
+        (rng() - 0.5) * FLOC.knotJitter;
+      const spread =
+        FLOC.knotSpread.min +
+        rng() * (FLOC.knotSpread.max - FLOC.knotSpread.min);
+      const kx = Math.cos(ktheta) * kr;
+      const ky = Math.sin(ktheta) * kr;
+      // Outer knots fade — real flocculents dim toward the rim.
+      const fade = 1 - 0.45 * t;
+      for (let i = 0; i < FLOC.pointsPerKnot; i++) {
+        const px = kx + (rng() + rng() - 1) * spread;
+        const py = ky + (rng() + rng() - 1) * spread;
+        const rNorm = Math.min(Math.hypot(px, py), 1);
+        const theta = Math.atan2(py, px);
+        arms.push(
+          pointAt(
+            rNorm,
+            theta,
+            rng,
+            (0.38 + rng() * 0.42) * fade,
+            0.3 + rng() * 0.5,
+            0.1,
+            place,
+          ),
+        );
+      }
+    }
+  }
+
+  // Faint inter-arm sprinkle so the beads read as ONE low-surface-brightness
+  // disk (the #151 lesson: never disconnected blobs).
+  for (let i = 0; i < FLOC.fieldPoints; i++) {
+    const rNorm = FLOC.startR + (0.9 - FLOC.startR) * rng() ** 0.7;
+    const theta = rng() * TAU;
+    arms.push(
+      pointAt(
+        rNorm,
+        theta,
+        rng,
+        0.16 + rng() * 0.2,
+        0.3 + rng() * 0.4,
+        0,
+        place,
+      ),
+    );
+  }
+
+  // The tiny nucleus — much smaller + quieter than the MW-family bulge.
+  const bulgeRng = mulberry32(tuning.seed ^ BULGE_STREAM_XOR);
+  const bulge: BackdropPoint[] = [];
+  for (let i = 0; i < FLOC.coreCount; i++) {
+    const rNorm = bulgeRng() ** 2.4 * FLOC.coreReach;
+    const theta = bulgeRng() * TAU;
+    bulge.push(
+      pointAt(
+        rNorm,
+        theta,
+        bulgeRng,
+        0.45 + bulgeRng() * 0.4,
+        0.5 + bulgeRng() * 0.4,
+        0.3,
+        place,
+      ),
+    );
+  }
+
   return { bgStars: [], arms, bulge };
 };
 
@@ -188,7 +301,8 @@ export type PlacedGalaxy = {
  * existing `paintGlow` + `paletteFor`. `bgStars` is always empty — the home MW
  * backdrop owns the one deep field; a neighbour contributes only its own disk.
  *
- * v1 recipe map: barred-spiral / spiral reuse the arm+core generator; magellanic /
+ * v1 recipe map: barred-spiral / spiral reuse the arm+core generator;
+ * flocculent-spiral (M33, 2026-06-10) gets the beaded-knot builder; magellanic /
  * irregular use the clumpy variant; dwarf-spheroidal (M31's satellites) falls through
  * to the clumpy variant too (a small structureless blob). The map is the seam #155 /
  * #127 extend later.
@@ -202,6 +316,9 @@ export const buildGalaxyGeometry = (
     case "barred-spiral":
     case "spiral":
       return buildSpiralGeometry(tuning, place);
+    case "flocculent-spiral":
+      // M33 (owner pass 2026-06-10): beaded patchy arms, not a MW twin.
+      return buildFlocculentGeometry(tuning, place);
     default:
       // magellanic / irregular / dwarf-spheroidal (+ any non-disk fallthrough)
       return buildClumpyGeometry(tuning, place);

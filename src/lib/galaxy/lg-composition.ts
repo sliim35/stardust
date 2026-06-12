@@ -39,7 +39,7 @@ import {
   SOL_ID,
 } from "#/lib/galaxy/realdata";
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
-import type { RealObject } from "#/lib/galaxy/types";
+import type { RealObject, RealShape } from "#/lib/galaxy/types";
 
 const TAU = Math.PI * 2;
 
@@ -246,10 +246,32 @@ const LG_LABEL_GAP = 26;
  */
 const CLUMPY_LABEL_EXTENT = 0.72;
 
-const labelExtentY = (o: RealObject, place: DiskPlacement): number => {
-  const spiral = o.shape === "barred-spiral" || o.shape === "spiral";
-  return placedExtent(place).y * (spiral ? 1 : CLUMPY_LABEL_EXTENT);
-};
+/**
+ * Where each recipe's SEEN mass ends, as a fraction of the geometric extent —
+ * labels anchor to the visual edge. The spiral family — flocculent included:
+ * its knot ladder runs to ~0.93·r plus per-knot spread, rim-reaching like a
+ * spiral — fills the disk (factor 1); the clumpy recipes stop at `CLUMP_REACH`.
+ * Exhaustive by construction (`satisfies Record<RealShape, …>`): the next
+ * `RealShape` value fails the build here instead of silently misrouting — the
+ * #177-review catch (the old spiral-or-not boolean dropped "flocculent-spiral"
+ * into the clumpy branch and collapsed M33's label gap into its outer knots).
+ */
+const LABEL_EXTENT_FACTOR = {
+  "barred-spiral": 1,
+  spiral: 1,
+  "flocculent-spiral": 1,
+  magellanic: CLUMPY_LABEL_EXTENT,
+  irregular: CLUMPY_LABEL_EXTENT,
+  "dwarf-spheroidal": CLUMPY_LABEL_EXTENT,
+  // Non-disk shapes never reach lgLabels in v1; the clumpy factor is the
+  // conservative default if one ever does.
+  nebula: CLUMPY_LABEL_EXTENT,
+  star: CLUMPY_LABEL_EXTENT,
+  marker: CLUMPY_LABEL_EXTENT,
+} as const satisfies Record<RealShape, number>;
+
+const labelExtentY = (o: RealObject, place: DiskPlacement): number =>
+  placedExtent(place).y * LABEL_EXTENT_FACTOR[o.shape];
 
 /**
  * Curated label sides — part of the FINAL-proof composition: the high anchors
