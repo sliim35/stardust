@@ -8,8 +8,8 @@ import type { Messages } from "#/lib/i18n/types";
  * Catalog accessor + interpolation + the React locale hook (spec §1/§5).
  *
  * Components consume via `getMessages(useLocale())` and read keys by property
- * access (`m.chrome.forMom`) — chosen over a stringly-typed `t(key)` indexer for
- * full IntelliSense + compile-time key safety on the 8-key surface (spec §1).
+ * access (`m.chrome.brand`) — chosen over a stringly-typed `t(key)` indexer for
+ * full IntelliSense + compile-time key safety on the typed catalog (spec §1).
  * `interpolate` is the only runtime helper. `useLocale` is the sole React export.
  */
 

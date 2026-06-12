@@ -41,21 +41,25 @@ describe("ChromeOverlay — wires the tier-aware scale net (#112)", () => {
     expect(screen.queryByText("2.5 Mly")).toBeNull();
   });
 
-  it("drives the top-right breadcrumb from the displayed tier (LG active, MW dim)", () => {
+  it("drives the top-right breadcrumb from the displayed tier (LG current, MW clickable)", () => {
+    const onTierSelect = vi.fn();
     render(
       <ChromeOverlay
         count={3}
         palette="auroral"
         onPaletteChange={noop}
         tier="localGroup"
+        onTierSelect={onTierSelect}
       />,
     );
     expect(
-      screen.getByText(en.chrome.breadcrumb.localGroup).className,
-    ).not.toContain("is-dim");
-    expect(screen.getByText(en.chrome.breadcrumb.galaxy).className).toContain(
-      "is-dim",
-    );
+      screen
+        .getByText(en.chrome.breadcrumb.localGroup)
+        .getAttribute("aria-current"),
+    ).toBe("location");
+    // The other reachable tier is the nav button, wired through the overlay.
+    screen.getByRole("button", { name: en.chrome.breadcrumb.galaxy }).click();
+    expect(onTierSelect).toHaveBeenCalledWith("galaxy");
   });
 
   it("passes the tier-transition narration through to ASTRO's bubble (#125)", () => {

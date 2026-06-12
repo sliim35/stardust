@@ -51,7 +51,7 @@ export const DEFAULT_RENDER_SET = [
     input: {
       channel: "og",
       seed: 424242,
-      eyebrow: "Memory Galaxy",
+      eyebrow: "Stardust",
       headline: "every star here is a\nmemory someone left.",
       emphasis: "memory",
       hudTag: "50,000 light-years",

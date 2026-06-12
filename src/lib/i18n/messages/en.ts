@@ -7,14 +7,16 @@ import type { Messages } from "#/lib/i18n/types";
  */
 export const en = {
   meta: {
-    title: "Memory Galaxy",
+    title: "Stardust",
     description:
       "A growing galaxy of memories — each star is a memory someone shared.",
   },
   chrome: {
-    forMom: "For Mom",
-    subtitle: "A QUIET PLACE IN THE MILKY WAY",
-    srOnly: "Memory Galaxy — a sky of stars, each one a memory.",
+    // Owner rebrand + layout pass 2026-06-10: the "For Mom" dedication +
+    // subtitle are retired (the dedication must not pull attention); the brand
+    // wordmark + the live count line are the title block now.
+    brand: "Stardust",
+    srOnly: "Stardust — a sky of stars, each one a memory.",
     // Live tier-driven wayfinding trail (§5.3) — one segment per Tier; the
     // active segment is the displayed tier. The old static placeholder's "EARTH"
     // is intentionally dropped (no 4th tier; the solarSystem label is "SOL").
@@ -23,6 +25,7 @@ export const en = {
       galaxy: "MILKY WAY",
       solarSystem: "SOL",
     },
+    breadcrumbNav: "Sky navigation",
     countLabel: "{count} memories, still growing",
   },
   // Accessibility labels for interactive galaxy elements (not visible copy).
