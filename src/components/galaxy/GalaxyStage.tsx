@@ -15,6 +15,7 @@ import {
   figureForGroup,
   hoverAffordanceFor,
 } from "#/lib/galaxy/constellation";
+import { type DeepLinkSearch, resolveDeepLink } from "#/lib/galaxy/deep-link";
 import { createFocusController } from "#/lib/galaxy/focus";
 import type { PlacedGalaxy } from "#/lib/galaxy/galaxy-render";
 import {
@@ -75,7 +76,12 @@ const NO_GOLD: readonly BackdropPoint[] = [];
  * layer + chrome render server-side over the seeded CSS starfield placeholder
  * (ADR-0003).
  */
-export const GalaxyStage = () => {
+type GalaxyStageProps = {
+  /** The arrival URL's wayfinding params (#129) — consumed once on mount. */
+  deepLink?: DeepLinkSearch;
+};
+
+export const GalaxyStage = ({ deepLink }: GalaxyStageProps = {}) => {
   const [store] = useState(() => createInMemoryStore());
   // The home galaxy IS the tier-2 view of the universe's `home` node (ADR-0008 §3):
   // skyFor('home') ≡ getSky() byte-for-byte, so this is render-parity, not a redraw.
@@ -137,6 +143,10 @@ export const GalaxyStage = () => {
   const [transitions] = useState(() => createTierTransitionController());
   const [displayedTier, setDisplayedTier] = useState<Tier>(HOME_TIER);
   const [narration, setNarration] = useState<string | null>(null);
+  // A deep-linked star whose dive is still in flight (#129): focusing while the
+  // tier timeline runs would KILL it (the #167 kill path) and strand the scene
+  // swap, so the focus waits for the transition's terminal `arrive`.
+  const pendingDeepLinkStar = useRef<string | null>(null);
   const onTransitionEvent = (e: TierTransitionEvent) => {
     if (e.kind === "depart") {
       setNarration(departNarration(m.astroNarration, e.direction, e.to));
@@ -149,8 +159,14 @@ export const GalaxyStage = () => {
     // the terminal arrive (#167 review, code-style "terminal events on
     // kill/cancel").
     setDisplayedTier(e.tier);
-    if (e.kind === "arrive")
+    if (e.kind === "arrive") {
       setNarration(arrivalNarration(m.astroNarration, e.tier));
+      const pendingStar = pendingDeepLinkStar.current;
+      if (pendingStar) {
+        pendingDeepLinkStar.current = null;
+        focus.focusStar(pendingStar);
+      }
+    }
   };
 
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
@@ -187,6 +203,34 @@ export const GalaxyStage = () => {
     prevTier.current = to;
     transitions.request(from, to);
   }, [nav.state.tier, transitions]);
+
+  // Wayfinding deep-links (#129): the ARRIVAL url (`?at=` / `?star=`) resolves
+  // once on mount — a shared link is an arrival behavior, not a live
+  // subscription; in-app navigation owns the camera afterwards. The dive rides
+  // the normal nav spine, so the #167 eased timeline + ASTRO narration fire
+  // exactly as if the visitor had navigated by hand; a star focus that needs
+  // the tier flip parks in `pendingDeepLinkStar` and flushes on `arrive`
+  // (above), while a same-tier star focuses immediately. Resolution is pure
+  // (`lib/galaxy/deep-link`) and resolves every malformed/unknown input to
+  // `null` upstream — a broken link renders the default view, never a crash
+  // (AC3). Client-only by construction (an effect), so SSR markup is
+  // byte-identical with or without params (ADR-0003).
+  const deepLinkConsumed = useRef(false);
+  useEffect(() => {
+    if (deepLinkConsumed.current || !deepLink) return;
+    deepLinkConsumed.current = true;
+    const target = resolveDeepLink(deepLink, {
+      findReal: (id) => REAL_OBJECTS.find((o) => o.id === id),
+      findStar: (id) => skyRef.current.stars.find((s) => s.id === id),
+    });
+    if (!target) return;
+    if (target.dive.tier !== nav.state.tier) {
+      pendingDeepLinkStar.current = target.star;
+      nav.diveTo(target.dive.id, target.dive.tier);
+    } else if (target.star) {
+      focus.focusStar(target.star);
+    }
+  }, [deepLink, nav, focus]);
 
   // The scene swap (#125 → composed by I-2 #112): at the Local-Group tier the
   // disk paints the FINAL-proof composition — the MW shrunk (LG_MW_PLACEMENT) +

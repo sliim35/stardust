@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("#/lib/i18n", async (importOriginal) => ({
@@ -22,6 +28,8 @@ vi.mock("#/components/galaxy/useTierNav", async (importOriginal) => {
 
 import { GalaxyStage } from "#/components/galaxy/GalaxyStage";
 import { gsap } from "#/components/galaxy/gsap-setup";
+import { cameraTransform } from "#/lib/galaxy/camera";
+import { resolveFocusTarget } from "#/lib/galaxy/focus";
 import { buildSeedSky, CONSTELLATIONS, MOODS } from "#/lib/galaxy/seed";
 import { en } from "#/lib/i18n/messages/en";
 
@@ -413,5 +421,79 @@ describe("GalaxyStage — hover lights the mood constellation + dims the rest (#
       document.querySelectorAll(".galaxy-constellation line"),
     ).toHaveLength(0);
     expect(document.querySelectorAll(".mem-star[data-dimmed]")).toHaveLength(0);
+  });
+});
+
+describe("GalaxyStage — wayfinding deep-links (#129)", () => {
+  // All snap-path (reduced motion): the dive + the focus land without racing
+  // GSAP's ticker — the eased flights themselves are pinned in
+  // useGalaxyCamera.test.tsx; these specs pin the URL → nav/focus WIRING.
+  // The seeded sky is deterministic, so the expected star framing is derived
+  // from the same pure math the camera paints with (the #166 house pattern).
+  const seeded = buildSeedSky();
+  const framingOf = (id: string): string => {
+    const target = resolveFocusTarget(seeded, id);
+    if (!target) throw new Error(`seed star missing: ${id}`);
+    return cameraTransform(target);
+  };
+  /** A regular memory star — not Mom's deep/egg pair (any seeded star works;
+   * the deep exclusions are hover-affordance rules, not focus rules). */
+  const starId = (() => {
+    const s = seeded.stars.find((x) => !x.deep && !x.egg);
+    if (!s) throw new Error("seed sky has no regular star");
+    return s.id;
+  })();
+
+  // AC1 — `?at=galaxy:home` focuses + ENTERS the node on load.
+  it("?at=galaxy:home enters the Milky Way on load and ASTRO narrates the arrival", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ at: "galaxy:home" }} />);
+    expect(screen.getByText("100k ly")).toBeTruthy(); // MW scale net
+    expect(screen.queryByText("2.5 Mly")).toBeNull(); // LG landing left
+    expect(screen.getByText(en.astroNarration.onArrival.galaxy)).toBeTruthy();
+  });
+
+  // AC2 — `?star=<id>` resolves the star across tiers: dives to its containing
+  // tier, then the camera lands exactly on the star's eased-focus framing. The
+  // focus is FLUSHED ON ARRIVE (focusing mid-flight would kill the #167
+  // timeline and strand the scene swap), so the framing assertion waits.
+  it("?star=<id> dives to the star's tier and lands the camera on its framing", async () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ star: starId }} />);
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    const camEl = document.querySelector(
+      ".galaxy-stage__camera",
+    ) as HTMLElement;
+    expect(camEl).not.toBeNull();
+    await waitFor(() => expect(camEl.style.transform).toBe(framingOf(starId)));
+  });
+
+  // `at` + `star` compose: the place owns the dive, the star rides the arrival.
+  it("?at=galaxy:home&star=<id> dives and the star focus rides the arrival", async () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ at: "galaxy:home", star: starId }} />);
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    const camEl = document.querySelector(
+      ".galaxy-stage__camera",
+    ) as HTMLElement;
+    await waitFor(() => expect(camEl.style.transform).toBe(framingOf(starId)));
+  });
+
+  // AC3 — invalid ids fall back gracefully: the default LG landing, no
+  // transition, no stray narration, no crash.
+  it("unknown ids fall back to the default Local-Group landing", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ at: "galaxy:nope", star: "ghost" }} />);
+    expect(screen.getByText("2.5 Mly")).toBeTruthy();
+    expect(screen.queryByText("100k ly")).toBeNull();
+    expect(screen.queryByText(en.astroNarration.onArrival.galaxy)).toBeNull();
+  });
+
+  // No deep-link at all → byte-identical landing (the prop is optional).
+  it("renders the plain landing when no deep-link params are present", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{}} />);
+    expect(screen.getByText("2.5 Mly")).toBeTruthy();
+    expect(screen.queryByText("100k ly")).toBeNull();
   });
 });
