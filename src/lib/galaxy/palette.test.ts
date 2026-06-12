@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_PALETTE,
   isPalette,
-  PALETTE_LABELS,
   PALETTE_ORDER,
   PALETTE_STORAGE_KEY,
   PALETTES,
@@ -11,6 +10,8 @@ import {
   paletteFor,
   readPersistedPalette,
 } from "#/lib/galaxy/palette";
+import { en } from "#/lib/i18n/messages/en";
+import { ru } from "#/lib/i18n/messages/ru";
 
 const keysOf = (p: Record<string, string>): string[] => Object.keys(p).sort();
 
@@ -48,10 +49,13 @@ describe("palette options (theme picker)", () => {
     expect([...PALETTE_ORDER].sort()).toEqual(Object.keys(PALETTES).sort());
   });
 
-  it("labels each palette for the swatch", () => {
-    expect(PALETTE_LABELS.auroral).toBe("sea glass");
-    expect(PALETTE_LABELS.ember).toBe("amber");
-    expect(PALETTE_LABELS.ice).toBe("moonlit");
+  it("labels each palette from the i18n catalog (former PALETTE_LABELS)", () => {
+    expect(en.chrome.backdrop.auroral).toBe("sea glass");
+    expect(en.chrome.backdrop.ember).toBe("amber");
+    expect(en.chrome.backdrop.ice).toBe("moonlit");
+    for (const p of PALETTE_ORDER) {
+      expect(ru.chrome.backdrop[p].trim().length).toBeGreaterThan(0);
+    }
   });
 });
 
