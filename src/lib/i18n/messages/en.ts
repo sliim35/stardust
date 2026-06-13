@@ -100,11 +100,6 @@ export const en = {
       sublabel: "163,000 ly · satellite",
       line: "a ragged dwarf galaxy, slowly being shredded by ours — a bright smudge in the southern sky.",
     },
-    smc: {
-      name: "Small Magellanic Cloud",
-      sublabel: "200,000 ly · satellite",
-      line: "the LMC's wispy companion — both of them visible from the southern sky on a dark night.",
-    },
     andromeda: {
       name: "Andromeda",
       sublabel: "M31 · 2.5 Mly",

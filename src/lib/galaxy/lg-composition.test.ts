@@ -84,8 +84,8 @@ describe("LG_MW_PLACEMENT — the home disk shrunk among its neighbours", () => 
 });
 
 describe("lgPlacementFor — authored placement → spread LG stage coords", () => {
-  it("places all 4 neighbours, deterministically", () => {
-    expect(lgGalaxies()).toHaveLength(4);
+  it("places all 3 neighbours, deterministically", () => {
+    expect(lgGalaxies()).toHaveLength(3);
     expect(lgGalaxies()).toEqual(lgGalaxies());
   });
 
@@ -110,7 +110,6 @@ describe("lgPlacementFor — authored placement → spread LG stage coords", () 
     expect(quadrant("andromeda")).toEqual({ left: true, up: true });
     expect(quadrant("triangulum")).toEqual({ left: false, up: true });
     expect(quadrant("lmc")).toEqual({ left: true, up: false });
-    expect(quadrant("smc")).toEqual({ left: false, up: false });
   });
 
   it("keeps every pair of galaxies separated (no centre inside another disk, cores disjoint)", () => {
@@ -166,7 +165,7 @@ describe("lgPlacementFor — authored placement → spread LG stage coords", () 
     const relative = (o: RealObject) =>
       lgPlacementFor(o).r / (GALAXY_R * o.size);
     const far = ["andromeda", "triangulum"].map((id) => relative(byId(id)));
-    const near = ["lmc", "smc"].map((id) => relative(byId(id)));
+    const near = ["lmc"].map((id) => relative(byId(id)));
     for (const f of far) for (const n of near) expect(f).toBeLessThan(n);
   });
 
@@ -221,7 +220,7 @@ describe("lgHitTargets — hover/focus hit-targets over the placed silhouettes (
     return placed;
   };
 
-  it("covers the MW and all 4 neighbours — one target per labelled galaxy", () => {
+  it("covers the MW and all 3 neighbours — one target per labelled galaxy", () => {
     const targetIds = lgHitTargets()
       .map((t) => t.id)
       .sort();
@@ -256,7 +255,7 @@ describe("lgHitTargets — hover/focus hit-targets over the placed silhouettes (
 });
 
 describe("lgLabels — serif name + mono distance anchors (FINAL proof)", () => {
-  it("labels the MW and all 4 neighbours from the existing lore catalog (en+ru)", () => {
+  it("labels the MW and all 3 neighbours from the existing lore catalog (en+ru)", () => {
     const labels = lgLabels();
     expect(labels).toHaveLength(1 + localGroupNeighbours().length);
     expect(labels.map((l) => l.id)).toContain(HOME_MILKY_WAY_ID);

@@ -101,10 +101,10 @@ describe("the home Milky Way (localGroup tier, the gateway)", () => {
   });
 });
 
-describe("the 4 Local-Group neighbours (spec §5.1)", () => {
-  it("are exactly LMC, SMC, M31, M33 — no more, no fewer", () => {
+describe("the 3 Local-Group neighbours (spec §5.1)", () => {
+  it("are exactly LMC, M31, M33 — no more, no fewer", () => {
     const ids = localGroupNeighbours().map((o) => o.id);
-    expect(ids.sort()).toEqual(["andromeda", "lmc", "smc", "triangulum"]);
+    expect(ids.sort()).toEqual(["andromeda", "lmc", "triangulum"]);
   });
 
   it("excludes the home Milky Way from the neighbour set", () => {
@@ -127,7 +127,7 @@ describe("the 4 Local-Group neighbours (spec §5.1)", () => {
 
   it("points each neighbour's authored angle into its FINAL-proof quadrant", () => {
     // The locked composition (docs/design/proofs/2026-06-05-local-group-tier-FINAL.png):
-    // M31 upper-left · M33 upper-right · LMC lower-left · SMC lower-right.
+    // M31 upper-left · M33 upper-right · LMC lower-left.
     // Screen convention (+y down), matching polarToXY / the LG ring projection.
     const dir = (id: string) => {
       const o = REAL_OBJECTS.find((x) => x.id === id);
@@ -140,17 +140,12 @@ describe("the 4 Local-Group neighbours (spec §5.1)", () => {
     expect(dir("andromeda")).toEqual({ left: true, up: true });
     expect(dir("triangulum")).toEqual({ left: false, up: true });
     expect(dir("lmc")).toEqual({ left: true, up: false });
-    expect(dir("smc")).toEqual({ left: false, up: false });
   });
 
   it("carries the real, published distances verbatim", () => {
     const byId = new Map(REAL_OBJECTS.map((o) => [o.id, o]));
     expect(byId.get("lmc")?.realDistance).toEqual({
       value: 163000,
-      unit: "ly",
-    });
-    expect(byId.get("smc")?.realDistance).toEqual({
-      value: 200000,
       unit: "ly",
     });
     expect(byId.get("andromeda")?.realDistance).toEqual({
@@ -201,10 +196,10 @@ describe("the Milky-Way interior tier (galaxy tier, parentId = home)", () => {
 });
 
 describe("realObjectsForView — the (tier, parentId) selector for wave-2 rendering", () => {
-  it("returns the localGroup-tier objects (home MW + 4 neighbours) for the group view", () => {
+  it("returns the localGroup-tier objects (home MW + 3 neighbours) for the group view", () => {
     const ids = realObjectsForView("localGroup").map((o) => o.id);
     expect(ids.sort()).toEqual(
-      ["andromeda", "lmc", "smc", "triangulum", HOME_MILKY_WAY_ID].sort(),
+      ["andromeda", "lmc", "triangulum", HOME_MILKY_WAY_ID].sort(),
     );
   });
 

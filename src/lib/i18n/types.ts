@@ -89,7 +89,6 @@ export type Messages = {
     crab: LoreEntry;
     orion: LoreEntry;
     lmc: LoreEntry;
-    smc: LoreEntry;
     andromeda: LoreEntry;
     triangulum: LoreEntry;
     m32: LoreEntry;

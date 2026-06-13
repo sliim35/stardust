@@ -96,10 +96,10 @@ describe("buildLocalGroup", () => {
   });
 
   // ── ADR-0010: the Local Group is now the REAL Local Group (no procedural g#) ──
-  it("seats the home galaxy plus EXACTLY the 4 real neighbours (no more)", () => {
+  it("seats the home galaxy plus EXACTLY the 3 real neighbours (no more)", () => {
     const galaxies = buildLocalGroup(UNIVERSE_SEED).galaxies;
     expect(galaxies).toHaveLength(1 + localGroupNeighbours().length);
-    expect(localGroupNeighbours()).toHaveLength(4);
+    expect(localGroupNeighbours()).toHaveLength(3);
   });
 
   it("drops every procedural g# galaxy (zero g1…g6 ids)", () => {
@@ -107,11 +107,11 @@ describe("buildLocalGroup", () => {
     for (const id of ids) expect(id).not.toMatch(/^g\d+$/);
   });
 
-  it("includes exactly the real neighbour ids (LMC, SMC, M31, M33) beside home", () => {
+  it("includes exactly the real neighbour ids (LMC, M31, M33) beside home", () => {
     const ids = buildLocalGroup(UNIVERSE_SEED)
       .galaxies.map((g) => g.id)
       .filter((id) => id !== HOME_GALAXY_ID);
-    expect(ids.sort()).toEqual(["andromeda", "lmc", "smc", "triangulum"]);
+    expect(ids.sort()).toEqual(["andromeda", "lmc", "triangulum"]);
   });
 
   it("uses the SAME home id in the scene graph and the real dataset", () => {
@@ -144,10 +144,10 @@ describe("buildLocalGroup", () => {
 });
 
 describe("realObjectsForView (re-exported selector for wave-2 rendering)", () => {
-  it("re-exports the realdata selector — localGroup view = home + 4 neighbours", () => {
+  it("re-exports the realdata selector — localGroup view = home + 3 neighbours", () => {
     const ids = realObjectsForView("localGroup").map((o) => o.id);
     expect(ids.sort()).toEqual(
-      ["andromeda", "lmc", "smc", "triangulum", HOME_MILKY_WAY_ID].sort(),
+      ["andromeda", "lmc", "triangulum", HOME_MILKY_WAY_ID].sort(),
     );
   });
 

@@ -15,8 +15,8 @@
  * along in `realDistance` for the lore cards + the scale net. No `logScale` engine.
  * The Local-Group angles are curated to the locked FINAL composition
  * (`docs/design/proofs/2026-06-05-local-group-tier-FINAL.png`, slice I-2 #112) in
- * screen convention (+y down): M31 upper-left · M33 upper-right · LMC lower-left ·
- * SMC lower-right. The LG ring projection (`lg-composition.ts`) consumes them.
+ * screen convention (+y down): M31 upper-left · M33 upper-right · LMC lower-left.
+ * The LG ring projection (`lg-composition.ts`) consumes them.
  *
  * **All user-facing copy is in the i18n catalog (`loreKey`, en+ru)** — never inline
  * here (the standing all-user-text-via-i18n rule + ADR-0010 §4). `loreKey` is the
@@ -37,8 +37,8 @@ export const ANDROMEDA_ID = "andromeda";
 
 /**
  * The whole curated dataset. Two tiers:
- *  - `localGroup`: the home Milky Way (gateway) + the 4 real neighbours (spec §5.1),
- *    ordered by real distance (LMC < SMC < M31 < M33).
+ *  - `localGroup`: the home Milky Way (gateway) + the 3 real neighbours (spec §5.1),
+ *    ordered by real distance (LMC < M31 < M33).
  *  - `galaxy` (parentId = home): the Milky-Way interior — Sgr A*, the Orion Arm,
  *    Sol (gateway), and the 3 named nebulae (Pillars, Crab, Orion).
  *
@@ -83,20 +83,6 @@ const REAL_OBJECTS_DATA = [
     brightness: 0.7,
     color: "#b6c6e6",
     loreKey: "lmc",
-  },
-  {
-    id: "smc",
-    kind: "galaxy",
-    name: "Small Magellanic Cloud",
-    catalogue: "SMC",
-    tier: "localGroup",
-    realDistance: { value: 200000, unit: "ly" },
-    placement: { r: 0.3, angle: 0.68 }, // lower-right (FINAL proof)
-    shape: "irregular",
-    size: 0.3,
-    brightness: 0.58,
-    color: "#aebfe0",
-    loreKey: "smc",
   },
   {
     id: ANDROMEDA_ID,

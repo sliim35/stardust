@@ -211,8 +211,8 @@ const CLUMP_REACH = 0.55; // knot centres stay inside this disk fraction…
 const CLUMP_SPREAD = { min: 0.18, max: 0.38 }; // …and their fuzz overlaps (one cloud)
 
 /**
- * The clumpy recipe (magellanic / irregular) — the Magellanic Clouds and the SMC have
- * no clean spiral arms; they read as ONE lumpy, structureless cloud of overlapping
+ * The clumpy recipe (magellanic / irregular) — the Magellanic Cloud has
+ * no clean spiral arms; it reads as ONE lumpy, structureless cloud of overlapping
  * bright star-forming knots (the FINAL proof's ragged clouds — not disconnected
  * blobs, the first I-2 cut's mistake). Knot centres stay inside `CLUMP_REACH`
  * with wide per-knot fuzz so the knots blend; the scatter is disk-cartesian

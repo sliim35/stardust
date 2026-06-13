@@ -3,7 +3,7 @@
  * curated dataset (`realdata.ts`) into the **scene the LG tier paints**, per the
  * locked FINAL proof (`docs/design/proofs/2026-06-05-local-group-tier-FINAL.png`):
  * the Milky Way shrunk to one point-cloud among the others (slightly low of the
- * screen centre), the 4 neighbours spread well clear of it in their proof
+ * screen centre), the 3 neighbours spread well clear of it in their proof
  * quadrants, gold accents (Sol's amber mark + globular-cluster sprinkles) on the
  * MW halo, and a serif/mono label anchor per galaxy.
  *
@@ -275,7 +275,7 @@ const labelExtentY = (o: RealObject, place: DiskPlacement): number =>
 
 /**
  * Curated label sides — part of the FINAL-proof composition: the high anchors
- * read above their disks; the MW + SMC sit low and read below. The LMC's label
+ * read above their disks; the MW sits low and reads below. The LMC's label
  * goes ABOVE its cloud (as in the proof) so it clears the bottom-left scale net.
  */
 const LG_LABEL_SIDE: Record<string, LgLabel["side"]> = {
@@ -283,7 +283,6 @@ const LG_LABEL_SIDE: Record<string, LgLabel["side"]> = {
   andromeda: "above",
   triangulum: "above",
   lmc: "above",
-  smc: "below",
 };
 
 const labelFor = (o: RealObject, place: DiskPlacement): LgLabel => {

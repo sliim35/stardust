@@ -39,11 +39,11 @@ describe("placementFor — RealObject → DiskPlacement (ADR-0011 §1)", () => {
   });
 
   it("scales the disk radius by the object's size (smaller object → smaller disk)", () => {
+    const m31 = placementFor(byId("andromeda")); // size 0.78
     const lmc = placementFor(byId("lmc")); // size 0.42
-    const smc = placementFor(byId("smc")); // size 0.30
-    expect(lmc.r).toBeGreaterThan(smc.r);
+    expect(m31.r).toBeGreaterThan(lmc.r);
+    expect(m31.r).toBeCloseTo(GALAXY_R * 0.78, 6);
     expect(lmc.r).toBeCloseTo(GALAXY_R * 0.42, 6);
-    expect(smc.r).toBeCloseTo(GALAXY_R * 0.3, 6);
   });
 
   it("carries the object's own tilt, and the bar angle as the disk position angle", () => {
@@ -86,7 +86,7 @@ describe("tuningFor — RealObject → GalaxyBackdrop tuning (ADR-0011 §1)", ()
   });
 
   it("is pure / SSR-safe — no clock or random leakage between calls", () => {
-    expect(tuningFor(byId("smc"))).toEqual(tuningFor(byId("smc")));
+    expect(tuningFor(byId("andromeda"))).toEqual(tuningFor(byId("andromeda")));
   });
 });
 
@@ -150,14 +150,13 @@ describe("buildGalaxyGeometry — render-capability for one real object (ADR-001
     expect(floc.arms.length).toBeGreaterThan(0);
   });
 
-  it("renders the magellanic / irregular clouds as a clumpy cloud (no clean spiral arms)", () => {
+  it("renders the magellanic cloud as a clumpy cloud (no clean spiral arms)", () => {
     // The clumpy recipe must still produce points; it just isn't the arm generator.
     const lmc = buildGalaxyGeometry(byId("lmc")); // magellanic
-    const smc = buildGalaxyGeometry(byId("smc")); // irregular
     expect(lmc.arms.length).toBeGreaterThan(0);
-    expect(smc.arms.length).toBeGreaterThan(0);
-    // Different shapes/seeds → different point clouds (not accidentally identical).
-    expect(lmc.arms).not.toEqual(smc.arms);
+    // A different shape/seed (a spiral neighbour) → a different point cloud.
+    const m33 = buildGalaxyGeometry(byId("triangulum"));
+    expect(lmc.arms).not.toEqual(m33.arms);
   });
 
   it("is deterministic — same object yields byte-identical geometry", () => {
