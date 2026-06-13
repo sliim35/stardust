@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { GalaxyStage } from "#/components/galaxy/GalaxyStage";
+import type { DeepLinkSearch } from "#/lib/galaxy/deep-link";
 import { AstroLoader } from "./AstroLoader";
 
 /**
@@ -17,7 +18,12 @@ import { AstroLoader } from "./AstroLoader";
 /** Simulated minimum display time for ASTRO's debut (presentation-only). */
 const SIMULATED_READY_MS = 2500;
 
-export const GalaxyWithLoader = () => {
+type GalaxyWithLoaderProps = {
+  /** The arrival URL's wayfinding params (#129) — passed through to the stage. */
+  deepLink?: DeepLinkSearch;
+};
+
+export const GalaxyWithLoader = ({ deepLink }: GalaxyWithLoaderProps = {}) => {
   const [ready, setReady] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
 
@@ -28,7 +34,7 @@ export const GalaxyWithLoader = () => {
 
   return (
     <>
-      <GalaxyStage />
+      <GalaxyStage deepLink={deepLink} />
       {showLoader ? (
         <AstroLoader ready={ready} onHidden={() => setShowLoader(false)} />
       ) : null}
