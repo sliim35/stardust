@@ -77,7 +77,7 @@ describe("LgGalaxyLabels — hover-only titles preserved (#167)", () => {
     });
     fireEvent.pointerEnter(andromeda);
     expect(labelEl("andromeda").className).toContain("opacity-100");
-    for (const other of ["milkyWay", "triangulum", "lmc", "smc"] as const) {
+    for (const other of ["milkyWay", "triangulum", "lmc"] as const) {
       expect(labelEl(other).className).toContain("opacity-0");
     }
     fireEvent.pointerLeave(andromeda);

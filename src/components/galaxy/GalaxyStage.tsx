@@ -234,7 +234,7 @@ export const GalaxyStage = ({ deepLink }: GalaxyStageProps = {}) => {
 
   // The scene swap (#125 → composed by I-2 #112): at the Local-Group tier the
   // disk paints the FINAL-proof composition — the MW shrunk (LG_MW_PLACEMENT) +
-  // the 4 neighbours spread per `lg-composition` + the gold accents — and the
+  // the 3 neighbours spread per `lg-composition` + the gold accents — and the
   // L3 memory layer (MW-interior content) hides below. Memoized so the canvas
   // only redraws when the displayed tier actually swaps.
   const lgView = displayedTier === "localGroup";

@@ -117,13 +117,7 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
   // lore catalog. Hover-only since the #167 owner amend: the landing reads
   // CLEAN (zero visible titles); the names live behind the silhouettes'
   // hover/focus hit-targets. The first dive restores L3.
-  const LG_LORE_KEYS = [
-    "milkyWay",
-    "andromeda",
-    "triangulum",
-    "lmc",
-    "smc",
-  ] as const;
+  const LG_LORE_KEYS = ["milkyWay", "andromeda", "triangulum", "lmc"] as const;
   const lgLabelEl = (key: (typeof LG_LORE_KEYS)[number]) =>
     screen
       .getByText(en.lore[key].name)
@@ -178,7 +172,7 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     render(<GalaxyStage />);
     fireEvent.pointerEnter(lgTarget("andromeda"));
     expect(lgLabelEl("andromeda").className).toContain("opacity-100");
-    for (const other of ["milkyWay", "triangulum", "lmc", "smc"] as const) {
+    for (const other of ["milkyWay", "triangulum", "lmc"] as const) {
       expect(lgLabelEl(other).className).toContain("opacity-0");
     }
     fireEvent.pointerLeave(lgTarget("andromeda"));

@@ -45,7 +45,7 @@ export const HOME_GALAXY_ID = HOME_MILKY_WAY_ID;
 export { realObjectsForView };
 
 // Counts per tier are intentionally small + fixed (KISS); tune visually later (#112).
-// (The Local Group is no longer counted — it's the REAL set: home + 4 neighbours.)
+// (The Local Group is no longer counted — it's the REAL set: home + 3 neighbours.)
 const SYSTEMS_PER_GALAXY = 5;
 const PLANETS_PER_SYSTEM = 4;
 
@@ -214,8 +214,8 @@ const realNeighbourNode = (real: RealObject): GalaxyNode => {
 /**
  * Derive the local group. Pure + memoized: the home galaxy is the curated seeded
  * sky (Layer B lives here), and the neighbours are now the REAL Local Group read
- * from `realdata.ts` (ADR-0010) — the home Milky Way + exactly the 4 named
- * neighbours (LMC, SMC, M31, M33). The procedural `g1…g6` decoys are dropped.
+ * from `realdata.ts` (ADR-0010) — the home Milky Way + exactly the 3 named
+ * neighbours (LMC, M31, M33). The procedural `g1…g6` decoys are dropped.
  */
 export const buildLocalGroup = (seed: number): LocalGroup => {
   const cached = localGroupCache.get(seed);
