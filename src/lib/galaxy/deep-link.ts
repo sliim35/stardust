@@ -20,7 +20,7 @@
  */
 
 import { HOME_MILKY_WAY_ID } from "#/lib/galaxy/realdata";
-import { TIER_ORDER } from "#/lib/galaxy/tier-nav";
+import { TIER_ORDER, V1_AVAILABLE_TIERS } from "#/lib/galaxy/tier-nav";
 import type { MemoryStar, RealObject, Tier } from "#/lib/galaxy/types";
 
 /** The two place kinds a `?at=` link can name (spec §1: the only descend gateways). */
@@ -57,12 +57,10 @@ export type DeepLinkDeps = {
 };
 
 /** The valid `?at=` kinds, for the parse guard. */
-const AT_KINDS: readonly AtKind[] = ["galaxy", "system"];
+const AT_KINDS = ["galaxy", "system"] as const satisfies readonly AtKind[];
 
-/** The tiers built in v1 — Solar System is deferred to #127 (mirrors tier-nav). */
-const V1_AVAILABLE: readonly Tier[] = ["localGroup", "galaxy"];
-
-const isAtKind = (s: string): s is AtKind => (AT_KINDS as string[]).includes(s);
+const isAtKind = (s: string): s is AtKind =>
+  (AT_KINDS as readonly string[]).includes(s);
 
 /**
  * Parse a raw `?at=` value into `{ kind, id }`, or `null` for anything malformed
@@ -110,7 +108,7 @@ const tierOfStar = (star: MemoryStar): Tier => star.placement?.tier ?? "galaxy";
 
 /** Resolve a `?at=` target to a dive, or `null` if it can't be entered/focused. */
 const resolveAt = (at: AtTarget, deps: DeepLinkDeps): DiveTarget | null => {
-  const available = deps.available ?? V1_AVAILABLE;
+  const available = deps.available ?? V1_AVAILABLE_TIERS;
   const object = deps.findReal(at.id);
   if (!object) return null; // unknown id → default view (AC3)
 
