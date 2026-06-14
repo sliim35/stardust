@@ -305,7 +305,7 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
       gsap.ticker.add(gsap.updateRoot);
     });
 
-    it("Escape mid-reverse (after the threshold) settles the scale net on the nav tier", () => {
+    it("Escape mid-reverse (after the threshold) settles the scale net on the nav tier", async () => {
       stubReducedMotion(false);
       render(<GalaxyStage />);
       const stage = document.querySelector(".galaxy-stage") as HTMLElement;
@@ -332,10 +332,15 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
       });
       expect(screen.getByText("2.5 Mly")).toBeTruthy();
       expect(screen.queryByText("100k ly")).toBeNull();
-      // ASTRO settles on the arrival line, not a stale mid-flight depart line.
-      expect(
-        screen.getByText(en.astroNarration.onArrival.localGroup),
-      ).toBeTruthy();
+      // ASTRO settles on the arrival line, not a stale mid-flight depart line —
+      // after the ≥3s narration dwell (#183), the line is deferred but lands.
+      await waitFor(
+        () =>
+          expect(
+            screen.getByText(en.astroNarration.onArrival.localGroup),
+          ).toBeTruthy(),
+        { timeout: 3500 },
+      );
     });
   });
 });

@@ -53,9 +53,14 @@ import { useObjectClick } from "./useObjectClick";
 import { usePalette } from "./usePalette";
 import { useStageFit } from "./useStageFit";
 import { useTierNav } from "./useTierNav";
+import { useTimedNarration } from "./useTimedNarration";
 
 /** Mirrors the `memIgnite` CSS animation duration (1.5s) — one ignite number. */
 const IGNITE_MS = 1500;
+
+/** Minimum on-screen dwell per ASTRO narration phrase (#183) — long enough to read a
+ *  tier line before the next replaces it (owner: "at least 3s between phrases"). */
+const NARRATION_MIN_MS = 3000;
 
 /** Stable empty sets — the home/MW scene paints no Layer-A galaxies or gold. */
 const NO_NEIGHBOURS: readonly PlacedGalaxy[] = [];
@@ -155,14 +160,20 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // pure lib routing — hardcoded i18n, the post-v1 ASTRO-AI swap seam.
   const [transitions] = useState(() => createTierTransitionController());
   const [displayedTier, setDisplayedTier] = useState<Tier>(HOME_TIER);
-  const [narration, setNarration] = useState<string | null>(null);
+  // ASTRO narration with a minimum dwell so tier lines stay readable (#183): the
+  // depart→arrive swap is gated to ≥3s even though the camera moves faster.
+  const {
+    narration,
+    show: showNarration,
+    clear: clearNarration,
+  } = useTimedNarration(NARRATION_MIN_MS);
   // A deep-linked star whose dive is still in flight (#129): focusing while the
   // tier timeline runs would KILL it (the #167 kill path) and strand the scene
   // swap, so the focus waits for the transition's terminal `arrive`.
   const pendingDeepLinkStar = useRef<string | null>(null);
   const onTransitionEvent = (e: TierTransitionEvent) => {
     if (e.kind === "depart") {
-      setNarration(departNarration(m.astroNarration, e.direction, e.to));
+      showNarration(departNarration(m.astroNarration, e.direction, e.to));
       return;
     }
     // Both `threshold` (the mid-flight scene swap) and `arrive` carry the
@@ -173,7 +184,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     // kill/cancel").
     setDisplayedTier(e.tier);
     if (e.kind === "arrive") {
-      setNarration(arrivalNarration(m.astroNarration, e.tier));
+      showNarration(arrivalNarration(m.astroNarration, e.tier));
       const pendingStar = pendingDeepLinkStar.current;
       if (pendingStar) {
         pendingDeepLinkStar.current = null;
@@ -400,7 +411,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           tier={displayedTier}
           onTierSelect={onTierSelect}
           narration={narration}
-          onNarrationDismiss={() => setNarration(null)}
+          onNarrationDismiss={clearNarration}
           // "Add your star" (#183, dir. A) lives IN ASTRO's bubble — one surface,
           // no panel colliding with the bubble/sprite. The CTA shows only at the
           // Milky-Way tier (memory stars hide on the Local-Group overview); a saved
