@@ -51,6 +51,7 @@ import { MemoryStarLayer } from "./MemoryStarLayer";
 import { StarSearch } from "./StarSearch";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { useObjectClick } from "./useObjectClick";
+import { useObjectNarration } from "./useObjectNarration";
 import { usePalette } from "./usePalette";
 import { useStageFit } from "./useStageFit";
 import { useTierNav } from "./useTierNav";
@@ -193,6 +194,13 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
       }
     }
   };
+
+  // ASTRO narration on object focus (#184, ADR-0013 §2): opening a real object's
+  // lore card ALSO asks the cached-narration server fn for an AI interesting fact
+  // and routes a hit through this SAME `narration` seam — layering cleanly with
+  // #183's add-star confirmation + the tier lines (last-writer-wins, no race).
+  // Graceful: a null result (AI/KV absent/failing) leaves the bubble untouched.
+  const onNarrate = useObjectNarration(setNarration, m.lore);
 
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
   // #113 search) call to ease the camera onto a star by id. The camera hook
@@ -370,6 +378,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                   diveTo={nav.diveTo}
                   lore={m.lore}
                   onActiveChange={setLgHovered}
+                  onNarrate={onNarrate}
                 />
               )}
             </div>
@@ -513,11 +522,14 @@ const LgInteractiveLabels = ({
   diveTo,
   lore,
   onActiveChange,
+  onNarrate,
 }: {
   diveTo: (id: string, tier: Tier) => void;
   lore: Messages["lore"];
   /** Hover/focus sink (#174): the active galaxy id → the backdrop's point-cloud bloom. */
   onActiveChange: (id: string | null) => void;
+  /** Object-focus narration sink (#184): a neighbour's card open → a cached AI fact. */
+  onNarrate: (object: { loreKey: string }) => void;
 }) => {
   const objectClick = useObjectClick(diveTo);
   const byId = useMemo(() => {
@@ -531,9 +543,15 @@ const LgInteractiveLabels = ({
   const onSelect = useCallback(
     (id: string) => {
       const real = byId.get(id);
-      if (real && hoverAffordanceFor(real).kind === "real") objectClick(real);
+      if (real && hoverAffordanceFor(real).kind === "real") {
+        objectClick(real);
+        // The MW gateway DIVES (no card); a neighbour OPENS its lore card — exactly
+        // when ASTRO should narrate a cached fact about it (#184). Gating on the
+        // non-gateway branch keeps narration off the dive (no bubble mid-descent).
+        if (real.gateway !== true) onNarrate(real);
+      }
     },
-    [byId, objectClick],
+    [byId, objectClick, onNarrate],
   );
   return (
     <LgGalaxyLabels
