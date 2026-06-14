@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AddMemoryErrorKey } from "#/lib/galaxy/add-memory";
 import type { MemoryStar } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
@@ -38,6 +38,16 @@ export const MemoryComposer = ({ onStarAdded, onConfirm }: Props) => {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const fieldId = useId();
   const errorId = useId();
+  // Guard the in-flight submit against an unmount mid-await: a composer that
+  // unmounts while `addStarFn` is resolving must not fire `onConfirm` /
+  // `onStarAdded` on a gone parent (review #188).
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   const submitting = status.kind === "submitting";
 
@@ -52,6 +62,7 @@ export const MemoryComposer = ({ onStarAdded, onConfirm }: Props) => {
     setStatus({ kind: "submitting" });
     try {
       const result = await addStarFn({ data: text });
+      if (!mounted.current) return;
       if (result.ok) {
         onStarAdded(result.star);
         onConfirm(m.chat.success);
@@ -60,6 +71,7 @@ export const MemoryComposer = ({ onStarAdded, onConfirm }: Props) => {
       }
       setStatus({ kind: "error", errorKey: result.errorKey });
     } catch {
+      if (!mounted.current) return;
       setStatus({ kind: "error", errorKey: "failed" });
     }
   };

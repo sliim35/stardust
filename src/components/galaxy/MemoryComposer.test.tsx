@@ -100,4 +100,21 @@ describe("MemoryComposer", () => {
       expect(screen.getByText(en.chat.error.failed)).toBeTruthy(),
     );
   });
+
+  it("the close button dismisses the panel and clears the draft", () => {
+    renderComposer();
+    fireEvent.click(screen.getByRole("button", { name: en.chat.open }));
+    fireEvent.change(screen.getByLabelText(en.chat.label), {
+      target: { value: "a half-written memory" },
+    });
+    // dismiss via the × close control
+    fireEvent.click(screen.getByRole("button", { name: en.chat.close }));
+    expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
+    expect(screen.queryByLabelText(en.chat.label)).toBeNull();
+    // re-opening shows an empty field — close() cleared the draft
+    fireEvent.click(screen.getByRole("button", { name: en.chat.open }));
+    expect(
+      (screen.getByLabelText(en.chat.label) as HTMLTextAreaElement).value,
+    ).toBe("");
+  });
 });
