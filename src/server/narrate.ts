@@ -43,7 +43,10 @@ const validateInput = (raw: unknown): NarrateInput => {
   };
 };
 
-export const narrateFn = createServerFn({ method: "GET" })
+// POST (not GET): the handler write-throughs to KV on a cache miss, so it is not a
+// safe/idempotent read (RFC 9110 §9.2.1) — GET would let a CDN/edge/GET-cache layer
+// skip the write or serve a stale response (review #190).
+export const narrateFn = createServerFn({ method: "POST" })
   .inputValidator(validateInput)
   .handler(async ({ data }): Promise<string | null> => {
     if (data.key.trim().length === 0) return null;

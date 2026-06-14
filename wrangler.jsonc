@@ -85,7 +85,8 @@
 	"kv_namespaces": [
 		{
 			"binding": "NARRATION_KV",
-			"id": "3df53e2094b3477da053b8660a21cdc9"
+			"id": "3df53e2094b3477da053b8660a21cdc9",
+			"preview_id": "6bd31f23b8e748f3af5e68f42595ce89"
 		}
 	],
 	/**

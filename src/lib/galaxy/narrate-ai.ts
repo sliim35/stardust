@@ -19,7 +19,7 @@
 export const NARRATION_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast" as const;
 
 /** A short narration — clamp the model output so a single bubble stays readable. */
-export const NARRATION_MAX_CHARS = 280;
+export const NARRATION_MAX_CHARS = 280 as const;
 
 type ChatMessage = { role: "system" | "user"; content: string };
 
