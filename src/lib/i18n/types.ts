@@ -172,6 +172,42 @@ export type Messages = {
     /** The scale net region's accessible name (aria-label). */
     label: string;
   };
+  /**
+   * "Add your star" chat chrome (#183, ADR-0013 §3/§4) — the authored copy around
+   * the AI mood→placement write path: the input affordance, the success
+   * confirmation (flows through ASTRO's `narration` seam), and the `error.*`
+   * messages a rejected submission shows. English-only MVP (ADR-0013 §4); the
+   * `ru` block duplicates the English string as a tracked placeholder until #182.
+   */
+  chat: {
+    /** The accessible name of the open-composer trigger button. */
+    open: string;
+    /** Visible label above the textarea. */
+    label: string;
+    /** Textarea placeholder copy. */
+    placeholder: string;
+    /** Submit-button copy. */
+    submit: string;
+    /** Submit-button copy while the request is in flight (client-only state). */
+    submitting: string;
+    /** Close/dismiss-button accessible name. */
+    close: string;
+    /** ASTRO's confirmation line after a star is saved (via the narration seam). */
+    success: string;
+    /** Rejection messages — keyed by the handler's `AddMemoryErrorKey`. */
+    error: {
+      /** Empty / whitespace-only submission. */
+      empty: string;
+      /** Over the max length. */
+      tooLong: string;
+      /** Flagged by the inline moderation gate. */
+      flagged: string;
+      /** The model could not classify the mood (a wrong mood is permanent). */
+      unclear: string;
+      /** A transport / unexpected failure (network, binding, model error). */
+      failed: string;
+    };
+  };
 };
 
 /** A real-object lore entry — name + mono sublabel + ASTRO's lore line. */

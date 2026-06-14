@@ -44,7 +44,33 @@
 	 *
 	 * https://developers.cloudflare.com/workers/configuration/previews/
 	 */
-	"preview_urls": true
+	"preview_urls": true,
+	/**
+	 * Memory Star persistence — Cloudflare D1 + Drizzle (ADR-0012, story #183).
+	 * Binding `STARS_DB`; created via `wrangler d1 create stardust-stars`.
+	 * `migrations_dir` points at the directory `drizzle-kit generate` writes to and
+	 * `wrangler d1 migrations apply STARS_DB` reads from (wrangler stays the
+	 * migration authority — no `d1-http` driver). Apply before deploy:
+	 *   pnpm drizzle-kit generate
+	 *   wrangler d1 migrations apply STARS_DB --remote   (or --local for local D1)
+	 */
+	"d1_databases": [
+		{
+			"binding": "STARS_DB",
+			"database_name": "stardust-stars",
+			"database_id": "d21df391-5b8f-4de2-ab56-24cea98bf212",
+			"migrations_dir": "drizzle/migrations"
+		}
+	],
+	/**
+	 * Workers AI — ASTRO's mood detection (ADR-0013 §1). Account-scoped binding
+	 * `env.AI`; no external API key / secret. Used by the `addStarFn` server fn to
+	 * classify a memory's mood (structured-output enum) before placement.
+	 * https://developers.cloudflare.com/workers-ai/
+	 */
+	"ai": {
+		"binding": "AI"
+	},
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

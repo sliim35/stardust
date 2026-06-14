@@ -29,6 +29,7 @@ import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { HOME_MILKY_WAY_ID, REAL_OBJECTS } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
+import { createD1Store } from "#/lib/galaxy/store-d1";
 import { HOME_TIER } from "#/lib/galaxy/tier-nav";
 import {
   arrivalNarration,
@@ -46,6 +47,7 @@ import { ConstellationOverlay } from "./ConstellationOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { LgGalaxyLabels } from "./LgGalaxyLabels";
+import { MemoryComposer } from "./MemoryComposer";
 import { MemoryStarLayer } from "./MemoryStarLayer";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { useObjectClick } from "./useObjectClick";
@@ -79,10 +81,22 @@ const NO_GOLD: readonly BackdropPoint[] = [];
 type GalaxyStageProps = {
   /** The arrival URL's wayfinding params (#129) — consumed once on mount. */
   deepLink?: DeepLinkSearch;
+  /**
+   * The SSR-fetched persisted user stars (#183, ADR-0012 §4). When present the
+   * store is `createD1Store(userStars)` — seed fixtures merged with the persisted
+   * user stars at construction (seeds are never written to D1). Absent (tests /
+   * dev with no binding) → the seed-only `createInMemoryStore()` fallback.
+   */
+  userStars?: MemoryStar[];
 };
 
-export const GalaxyStage = ({ deepLink }: GalaxyStageProps = {}) => {
-  const [store] = useState(() => createInMemoryStore());
+export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
+  // Build once from the SSR snapshot so the store identity is stable across
+  // re-renders (the snapshot is request-frozen loader data). `createD1Store`
+  // merges seeded + user; the in-memory fallback covers tests/dev (no binding).
+  const [store] = useState(() =>
+    userStars ? createD1Store(userStars) : createInMemoryStore(),
+  );
   // The home galaxy IS the tier-2 view of the universe's `home` node (ADR-0008 §3):
   // skyFor('home') ≡ getSky() byte-for-byte, so this is render-parity, not a redraw.
   const [sky, setSky] = useState(
@@ -389,6 +403,17 @@ export const GalaxyStage = ({ deepLink }: GalaxyStageProps = {}) => {
           narration={narration}
           onNarrationDismiss={() => setNarration(null)}
         />
+        {/* "Add your star" composer (#183) — the MVP write affordance. Gated to
+            the galaxy (MW) tier, where memory stars live (hidden on the Local
+            Group overview). A saved star ignites in the live sky via the store
+            seam (`addStar` → the subscribe effect above) and ASTRO confirms
+            through the same `narration` seam the tier transitions use. */}
+        {!lgView && (
+          <MemoryComposer
+            onStarAdded={(star) => store.addStar(star)}
+            onConfirm={setNarration}
+          />
+        )}
       </CardHost>
     </div>
   );

@@ -211,4 +211,23 @@ export const en = {
   scaleNet: {
     label: "Distance scale",
   },
+  // "Add your star" chat chrome (#183, ADR-0013 §3/§4) — the write-path copy.
+  chat: {
+    open: "Add your star",
+    label: "Write a memory",
+    placeholder: "A memory you want to keep — in a sentence or two…",
+    submit: "Add to the sky",
+    submitting: "Finding its place…",
+    close: "Close",
+    success:
+      "Your star is in the sky now — I found it a place among the others. Thank you for sharing it.",
+    error: {
+      empty: "Write a few words first, and I'll find your star a place.",
+      tooLong: "That's a long one — try trimming it to a sentence or two.",
+      flagged: "I couldn't add that one. Try sharing a real memory.",
+      unclear:
+        "I couldn't quite read the feeling in that one. Try saying a little more.",
+      failed: "Something went wrong reaching the stars. Please try again.",
+    },
+  },
 } as const satisfies Messages;

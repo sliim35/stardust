@@ -16,7 +16,15 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: [{ find: /^#\/(.*)$/, replacement: `${r('./src')}/$1` }],
+    alias: [
+      { find: /^#\/(.*)$/, replacement: `${r('./src')}/$1` },
+      // The `cloudflare:workers` virtual module is provided by the Cloudflare Vite
+      // plugin, which this standalone config omits (it breaks Vitest's SSR env).
+      // Server-fn modules import `{ env }` from it at module scope; alias it to a
+      // throwing stub so those imports resolve. Component tests render only the
+      // chrome and never invoke the server fn (#183).
+      { find: 'cloudflare:workers', replacement: r('./src/test/cloudflare-workers-stub.ts') },
+    ],
   },
   test: {
     environment: 'node',
