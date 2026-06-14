@@ -47,7 +47,6 @@ import { ConstellationOverlay } from "./ConstellationOverlay";
 import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { LgGalaxyLabels } from "./LgGalaxyLabels";
-import { MemoryComposer } from "./MemoryComposer";
 import { MemoryStarLayer } from "./MemoryStarLayer";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { useObjectClick } from "./useObjectClick";
@@ -402,18 +401,14 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           onTierSelect={onTierSelect}
           narration={narration}
           onNarrationDismiss={() => setNarration(null)}
+          // "Add your star" (#183, dir. A) lives IN ASTRO's bubble — one surface,
+          // no panel colliding with the bubble/sprite. The CTA shows only at the
+          // Milky-Way tier (memory stars hide on the Local-Group overview); a saved
+          // star ignites via the store seam (the subscribe effect above) and ASTRO
+          // speaks the confirmation in its own bubble.
+          onStarAdded={(star) => store.addStar(star)}
+          canAddStar={!lgView}
         />
-        {/* "Add your star" composer (#183) — the MVP write affordance. Gated to
-            the galaxy (MW) tier, where memory stars live (hidden on the Local
-            Group overview). A saved star ignites in the live sky via the store
-            seam (`addStar` → the subscribe effect above) and ASTRO confirms
-            through the same `narration` seam the tier transitions use. */}
-        {!lgView && (
-          <MemoryComposer
-            onStarAdded={(star) => store.addStar(star)}
-            onConfirm={setNarration}
-          />
-        )}
       </CardHost>
     </div>
   );

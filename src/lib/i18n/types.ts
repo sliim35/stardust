@@ -180,9 +180,9 @@ export type Messages = {
    * `ru` block duplicates the English string as a tracked placeholder until #182.
    */
   chat: {
-    /** The accessible name of the open-composer trigger button. */
+    /** The "Add your star" CTA in ASTRO's bubble that opens the composer. */
     open: string;
-    /** Visible label above the textarea. */
+    /** The prompt shown above the textarea inside the bubble. */
     label: string;
     /** Textarea placeholder copy. */
     placeholder: string;
@@ -190,9 +190,7 @@ export type Messages = {
     submit: string;
     /** Submit-button copy while the request is in flight (client-only state). */
     submitting: string;
-    /** Close/dismiss-button accessible name. */
-    close: string;
-    /** ASTRO's confirmation line after a star is saved (via the narration seam). */
+    /** ASTRO's confirmation line after a star is saved (spoken in its bubble). */
     success: string;
     /** Rejection messages — keyed by the handler's `AddMemoryErrorKey`. */
     error: {

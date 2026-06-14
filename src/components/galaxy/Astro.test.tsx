@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("#/lib/i18n", async (importOriginal) => ({
@@ -7,7 +7,16 @@ vi.mock("#/lib/i18n", async (importOriginal) => ({
   useLocale: () => "en" as const,
 }));
 
+// Astro now hosts the add-star form (AstroComposer) in its bubble (#183 dir. A),
+// which imports the server fn at module scope — stub it so the bubble renders in
+// jsdom without a binding.
+const addStarFn = vi.fn();
+vi.mock("#/server/add-star", () => ({
+  addStarFn: (...args: unknown[]) => addStarFn(...args),
+}));
+
 import { Astro } from "#/components/galaxy/Astro";
+import type { MemoryStar } from "#/lib/galaxy/types";
 import { en } from "#/lib/i18n/messages/en";
 
 describe("Astro — tier-transition narration takes the bubble (#125)", () => {
@@ -62,5 +71,52 @@ describe("Astro — tier-transition narration takes the bubble (#125)", () => {
       <Astro narration={null} onNarrationDismiss={onNarrationDismiss} />,
     );
     expect(screen.getByText(en.astro.clickLines[0])).toBeTruthy();
+  });
+});
+
+describe("Astro — add-star lives in the bubble (#183, dir. A)", () => {
+  const savedStar: MemoryStar = {
+    id: "u-9",
+    text: "a memory",
+    mood: "tender",
+    color: "#f0c0c0",
+    r: 0.4,
+    angle: 1.1,
+    brightness: 0.6,
+    createdAt: 1748100000000,
+  };
+
+  it("shows the 'Add your star' CTA only when canAddStar + onStarAdded are set", () => {
+    const { rerender } = render(<Astro />);
+    expect(screen.queryByRole("button", { name: en.chat.open })).toBeNull();
+    rerender(<Astro onStarAdded={vi.fn()} canAddStar />);
+    expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
+  });
+
+  it("CTA opens the composer in the bubble; a saved star ignites + ASTRO speaks the confirmation", async () => {
+    addStarFn.mockResolvedValueOnce({ ok: true, star: savedStar });
+    const onStarAdded = vi.fn();
+    render(<Astro onStarAdded={onStarAdded} canAddStar />);
+    fireEvent.click(screen.getByRole("button", { name: en.chat.open }));
+    // the composer is now in the bubble
+    fireEvent.change(screen.getByLabelText(en.chat.label), {
+      target: { value: "a memory" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en.chat.submit }));
+    await waitFor(() => expect(onStarAdded).toHaveBeenCalledWith(savedStar));
+    // ASTRO speaks the confirmation; the form is gone; the CTA is back
+    expect(screen.getByText(en.chat.success)).toBeTruthy();
+    expect(screen.queryByLabelText(en.chat.label)).toBeNull();
+    expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
+  });
+
+  it("the bubble × cancels composing back to ASTRO's line (without closing ASTRO)", () => {
+    render(<Astro onStarAdded={vi.fn()} canAddStar />);
+    fireEvent.click(screen.getByRole("button", { name: en.chat.open }));
+    expect(screen.getByLabelText(en.chat.label)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "dismiss" }));
+    expect(screen.queryByLabelText(en.chat.label)).toBeNull();
+    expect(screen.getByText(en.astro.greeting)).toBeTruthy();
+    expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
   });
 });

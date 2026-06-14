@@ -218,7 +218,6 @@ export const en = {
     placeholder: "A memory you want to keep — in a sentence or two…",
     submit: "Add to the sky",
     submitting: "Finding its place…",
-    close: "Close",
     success:
       "Your star is in the sky now — I found it a place among the others. Thank you for sharing it.",
     error: {

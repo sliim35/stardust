@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { GALAXY_ASTRO_SCALE } from "#/lib/galaxy/astro";
 import { nextClickIndex } from "#/lib/galaxy/astro-voice";
+import type { MemoryStar } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import { AstroBubble } from "./AstroBubble";
+import { AstroComposer } from "./AstroComposer";
 import { PixelAstronaut } from "./PixelAstronaut";
 import { useAstroFace } from "./useAstroFace";
 
@@ -57,6 +59,14 @@ type Props = {
   narration?: string | null;
   /** Clears the narration upstream (dismiss ×, or a click advancing the line). */
   onNarrationDismiss?: () => void;
+  /**
+   * #183 (dir. A) — ignite a saved star in the live sky (the store's `addStar`).
+   * Its presence together with `canAddStar` enables the "Add your star" CTA that
+   * opens the composer inside this bubble.
+   */
+  onStarAdded?: (star: MemoryStar) => void;
+  /** Show the add-star CTA — true at the Milky-Way tier, where memory stars live (#183). */
+  canAddStar?: boolean;
 };
 
 /**
@@ -65,13 +75,25 @@ type Props = {
  * index, not the rendered string, so the bubble re-speaks in the active locale and
  * the click rotation stays locale-agnostic (#103).
  */
-type Spoken = { kind: "greeting" } | { kind: "line"; index: number };
+type Spoken =
+  | { kind: "greeting" }
+  | { kind: "line"; index: number }
+  | { kind: "said"; text: string };
 
-export const Astro = ({ message, narration, onNarrationDismiss }: Props) => {
+export const Astro = ({
+  message,
+  narration,
+  onNarrationDismiss,
+  onStarAdded,
+  canAddStar = false,
+}: Props) => {
   const m = getMessages(useLocale());
   // Seed deterministically so SSR + the client agree on first paint (auto-greet
   // on mount, no hydration flip). `null` once dismissed.
   const [spoken, setSpoken] = useState<Spoken | null>({ kind: "greeting" });
+  // #183 (dir. A) — when true the bubble hosts the add-star form instead of a line.
+  // Client-only interaction state, false on first paint → SSR-stable.
+  const [composing, setComposing] = useState(false);
   const { mood, emote } = useAstroFace();
 
   // The shared click trigger: speak the next line (#72) AND emote (#71) together.
@@ -97,19 +119,60 @@ export const Astro = ({ message, narration, onNarrationDismiss }: Props) => {
       ? null
       : spoken.kind === "greeting"
         ? (message ?? m.astro.greeting)
-        : m.astro.clickLines[spoken.index];
+        : spoken.kind === "said"
+          ? spoken.text
+          : m.astro.clickLines[spoken.index];
   const text = narration ?? spokenText;
 
   // Dismissing a narration clears it upstream AND quiets the spoken line under
   // it, so the × closes the bubble instead of "revealing" a stale greeting.
   const onDismiss = () => {
+    // While composing, × cancels the form back to ASTRO's line (it doesn't close ASTRO).
+    if (composing) {
+      setComposing(false);
+      return;
+    }
     if (narration != null) onNarrationDismiss?.();
     setSpoken(null);
   };
 
+  // Open the composer IN the bubble; let it take over any active tier narration.
+  const onAdd = () => {
+    if (narration != null) onNarrationDismiss?.();
+    setComposing(true);
+  };
+
+  // A saved star: ignite it in the live sky and let ASTRO speak the confirmation
+  // through this same bubble — no separate narration round-trip.
+  const onComposed = (star: MemoryStar, confirmation: string) => {
+    onStarAdded?.(star);
+    setComposing(false);
+    if (narration != null) onNarrationDismiss?.();
+    setSpoken({ kind: "said", text: confirmation });
+  };
+
+  // The add-star CTA shows only at a tier with memory stars, when wired, and when
+  // not already composing.
+  const showAdd = canAddStar && onStarAdded != null && !composing;
+
   return (
     <div className="galaxy-astro">
-      {text != null && <AstroBubble message={text} onDismiss={onDismiss} />}
+      {(text != null || composing) && (
+        <AstroBubble message={composing ? null : text} onDismiss={onDismiss}>
+          {composing ? (
+            <AstroComposer onSuccess={onComposed} />
+          ) : showAdd ? (
+            <button
+              type="button"
+              className="galaxy-astro__add pointer-events-auto mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-snug border border-accent-soft bg-transparent px-3 py-1.5 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+              onClick={onAdd}
+            >
+              <span aria-hidden="true">✦</span>
+              {m.chat.open}
+            </button>
+          ) : null}
+        </AstroBubble>
+      )}
       <button
         type="button"
         className="galaxy-astro__hit"
