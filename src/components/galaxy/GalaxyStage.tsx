@@ -428,17 +428,35 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
             so the index is meaningless there. Selecting a result eases the camera
             onto the star — the same primitive the deep-link path uses. */}
         {!lgView && (
-          <div className="pointer-events-none fixed top-[max(70px,calc(env(safe-area-inset-top)+48px))] right-[max(28px,env(safe-area-inset-right))] z-[55] flex max-[620px]:left-[max(28px,env(safe-area-inset-left))] max-[620px]:justify-end">
-            <StarSearch
-              stars={sky.stars}
-              onSelect={(id) => focus.focusStar(id)}
-            />
-          </div>
+          <SearchChromeMount
+            stars={sky.stars}
+            onSelect={(id) => focus.focusStar(id)}
+          />
         )}
       </CardHost>
     </div>
   );
 };
+
+/**
+ * The discovery search panel (#113) mounted as viewport-fixed chrome — a child of
+ * the stage so it reads the live sky + the focus controller. Positioned top-right
+ * (reflows to a left-anchored row below 620px); selecting a result eases the camera
+ * onto the star via the focus-on-star primitive (#111). Extracted as a named
+ * component per the chrome convention (#92): the stage declares *what* composes the
+ * scene, this owns *how* the panel is placed.
+ */
+const SearchChromeMount = ({
+  stars,
+  onSelect,
+}: {
+  stars: readonly MemoryStar[];
+  onSelect: (id: string) => void;
+}) => (
+  <div className="pointer-events-none fixed top-[max(70px,calc(env(safe-area-inset-top)+48px))] right-[max(28px,env(safe-area-inset-right))] z-[55] flex max-[620px]:left-[max(28px,env(safe-area-inset-left))] max-[620px]:justify-end">
+    <StarSearch stars={stars} onSelect={onSelect} />
+  </div>
+);
 
 /**
  * The L3 memory layer made interactive — a child of `<CardHost>` so it can read the

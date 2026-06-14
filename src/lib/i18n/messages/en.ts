@@ -231,8 +231,6 @@ export const en = {
   },
   // Discovery star-search (#113) — combobox chrome; no visible copy hardcoded.
   search: {
-    open: "Search memories",
-    close: "Close search",
     label: "Search memories",
     placeholder: "Find a memory by word, mood, or colour…",
     clear: "Clear search",

@@ -115,6 +115,7 @@ export const StarSearch = ({ stars, onSelect }: Props) => {
           aria-label={m.label}
           aria-expanded="true"
           aria-controls={listboxId}
+          aria-describedby={statusId}
           aria-activedescendant={activeId}
           aria-autocomplete="list"
           placeholder={m.placeholder}

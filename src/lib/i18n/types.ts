@@ -209,18 +209,14 @@ export type Messages = {
   /**
    * The discovery star-search (#113) — the combobox that finds a memory star by
    * text / mood / colour and frames it (focus-on-star #111). All chrome here:
-   * `open`/`close` are the toggle button's accessible names; `label` names the
-   * region + the input; `placeholder` is the input hint; `clear` is the reset
+   * `label` names the region + the input; `placeholder` is the input hint; `clear`
+   * is the reset
    * button's name; `results` names the listbox; `option` carries `{name}` for each
    * result's accessible name (interpolated); `count` carries `{count}` for the
    * live result-count announcement; `empty` is the no-results line. No visible copy
    * is hardcoded — every string is locale-resolved (#103, en+ru parity enforced).
    */
   search: {
-    /** Accessible name of the trigger that opens the search (aria-label). */
-    open: string;
-    /** Accessible name of the trigger / control that closes the search. */
-    close: string;
     /** The search region + the text input's accessible name (aria-label). */
     label: string;
     /** Placeholder hint shown in the empty input. */
