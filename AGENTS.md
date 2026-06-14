@@ -104,6 +104,27 @@ folder (templates in `.claude/skills/templates/`), append a line to
 issue bodies must duplicate goal + acceptance criteria. See
 `.claude/skills/references/docs-contract.md` and `docs/README.md`.
 
+### Traceability is a MUST — work on the PR + the issue, never only in chat
+
+**(Owner rule, emphatic.)** Every load-bearing action and decision must leave a durable
+trail on **GitHub** — work that lives only in chat (or only in an agent's head) is, to the
+owner, lost.
+
+- **Run the whole review/QA loop on the PR, visibly:** open the PR, post the review as a real
+  PR review (inline, batched), push fixes as commits, reply accept/reject-with-why on **every**
+  thread before resolving, and QA on the **preview URL with screenshots attached** (commit
+  PNGs to a `qa-shots-*` branch + embed raw URLs — there is no image-upload API).
+- **Record DECISIONS on the story issue AND `docs/decisions/decision-log.md`, with
+  screenshots.** A design pick — including one made in chat (e.g. an owner choice) — gets a
+  comment on the **issue** stating the decision, the alternatives rejected, links to the
+  PR/commits/preview, and the evidence images. Not just the PR; not just chat.
+- **Subagents do NOT inherit the orchestrator's memory.** The dispatcher MUST state this
+  traceability requirement in every task prompt, and the subagent MUST honor it — return
+  findings/decisions in a form the orchestrator can post to the issue/PR, and never treat a
+  chat-only summary as "done."
+
+All agent GitHub writes route through the review bot (ADR-0005).
+
 ### Agent roster — when to invoke
 
 | Agent | Invoke when… | Primary skill | Owns in docs/ |
