@@ -228,4 +228,16 @@ export const ru = {
       failed: "Something went wrong reaching the stars. Please try again.",
     },
   },
+  // Поиск по воспоминаниям (#113) — хром комбобокса; видимый текст не хардкодим.
+  search: {
+    open: "Поиск воспоминаний",
+    close: "Закрыть поиск",
+    label: "Поиск воспоминаний",
+    placeholder: "Найти воспоминание по слову, настроению или цвету…",
+    clear: "Очистить поиск",
+    results: "Результаты поиска",
+    option: "Перейти к «{name}»",
+    count: "Найдено воспоминаний: {count}",
+    empty: "Ничего не найдено по этому запросу.",
+  },
 } as const satisfies Messages;

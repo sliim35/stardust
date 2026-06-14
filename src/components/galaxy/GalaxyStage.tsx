@@ -48,6 +48,7 @@ import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { LgGalaxyLabels } from "./LgGalaxyLabels";
 import { MemoryStarLayer } from "./MemoryStarLayer";
+import { StarSearch } from "./StarSearch";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { useObjectClick } from "./useObjectClick";
 import { usePalette } from "./usePalette";
@@ -420,6 +421,20 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           onStarAdded={(star) => store.addStar(star)}
           canAddStar={!lgView}
         />
+        {/* Discovery search (#113) — a viewport-fixed chrome panel that finds a
+            memory star by text/mood/colour and frames it via the focus-on-star
+            primitive (#111). Lives only at the Milky-Way tier: memory stars are
+            MW-interior content (the L3 layer hides on the Local-Group overview),
+            so the index is meaningless there. Selecting a result eases the camera
+            onto the star — the same primitive the deep-link path uses. */}
+        {!lgView && (
+          <div className="pointer-events-none fixed top-[max(70px,calc(env(safe-area-inset-top)+48px))] right-[max(28px,env(safe-area-inset-right))] z-[55] flex max-[620px]:left-[max(28px,env(safe-area-inset-left))] max-[620px]:justify-end">
+            <StarSearch
+              stars={sky.stars}
+              onSelect={(id) => focus.focusStar(id)}
+            />
+          </div>
+        )}
       </CardHost>
     </div>
   );
