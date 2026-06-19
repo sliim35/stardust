@@ -1,6 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { buildSeedSky, MOODS, placeStar } from "#/lib/galaxy/seed";
+import {
+  buildSeedSky,
+  isMood,
+  MOOD_VALUES,
+  MOODS,
+  placeStar,
+} from "#/lib/galaxy/seed";
 import { en } from "#/lib/i18n/messages/en";
+
+describe("MOOD_VALUES", () => {
+  it("covers exactly the keys of MOODS (single source — no drift)", () => {
+    expect([...MOOD_VALUES].sort()).toEqual(Object.keys(MOODS).sort());
+  });
+
+  it("isMood accepts every literal and rejects anything else", () => {
+    for (const mood of MOOD_VALUES) expect(isMood(mood)).toBe(true);
+    expect(isMood("ecstatic")).toBe(false);
+    expect(isMood("")).toBe(false);
+    expect(isMood(null)).toBe(false);
+    expect(isMood(42)).toBe(false);
+  });
+});
 
 describe("buildSeedSky", () => {
   it("seeds a backdrop and at least 3 stars spanning at least 2 moods", () => {

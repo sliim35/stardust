@@ -50,6 +50,28 @@ export const MOODS = {
   { color: string; angle: number; spread: number }
 >;
 
+/**
+ * The 7 `Mood` literals as an ordered tuple — the single source for the Drizzle
+ * `mood` enum (`schema.ts`) and the Workers-AI structured-output enum
+ * (`mood-detect.ts`), so the DB column, the AI classifier, and the `Mood` type
+ * can never drift apart (the `satisfies` pins it to `Mood`; `seed.test.ts` pins
+ * it to every `MOODS` key).
+ */
+export const MOOD_VALUES = [
+  "joyful",
+  "tender",
+  "grieving",
+  "wistful",
+  "peaceful",
+  "nostalgic",
+  "wonder",
+] as const satisfies readonly Mood[];
+
+/** Runtime guard: is an arbitrary value one of the 7 `Mood` literals? */
+export const isMood = (value: unknown): value is Mood =>
+  typeof value === "string" &&
+  (MOOD_VALUES as readonly string[]).includes(value);
+
 /** The default dim procedural galaxy. Palette defaults to `ember` (amber) — owner
  *  resolved amber-vs-green → amber (2026-06-04), matching ASTRO/STARLIGHT + loader. */
 export const DEFAULT_BACKDROP = {

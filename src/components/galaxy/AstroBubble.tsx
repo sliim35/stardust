@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /**
  * ASTRO's speech bubble (#72) — the mascot's a11y surface. ASTRO is decorative
  * pixel-art (the sprite stays `aria-hidden`); the *words* carry meaning, so the
@@ -26,17 +28,26 @@
  */
 
 type Props = {
-  /** The line ASTRO is currently speaking. */
-  message: string;
-  /** Hide the bubble (the dismiss control). */
+  /** The line ASTRO is currently speaking. `null` while the bubble hosts only the form. */
+  message?: string | null;
+  /**
+   * Extra surface below the spoken line — the quiet "Add your star" CTA, or the
+   * `AstroComposer` form (#183 dir. A). Lives OUTSIDE the `<output>` live region so
+   * assistive tech never announces the controls as part of the spoken line.
+   */
+  children?: ReactNode;
+  /** Hide the bubble / cancel the form (the dismiss control). */
   onDismiss: () => void;
 };
 
-export const AstroBubble = ({ message, onDismiss }: Props) => (
+export const AstroBubble = ({ message = null, children, onDismiss }: Props) => (
   <div className="galaxy-astro__bubble pointer-events-auto">
-    <output className="galaxy-astro__bubble-text" aria-live="polite">
-      {message}
-    </output>
+    {message != null && (
+      <output className="galaxy-astro__bubble-text" aria-live="polite">
+        {message}
+      </output>
+    )}
+    {children}
     <button
       type="button"
       className="galaxy-astro__bubble-dismiss"

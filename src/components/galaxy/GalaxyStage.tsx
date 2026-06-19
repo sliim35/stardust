@@ -29,6 +29,7 @@ import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { HOME_MILKY_WAY_ID, REAL_OBJECTS } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
+import { createD1Store } from "#/lib/galaxy/store-d1";
 import { HOME_TIER } from "#/lib/galaxy/tier-nav";
 import {
   arrivalNarration,
@@ -52,9 +53,14 @@ import { useObjectClick } from "./useObjectClick";
 import { usePalette } from "./usePalette";
 import { useStageFit } from "./useStageFit";
 import { useTierNav } from "./useTierNav";
+import { useTimedNarration } from "./useTimedNarration";
 
 /** Mirrors the `memIgnite` CSS animation duration (1.5s) — one ignite number. */
 const IGNITE_MS = 1500;
+
+/** Minimum on-screen dwell per ASTRO narration phrase (#183) — long enough to read a
+ *  tier line before the next replaces it (owner: "at least 3s between phrases"). */
+const NARRATION_MIN_MS = 3000;
 
 /** Stable empty sets — the home/MW scene paints no Layer-A galaxies or gold. */
 const NO_NEIGHBOURS: readonly PlacedGalaxy[] = [];
@@ -79,10 +85,22 @@ const NO_GOLD: readonly BackdropPoint[] = [];
 type GalaxyStageProps = {
   /** The arrival URL's wayfinding params (#129) — consumed once on mount. */
   deepLink?: DeepLinkSearch;
+  /**
+   * The SSR-fetched persisted user stars (#183, ADR-0012 §4). When present the
+   * store is `createD1Store(userStars)` — seed fixtures merged with the persisted
+   * user stars at construction (seeds are never written to D1). Absent (tests /
+   * dev with no binding) → the seed-only `createInMemoryStore()` fallback.
+   */
+  userStars?: MemoryStar[];
 };
 
-export const GalaxyStage = ({ deepLink }: GalaxyStageProps = {}) => {
-  const [store] = useState(() => createInMemoryStore());
+export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
+  // Build once from the SSR snapshot so the store identity is stable across
+  // re-renders (the snapshot is request-frozen loader data). `createD1Store`
+  // merges seeded + user; the in-memory fallback covers tests/dev (no binding).
+  const [store] = useState(() =>
+    userStars ? createD1Store(userStars) : createInMemoryStore(),
+  );
   // The home galaxy IS the tier-2 view of the universe's `home` node (ADR-0008 §3):
   // skyFor('home') ≡ getSky() byte-for-byte, so this is render-parity, not a redraw.
   const [sky, setSky] = useState(
@@ -142,14 +160,20 @@ export const GalaxyStage = ({ deepLink }: GalaxyStageProps = {}) => {
   // pure lib routing — hardcoded i18n, the post-v1 ASTRO-AI swap seam.
   const [transitions] = useState(() => createTierTransitionController());
   const [displayedTier, setDisplayedTier] = useState<Tier>(HOME_TIER);
-  const [narration, setNarration] = useState<string | null>(null);
+  // ASTRO narration with a minimum dwell so tier lines stay readable (#183): the
+  // depart→arrive swap is gated to ≥3s even though the camera moves faster.
+  const {
+    narration,
+    show: showNarration,
+    clear: clearNarration,
+  } = useTimedNarration(NARRATION_MIN_MS);
   // A deep-linked star whose dive is still in flight (#129): focusing while the
   // tier timeline runs would KILL it (the #167 kill path) and strand the scene
   // swap, so the focus waits for the transition's terminal `arrive`.
   const pendingDeepLinkStar = useRef<string | null>(null);
   const onTransitionEvent = (e: TierTransitionEvent) => {
     if (e.kind === "depart") {
-      setNarration(departNarration(m.astroNarration, e.direction, e.to));
+      showNarration(departNarration(m.astroNarration, e.direction, e.to));
       return;
     }
     // Both `threshold` (the mid-flight scene swap) and `arrive` carry the
@@ -160,7 +184,7 @@ export const GalaxyStage = ({ deepLink }: GalaxyStageProps = {}) => {
     // kill/cancel").
     setDisplayedTier(e.tier);
     if (e.kind === "arrive") {
-      setNarration(arrivalNarration(m.astroNarration, e.tier));
+      showNarration(arrivalNarration(m.astroNarration, e.tier));
       const pendingStar = pendingDeepLinkStar.current;
       if (pendingStar) {
         pendingDeepLinkStar.current = null;
@@ -387,7 +411,14 @@ export const GalaxyStage = ({ deepLink }: GalaxyStageProps = {}) => {
           tier={displayedTier}
           onTierSelect={onTierSelect}
           narration={narration}
-          onNarrationDismiss={() => setNarration(null)}
+          onNarrationDismiss={clearNarration}
+          // "Add your star" (#183, dir. A) lives IN ASTRO's bubble — one surface,
+          // no panel colliding with the bubble/sprite. The CTA shows only at the
+          // Milky-Way tier (memory stars hide on the Local-Group overview); a saved
+          // star ignites via the store seam (the subscribe effect above) and ASTRO
+          // speaks the confirmation in its own bubble.
+          onStarAdded={(star) => store.addStar(star)}
+          canAddStar={!lgView}
         />
       </CardHost>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { GalaxyStage } from "#/components/galaxy/GalaxyStage";
 import type { DeepLinkSearch } from "#/lib/galaxy/deep-link";
+import type { MemoryStar } from "#/lib/galaxy/types";
 import { AstroLoader } from "./AstroLoader";
 
 /**
@@ -21,9 +22,18 @@ const SIMULATED_READY_MS = 2500;
 type GalaxyWithLoaderProps = {
   /** The arrival URL's wayfinding params (#129) — passed through to the stage. */
   deepLink?: DeepLinkSearch;
+  /**
+   * The SSR-fetched persisted user stars (#183, ADR-0012 §4) — threaded into the
+   * stage's `createD1Store`. Absent (dev / no binding) → the stage builds the
+   * seed-only in-memory store.
+   */
+  userStars?: MemoryStar[];
 };
 
-export const GalaxyWithLoader = ({ deepLink }: GalaxyWithLoaderProps = {}) => {
+export const GalaxyWithLoader = ({
+  deepLink,
+  userStars,
+}: GalaxyWithLoaderProps = {}) => {
   const [ready, setReady] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
 
@@ -34,7 +44,7 @@ export const GalaxyWithLoader = ({ deepLink }: GalaxyWithLoaderProps = {}) => {
 
   return (
     <>
-      <GalaxyStage deepLink={deepLink} />
+      <GalaxyStage deepLink={deepLink} userStars={userStars} />
       {showLoader ? (
         <AstroLoader ready={ready} onHidden={() => setShowLoader(false)} />
       ) : null}

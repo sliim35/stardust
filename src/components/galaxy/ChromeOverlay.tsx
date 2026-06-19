@@ -1,4 +1,4 @@
-import type { Palette, Tier } from "#/lib/galaxy/types";
+import type { MemoryStar, Palette, Tier } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import { Astro } from "./Astro";
 import { GalaxyChrome } from "./GalaxyChrome";
@@ -22,6 +22,10 @@ type Props = {
   narration?: string | null;
   /** Clears the narration (bubble dismiss / ASTRO click). */
   onNarrationDismiss?: () => void;
+  /** #183 (dir. A) — ignite a saved star; enables ASTRO's "Add your star" CTA. */
+  onStarAdded?: (star: MemoryStar) => void;
+  /** Show the add-star CTA — true at the Milky-Way tier (#183). */
+  canAddStar?: boolean;
 };
 
 /**
@@ -50,10 +54,17 @@ export const ChromeOverlay = ({
   onTierSelect,
   narration = null,
   onNarrationDismiss,
+  onStarAdded,
+  canAddStar = false,
 }: Props) => (
   <div className="galaxy-chrome-overlay">
     <GalaxyChrome count={count} tier={tier} onTierSelect={onTierSelect} />
-    <Astro narration={narration} onNarrationDismiss={onNarrationDismiss} />
+    <Astro
+      narration={narration}
+      onNarrationDismiss={onNarrationDismiss}
+      onStarAdded={onStarAdded}
+      canAddStar={canAddStar}
+    />
     <PaletteSwitcher value={palette} onChange={onPaletteChange} />
     <ScaleNet tier={tier} label={getMessages(useLocale()).scaleNet.label} />
   </div>
