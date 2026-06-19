@@ -229,4 +229,14 @@ export const en = {
       failed: "Something went wrong reaching the stars. Please try again.",
     },
   },
+  // Discovery star-search (#113) — combobox chrome; no visible copy hardcoded.
+  search: {
+    label: "Search memories",
+    placeholder: "Find a memory by word, mood, or colour…",
+    clear: "Clear search",
+    results: "Search results",
+    option: "Go to {name}",
+    count: "{count} memories found",
+    empty: "No memories match that search.",
+  },
 } as const satisfies Messages;

@@ -206,6 +206,32 @@ export type Messages = {
       failed: string;
     };
   };
+  /**
+   * The discovery star-search (#113) — the combobox that finds a memory star by
+   * text / mood / colour and frames it (focus-on-star #111). All chrome here:
+   * `label` names the region + the input; `placeholder` is the input hint; `clear`
+   * is the reset
+   * button's name; `results` names the listbox; `option` carries `{name}` for each
+   * result's accessible name (interpolated); `count` carries `{count}` for the
+   * live result-count announcement; `empty` is the no-results line. No visible copy
+   * is hardcoded — every string is locale-resolved (#103, en+ru parity enforced).
+   */
+  search: {
+    /** The search region + the text input's accessible name (aria-label). */
+    label: string;
+    /** Placeholder hint shown in the empty input. */
+    placeholder: string;
+    /** Accessible name of the in-input clear/reset button. */
+    clear: string;
+    /** Accessible name of the results listbox. */
+    results: string;
+    /** A single result's accessible name template — carries `{name}`. */
+    option: string;
+    /** The live result-count announcement — carries `{count}`. */
+    count: string;
+    /** Shown (and announced) when a query matches no stars. */
+    empty: string;
+  };
 };
 
 /** A real-object lore entry — name + mono sublabel + ASTRO's lore line. */

@@ -496,3 +496,45 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
     expect(screen.queryByText("100k ly")).toBeNull();
   });
 });
+
+describe("GalaxyStage — discovery search → focus-on-star (#113)", () => {
+  // Reuse the deep-link suite's pure framing helpers: selecting a search result
+  // must land the camera on exactly the focus-on-star (#111) framing — the same
+  // math the deep-link path lands on, proving the search reuses the primitive.
+  const seeded = buildSeedSky();
+  const framingOf = (id: string): string => {
+    const target = resolveFocusTarget(seeded, id);
+    if (!target) throw new Error(`seed star missing: ${id}`);
+    return cameraTransform(target);
+  };
+
+  // The search lives at the Milky-Way tier (the memory stars' home); it is absent
+  // on the Local-Group landing where the memory layer hides.
+  it("the search combobox is hidden on the Local-Group landing, present after diving into the Milky Way", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    expect(
+      screen.queryByRole("combobox", { name: en.search.label }),
+    ).toBeNull();
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // dive into the MW
+    expect(
+      screen.getByRole("combobox", { name: en.search.label }),
+    ).toBeTruthy();
+  });
+
+  it("selecting a result frames that star — the camera lands on its focus-on-star framing", async () => {
+    renderDivedIntoMilkyWay();
+    const input = screen.getByRole("combobox", { name: en.search.label });
+    // s01 "kitchen radio" is a seeded memory star.
+    fireEvent.change(input, { target: { value: "kitchen radio" } });
+    fireEvent.click(
+      screen.getByRole("option", { name: "Go to kitchen radio" }),
+    );
+    const camEl = document.querySelector(
+      ".galaxy-stage__camera",
+    ) as HTMLElement;
+    expect(camEl).not.toBeNull();
+    await waitFor(() => expect(camEl.style.transform).toBe(framingOf("s01")));
+  });
+});
