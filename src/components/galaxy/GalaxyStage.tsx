@@ -199,8 +199,11 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // lore card ALSO asks the cached-narration server fn for an AI interesting fact
   // and routes a hit through this SAME `narration` seam — layering cleanly with
   // #183's add-star confirmation + the tier lines (last-writer-wins, no race).
-  // Graceful: a null result (AI/KV absent/failing) leaves the bubble untouched.
-  const onNarrate = useObjectNarration(setNarration, m.lore);
+  // Routes through the dwell-gated `showNarration` (#183 redesign on main) so an AI
+  // fact honours the ≥3s readability dwell just like the tier lines, rather than the
+  // pre-redesign raw setter. Graceful: a null result (AI/KV absent/failing) leaves
+  // the bubble untouched.
+  const onNarrate = useObjectNarration(showNarration, m.lore);
 
   // The focus-by-id seam (#111): a stable controller other features (#5 deep-link,
   // #113 search) call to ease the camera onto a star by id. The camera hook
