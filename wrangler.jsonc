@@ -63,14 +63,32 @@
 		}
 	],
 	/**
-	 * Workers AI — ASTRO's mood detection (ADR-0013 §1). Account-scoped binding
-	 * `env.AI`; no external API key / secret. Used by the `addStarFn` server fn to
-	 * classify a memory's mood (structured-output enum) before placement.
+	 * Workers AI — ASTRO's mood detection (ADR-0013 §1, #183) + cosmos narration
+	 * (ADR-0013 §2, #184). Account-scoped binding `env.AI`; no external API key /
+	 * secret. `addStarFn` classifies a memory's mood (structured-output enum);
+	 * `narrateFn` generates a short interesting fact (text) about a focused object.
 	 * https://developers.cloudflare.com/workers-ai/
 	 */
 	"ai": {
 		"binding": "AI"
 	},
+	/**
+	 * ASTRO narration cache — Cloudflare KV (ADR-0013 §2, story #184). Read-heavy,
+	 * eventual-consistency-tolerant (the opposite trade-off from the D1 star write):
+	 * a recurring narration is generated ONCE then served instant + free from KV on
+	 * every later view. Binding `NARRATION_KV`; namespace `stardust-narration`,
+	 * created via `wrangler kv namespace create stardust-narration`. Keys are
+	 * `narration:{key}` (no locale segment in the English-only MVP; ru → #182), with
+	 * a write-through 30-day TTL. This is a CACHE — never a `MemoryStar` store.
+	 * https://developers.cloudflare.com/kv/
+	 */
+	"kv_namespaces": [
+		{
+			"binding": "NARRATION_KV",
+			"id": "3df53e2094b3477da053b8660a21cdc9",
+			"preview_id": "6bd31f23b8e748f3af5e68f42595ce89"
+		}
+	],
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
