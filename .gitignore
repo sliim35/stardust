@@ -18,7 +18,16 @@ todos.json
 
 stardust
 .mcp.json
-docs/
+
+# docs/ is a local-only SDLC knowledge base — keep it OUT of this public repo
+# (PRDs, ADRs, research, decision-log, drafts, QA screenshots, design proofs).
+# EXCEPTION: the code-style guide is tracked so the CI auto-reviewer
+# (.github/workflows/claude-review.yml) reads the living conventions. Re-including a
+# single file requires un-ignoring each parent step, then re-ignoring its siblings.
+docs/*
+!docs/conventions/
+docs/conventions/*
+!docs/conventions/code-style.md
 
 # Local git worktrees created by the agent harness (never committed)
 .claude/worktrees/
