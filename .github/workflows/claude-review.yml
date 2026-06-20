@@ -1,0 +1,62 @@
+name: Claude Auto Review
+
+# Auto-reviews every pull request with Claude Code (anthropics/claude-code-action),
+# running on the owner's Claude *subscription* via CLAUDE_CODE_OAUTH_TOKEN — NOT the
+# pay-as-you-go ANTHROPIC_API_KEY. One-time setup: add CLAUDE_CODE_OAUTH_TOKEN as a
+# repository secret (Settings -> Secrets and variables -> Actions). Story: #195.
+#
+# This is an additive, fast first-pass CI gate. It echoes the in-repo `reviewer` agent
+# (md-review-pr) conventions; it does NOT replace it — the full reviewer loop still owns
+# anything nuanced or convention-growing.
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# Supersede an in-flight review when the PR gets new commits.
+concurrency:
+  group: claude-review-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # post inline review comments
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history so the PR diff resolves cleanly
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are the `reviewer` agent for this repo (stardust / Memory Galaxy).
+            The conventions you MUST enforce live in files present in this checkout:
+              - CLAUDE.md (read automatically by this action)
+              - AGENTS.md sections "Conventions" and "AI SDLC"
+              - docs/conventions/code-style.md — the living, authoritative style guide
+                (the rest of docs/ is local-only); read it first. The numbered rules
+                below are a quick summary of it.
+
+            Review the pull-request diff for:
+            1. Correctness bugs and edge cases
+            2. Security issues
+            3. Convention violations: DRY/KISS/YAGNI; arrow functions over function
+               declarations; type aliases over `interface`; `as const`; composition over
+               inheritance; functional paradigm; Tailwind utilities only for DOM chrome
+               (no inline styles or hardcoded hex in chrome components); every
+               user-facing string via the src/lib/i18n catalog (en + ru), never
+               hardcoded inline
+            4. Reuse / simplification / efficiency opportunities
+
+            Be concise. Skip praise. Only flag real issues. Post findings as inline PR
+            review comments on the relevant lines, not as one block comment. If nothing
+            needs attention, post a single one-line "LGTM".
+          # --model sonnet keeps routine reviews cheap; switch the line below to
+          # --model opus for deeper reasoning on complex or critical PRs.
+          claude_args: |
+            --model sonnet
+            --allowedTools "Read,Bash(git:*),Bash(gh:*)"
