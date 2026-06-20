@@ -13,6 +13,17 @@ import { defineConfig } from 'vitest/config'
 // the React plugin so JSX/TSX transforms in component tests.
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 
+// The default suite (`pnpm test`/CI) only collects `*.test.ts[x]`. Non-blocking eval
+// harnesses end in `*.smoke.ts` and are pulled in ONLY when `RUN_MOOD_SMOKE=1` is set
+// (#211 AC4) — so a red eval can never fail the default gate. Vitest 4 dropped the
+// `--include` CLI flag, so the opt-in lives here in config, env-gated.
+const RUN_SMOKE = process.env.RUN_MOOD_SMOKE === '1'
+const include = [
+  'src/**/*.test.ts',
+  'src/**/*.test.tsx',
+  ...(RUN_SMOKE ? ['src/**/*.smoke.ts'] : []),
+]
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -28,7 +39,11 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // `include` is built above: `*.smoke.ts` is added only under `RUN_MOOD_SMOKE=1`. The
+    // mood-classifier accuracy smoke needs the real Workers-AI model, so it's a manual /
+    // preview eval, run on demand:
+    //   RUN_MOOD_SMOKE=1 pnpm test src/lib/galaxy/mood-detect.smoke.ts
+    include,
     // Polyfills jsdom's missing `matchMedia` for component tests; a no-op under node.
     setupFiles: ['src/test/setup-dom.ts'],
   },

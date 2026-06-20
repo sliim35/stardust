@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMoodMessages,
+  MOOD_DISAMBIGUATION_PAIRS,
   MOOD_JSON_SCHEMA,
   parseMoodResponse,
 } from "#/lib/galaxy/mood-detect";
-import { MOOD_VALUES } from "#/lib/galaxy/seed";
+import { EMOTION_VALUES } from "#/lib/galaxy/seed";
 
 describe("parseMoodResponse", () => {
-  it("accepts each of the 7 Mood literals from the structured response", () => {
-    for (const mood of MOOD_VALUES) {
+  it("accepts each of the 12 Emotion literals from the structured response", () => {
+    for (const mood of EMOTION_VALUES) {
       expect(parseMoodResponse({ response: { mood } })).toBe(mood);
     }
   });
@@ -25,6 +26,12 @@ describe("parseMoodResponse", () => {
     );
   });
 
+  it("accepts a 12-widening emotion (e.g. longing) end-to-end", () => {
+    expect(parseMoodResponse({ response: { mood: "longing" } })).toBe(
+      "longing",
+    );
+  });
+
   it("returns null for an out-of-enum mood (handler maps null → an error key)", () => {
     expect(parseMoodResponse({ response: { mood: "ecstatic" } })).toBeNull();
   });
@@ -38,10 +45,14 @@ describe("parseMoodResponse", () => {
 });
 
 describe("MOOD_JSON_SCHEMA", () => {
-  it("constrains `mood` to exactly the 7 Mood literals", () => {
+  it("constrains `mood` to exactly the 12 Emotion literals (single source)", () => {
     expect(MOOD_JSON_SCHEMA.json_schema.properties.mood.enum).toEqual([
-      ...MOOD_VALUES,
+      ...EMOTION_VALUES,
     ]);
+  });
+
+  it("derives the enum from EMOTION_VALUES, not a hardcoded 7-list", () => {
+    expect(MOOD_JSON_SCHEMA.json_schema.properties.mood.enum).toHaveLength(12);
   });
 
   it("requires the mood field", () => {
@@ -56,11 +67,32 @@ describe("buildMoodMessages", () => {
     expect(user?.content).toContain("rain on the tin roof");
   });
 
-  it("lists the 7 moods in the system instruction", () => {
+  it("lists all 12 emotions in the system instruction", () => {
     const messages = buildMoodMessages("any memory");
     const system = messages.find((msg) => msg.role === "system");
-    for (const mood of MOOD_VALUES) {
+    for (const mood of EMOTION_VALUES) {
       expect(system?.content).toContain(mood);
     }
+  });
+
+  it("includes near-pair disambiguation for every hard pair", () => {
+    const messages = buildMoodMessages("any memory");
+    const system = messages.find((msg) => msg.role === "system")?.content ?? "";
+    // Each hard near-pair must name BOTH members in the disambiguation guidance.
+    for (const [a, b] of MOOD_DISAMBIGUATION_PAIRS) {
+      expect(system).toContain(a);
+      expect(system).toContain(b);
+    }
+  });
+
+  it("declares the five hard near-pairs the spike flagged (AC2)", () => {
+    // hope/wonder, gratitude/tender, longing/wistful, pride/joyful, courage/hope
+    expect(MOOD_DISAMBIGUATION_PAIRS).toEqual([
+      ["hope", "wonder"],
+      ["gratitude", "tender"],
+      ["longing", "wistful"],
+      ["pride", "joyful"],
+      ["courage", "hope"],
+    ]);
   });
 });
