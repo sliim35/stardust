@@ -37,10 +37,12 @@ describe("MOOD_FIXTURES (the labeled accuracy set — AC3)", () => {
 
   it("tags every adversarial fixture with the distinct emotion it straddles", () => {
     for (const fx of ADVERSARIAL_FIXTURES) {
-      expect(fx.confusedWith, fx.text).toBeDefined();
-      expect(isMood(fx.confusedWith as string)).toBe(true);
+      const { confusedWith } = fx;
+      expect(confusedWith, fx.text).toBeDefined();
+      if (confusedWith === undefined) continue; // narrows `Emotion | undefined` -> `Emotion` without a widening cast
+      expect(isMood(confusedWith)).toBe(true);
       // The boundary is between two DIFFERENT emotions.
-      expect(fx.confusedWith).not.toBe(fx.expected);
+      expect(confusedWith).not.toBe(fx.expected);
     }
   });
 

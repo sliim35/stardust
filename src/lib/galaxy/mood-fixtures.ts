@@ -1,9 +1,4 @@
-/**
- * The 54-fixture labeled accuracy set for the emotion classifier (#211 AC3, ADR-0014 §1):
- * 36 clear base memories (3/emotion) + 18 adversarial near-pair memories (2/pair) that sit
- * on a confusable boundary to stress `buildMoodMessages`'s disambiguation. i18n-exempt —
- * these are test inputs, never user-facing; scored live by `mood-detect.smoke.ts`.
- */
+// The 54-fixture labeled accuracy set (#211 AC3, ADR-0014 §1): 36 base (3/emotion) + 18 adversarial near-pair. i18n-exempt — test inputs, never user-facing; scored live by `mood-detect.smoke.ts`.
 
 import type { Emotion } from "#/lib/galaxy/types";
 
@@ -11,18 +6,11 @@ import type { Emotion } from "#/lib/galaxy/types";
 export type MoodFixture = {
   text: string;
   expected: Emotion;
-  /**
-   * For an adversarial fixture, the OTHER emotion it is designed to be mistaken for —
-   * i.e. it deliberately straddles the `expected` <-> `confusedWith` boundary. Absent on
-   * a clear base fixture.
-   */
+  // For an adversarial fixture, the OTHER emotion it deliberately straddles toward; absent on a clear base fixture.
   confusedWith?: Emotion;
 };
 
-/**
- * 3 clear, unambiguous memories per emotion (36 total). Each leans squarely into the
- * emotion's core sense with no boundary tension — the classifier's baseline accuracy.
- */
+// 3 clear, unambiguous memories per emotion (36 total) — each squarely in the emotion's core sense, no boundary tension (the classifier's baseline accuracy).
 export const BASE_FIXTURES = [
   // joyful
   {
@@ -182,12 +170,7 @@ export const BASE_FIXTURES = [
   },
 ] as const satisfies readonly MoodFixture[];
 
-/**
- * 2 adversarial memories per near-pair (18 total). Each entry sits on the boundary of a
- * confusable pair: its surface words pull toward `confusedWith`, but its true dominant
- * meaning is `expected`. Covers the 5 hard pairs from `MOOD_DISAMBIGUATION_PAIRS` plus 4
- * further confusables, exercising the prompt's disambiguation from both directions.
- */
+// 2 adversarial memories per near-pair (18 total): surface words pull toward `confusedWith` but the true dominant meaning is `expected` — covers the 5 hard pairs plus 4 further confusables, both directions.
 export const ADVERSARIAL_FIXTURES = [
   // hope <-> wonder
   {
@@ -291,10 +274,10 @@ export const ADVERSARIAL_FIXTURES = [
 ] as const satisfies readonly MoodFixture[];
 
 /** The full 54-fixture labeled set (36 base + 18 adversarial). */
-export const MOOD_FIXTURES: readonly MoodFixture[] = [
+export const MOOD_FIXTURES = [
   ...BASE_FIXTURES,
   ...ADVERSARIAL_FIXTURES,
-];
+] as const satisfies readonly MoodFixture[];
 
 /** One scored fixture: the fixture, the classifier's prediction, and whether it matched. */
 export type FixtureResult = {
@@ -324,12 +307,7 @@ const accuracyOf = (results: readonly FixtureResult[]): number =>
     ? 0
     : results.filter((r) => r.correct).length / results.length;
 
-/**
- * Pure scoring core for the smoke harness: zip a list of predictions against the labeled
- * fixtures (same order, same length) and report overall / base / adversarial accuracy +
- * the misses. Kept pure (no `env.AI`, no clock) so the default gate can unit-test the
- * scoring math; the live `*.smoke.ts` harness feeds it real classifier output.
- */
+// Pure scoring core: zip predictions against the same-length fixtures and report overall / base / adversarial accuracy + misses. No `env.AI`/clock, so the default gate can unit-test the math.
 export const scoreClassifications = (
   fixtures: readonly MoodFixture[],
   predictions: readonly (Emotion | null)[],

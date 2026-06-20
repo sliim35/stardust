@@ -1,11 +1,4 @@
-/**
- * Non-blocking live-accuracy eval for the emotion classifier (#211 AC3/AC4): `.smoke.ts`
- * so Vitest skips it by default; opt-in `RUN_MOOD_SMOKE=1` adds the glob AND un-skips,
- * scoring the 54 `MOOD_FIXTURES` against the real Workers-AI model over its REST endpoint.
- *
- *   CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… RUN_MOOD_SMOKE=1 \
- *     pnpm test src/lib/galaxy/mood-detect.smoke.ts
- */
+// Non-blocking live-accuracy eval (#211 AC3/AC4): `.smoke.ts` so Vitest skips it by default; opt-in `CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… RUN_MOOD_SMOKE=1 pnpm test src/lib/galaxy/mood-detect.smoke.ts`.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -30,26 +23,30 @@ const ENABLED =
 const OVERALL_FLOOR = 0.7;
 const ADVERSARIAL_FLOOR = 0.4;
 
-/** Classify one memory through the live Workers-AI REST endpoint, reusing the prompt. */
+// Classify one memory through the live Workers-AI REST endpoint, reusing the prompt. `fetch` can throw on network/DNS failures (not just `!res.ok`), so a connectivity error records a miss (null) rather than aborting the whole eval.
 const classifyLive = async (text: string): Promise<Emotion | null> => {
-  const res = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${MOOD_MODEL}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
+  try {
+    const res = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${MOOD_MODEL}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: buildMoodMessages(text),
+          response_format: MOOD_JSON_SCHEMA,
+        }),
       },
-      body: JSON.stringify({
-        messages: buildMoodMessages(text),
-        response_format: MOOD_JSON_SCHEMA,
-      }),
-    },
-  );
-  if (!res.ok) return null;
-  // REST wraps the model output in `{ result: { response } }`; the parser expects `{ response }`.
-  const json = (await res.json()) as { result?: unknown };
-  return parseMoodResponse(json.result);
+    );
+    if (!res.ok) return null;
+    // REST wraps the model output in `{ result: { response } }`; the parser expects `{ response }`.
+    const json = (await res.json()) as { result?: unknown };
+    return parseMoodResponse(json.result);
+  } catch {
+    return null;
+  }
 };
 
 const runEval = async (): Promise<AccuracyReport> => {
@@ -66,8 +63,7 @@ describe.skipIf(!ENABLED)(
   () => {
     it("classifies the 54-fixture set above the accuracy floors", async () => {
       const report = await runEval();
-      // Surface the breakdown for the manual eval log (this is an eval harness, not app
-      // code; `noConsole` is not enabled in this repo's Biome config).
+      // Surface the breakdown for the manual eval log (eval harness, not app code; `noConsole` is off in this repo's Biome config).
       console.log(
         `mood smoke: overall ${(report.accuracy * 100).toFixed(1)}% ` +
           `(base ${(report.baseAccuracy * 100).toFixed(1)}%, ` +
@@ -83,6 +79,7 @@ describe.skipIf(!ENABLED)(
       expect(report.adversarialAccuracy).toBeGreaterThanOrEqual(
         ADVERSARIAL_FLOOR,
       );
-    }, 120_000);
+      // 54 sequential live calls at ~2 s each (~108 s); 180_000 ms leaves headroom for a slow response or retry.
+    }, 180_000);
   },
 );
