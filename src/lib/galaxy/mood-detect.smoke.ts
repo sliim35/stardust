@@ -1,4 +1,4 @@
-// Non-blocking live-accuracy eval (#211 AC3/AC4): `.smoke.ts` so Vitest skips it by default; opt-in `CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… RUN_MOOD_SMOKE=1 pnpm test src/lib/galaxy/mood-detect.smoke.ts`.
+// Non-blocking accuracy eval: .smoke.ts so Vitest skips by default; opt-in RUN_MOOD_SMOKE=1.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -23,7 +23,7 @@ const ENABLED =
 const OVERALL_FLOOR = 0.7;
 const ADVERSARIAL_FLOOR = 0.4;
 
-// Classify one memory through the live Workers-AI REST endpoint, reusing the prompt. `fetch` can throw on network/DNS failures (not just `!res.ok`), so a connectivity error records a miss (null) rather than aborting the whole eval.
+// fetch throws on DNS/network failure (not just !res.ok); catch records a miss.
 const classifyLive = async (text: string): Promise<Emotion | null> => {
   try {
     const res = await fetch(
@@ -41,7 +41,7 @@ const classifyLive = async (text: string): Promise<Emotion | null> => {
       },
     );
     if (!res.ok) return null;
-    // REST wraps the model output in `{ result: { response } }`; the parser expects `{ response }`.
+    // REST wraps the output in `{ result }`; the parser expects the inner object.
     const json = (await res.json()) as { result?: unknown };
     return parseMoodResponse(json.result);
   } catch {
@@ -63,7 +63,7 @@ describe.skipIf(!ENABLED)(
   () => {
     it("classifies the 54-fixture set above the accuracy floors", async () => {
       const report = await runEval();
-      // Surface the breakdown for the manual eval log (eval harness, not app code; `noConsole` is off in this repo's Biome config).
+      // Breakdown for the manual eval log (harness, not app code).
       console.log(
         `mood smoke: overall ${(report.accuracy * 100).toFixed(1)}% ` +
           `(base ${(report.baseAccuracy * 100).toFixed(1)}%, ` +
@@ -79,7 +79,7 @@ describe.skipIf(!ENABLED)(
       expect(report.adversarialAccuracy).toBeGreaterThanOrEqual(
         ADVERSARIAL_FLOOR,
       );
-      // 54 sequential live calls at ~2 s each (~108 s); 180_000 ms leaves headroom for a slow response or retry.
+      // 54 sequential live calls (~108 s); 180s leaves headroom for a slow call.
     }, 180_000);
   },
 );
