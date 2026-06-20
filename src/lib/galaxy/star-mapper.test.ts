@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { hostGalaxyFor } from "#/lib/galaxy/seed";
 import type { MemoryStarRow } from "#/lib/galaxy/star-mapper";
 import { rowToMemoryStar } from "#/lib/galaxy/star-mapper";
 
@@ -14,6 +15,7 @@ const fullRow = (over: Partial<MemoryStarRow> = {}): MemoryStarRow => ({
   brightness: 0.7,
   grp: "bright-days",
   who: "marco",
+  trigger: "person",
   tier: "galaxy",
   parentId: "home",
   placementR: 0.5,
@@ -58,16 +60,41 @@ describe("rowToMemoryStar", () => {
     });
   });
 
-  it("omits placement entirely when the quartet is NULL (legacy home default)", () => {
+  it("routes a NULL-quartet (pre-migration) row via hostGalaxyFor(mood), mirroring the star's coords", () => {
+    // A legacy row written before the placement quartet existed: rather than
+    // leaving placement absent (which the renderer would force to 'home'), the
+    // mapper synthesizes a galaxy-tier placement whose parentId is the emotion's
+    // host galaxy — so the star lands in the right galaxy, not always home (AC3).
     const star = rowToMemoryStar(
       fullRow({
+        mood: "joyful",
+        r: 0.55,
+        angle: 0.9,
         tier: null,
         parentId: null,
         placementR: null,
         placementAngle: null,
       }),
     );
-    expect("placement" in star).toBe(false);
+    expect(star.placement).toEqual({
+      tier: "galaxy",
+      parentId: hostGalaxyFor("joyful"), // "home"
+      r: 0.55,
+      angle: 0.9,
+    });
+  });
+
+  it("routes a NULL-parent_id row with mood:'wonder' to parentId:'andromeda' (AC4)", () => {
+    const star = rowToMemoryStar(
+      fullRow({
+        mood: "wonder",
+        tier: null,
+        parentId: null,
+        placementR: null,
+        placementAngle: null,
+      }),
+    );
+    expect(star.placement?.parentId).toBe("andromeda");
   });
 
   it("a present placement with a NULL parent_id keeps parentId absent (parentId is itself optional)", () => {
@@ -84,12 +111,28 @@ describe("rowToMemoryStar", () => {
     expect(star.placement && "parentId" in star.placement).toBe(false);
   });
 
-  it("every NULL column becomes an ABSENT field (never null)", () => {
+  it("maps a non-NULL trigger straight through (round-trip)", () => {
+    expect(rowToMemoryStar(fullRow({ trigger: "person" })).trigger).toBe(
+      "person",
+    );
+    expect(rowToMemoryStar(fullRow({ trigger: "action" })).trigger).toBe(
+      "action",
+    );
+  });
+
+  it("maps a NULL trigger to an ABSENT field (back-compat — never null)", () => {
+    const star = rowToMemoryStar(fullRow({ trigger: null }));
+    expect(star.trigger).toBeUndefined();
+    expect("trigger" in star).toBe(false);
+  });
+
+  it("every NULL optional column (except the mood-routed placement) becomes ABSENT (never null)", () => {
     const star = rowToMemoryStar(
       fullRow({
         name: null,
         grp: null,
         who: null,
+        trigger: null,
         tier: null,
         parentId: null,
         placementR: null,
@@ -99,7 +142,7 @@ describe("rowToMemoryStar", () => {
     expect("name" in star).toBe(false);
     expect("group" in star).toBe(false);
     expect("who" in star).toBe(false);
-    expect("placement" in star).toBe(false);
+    expect("trigger" in star).toBe(false);
   });
 
   it("never sets egg/deep (no user star is an egg/deep star)", () => {

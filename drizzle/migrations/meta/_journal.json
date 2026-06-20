@@ -15,6 +15,13 @@
       "when": 1781430000000,
       "tag": "0001_emotion_enum_widen_7_to_12",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1781967594324,
+      "tag": "0002_memory_star_trigger",
+      "breakpoints": true
     }
   ]
 }
