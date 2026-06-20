@@ -16,6 +16,7 @@
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import type {
   ConstellationFigure,
+  Emotion,
   GalaxyBackdrop,
   GalaxySky,
   MemoryStar,
@@ -33,44 +34,106 @@ import { en } from "#/lib/i18n/messages/en";
 const COPY = en.memoryStars;
 
 /**
- * Feeling → color + the angular sector of the disk it occupies, so same-mood stars
- * gather into a constellation. The agent ultimately owns `color`; this map is for
- * seeding + validation only.
+ * Emotion → color + the angular sector of the disk it occupies, so same-emotion
+ * stars gather into a constellation. The agent ultimately owns `color`; this map is
+ * for seeding + validation only.
+ *
+ * Widened 7→12 for the #187 emotion partition (ADR-0014 §1). The 5 new hexes come
+ * from spike #193 §2's colour table and are PROVISIONAL until ratified by the
+ * colour proof (#193-B) or the owner. `gratitude` uses the 2026-06-20 proof verdict
+ * `#e8b06a` (amber-orange) — the originally-proposed `#f0d890` golden-wheat was NOT
+ * distinct enough from Mom's reserved gold `#f5d6a0` as a star-glow. `wistful` is
+ * re-tuned `#c8d4e8`→`#b8c4e0` (blue-shifted per #193 §2 to distance it from the new
+ * `longing` slate-blue). Gold `#f5d6a0` stays reserved for Mom/Sol/chrome.
  */
 export const MOODS = {
   joyful: { color: "#f3c24e", angle: -1.15, spread: 0.62 },
   tender: { color: "#f3b8b0", angle: -0.15, spread: 0.55 },
   grieving: { color: "#8aa0d8", angle: 0.95, spread: 0.6 },
-  wistful: { color: "#c8d4e8", angle: 1.95, spread: 0.62 },
-  peaceful: { color: "#9cd8c0", angle: 2.7, spread: 0.55 },
-  nostalgic: { color: "#e8c49a", angle: -2.75, spread: 0.55 },
   wonder: { color: "#cbb8ef", angle: -2.05, spread: 0.55 },
+  nostalgic: { color: "#e8c49a", angle: -2.75, spread: 0.55 },
+  // PROVISIONAL — pending colour proof (#193-B or owner ratification): sage green.
+  hope: { color: "#a8d8b0", angle: -2.4, spread: 0.55 },
+  peaceful: { color: "#9cd8c0", angle: 2.7, spread: 0.55 },
+  // Re-tuned `#c8d4e8`→`#b8c4e0` (blue-shifted, #193 §2) to distance from `longing`.
+  wistful: { color: "#b8c4e0", angle: 1.95, spread: 0.62 },
+  // PROVISIONAL — pending colour proof (#193-B or owner ratification). 2026-06-20
+  // proof verdict: amber-orange `#e8b06a`, NOT the golden-wheat `#f0d890` (too close
+  // to Mom's reserved gold `#f5d6a0` as a star-glow).
+  gratitude: { color: "#e8b06a", angle: 2.35, spread: 0.55 },
+  // PROVISIONAL — pending colour proof (#193-B or owner ratification): terracotta.
+  courage: { color: "#e8906a", angle: 0.35, spread: 0.55 },
+  // PROVISIONAL — pending colour proof (#193-B or owner ratification): dusty mauve.
+  pride: { color: "#c8a0d0", angle: 0.6, spread: 0.55 },
+  // PROVISIONAL — pending colour proof (#193-B or owner ratification): slate blue.
+  longing: { color: "#a0b8d8", angle: 1.3, spread: 0.55 },
 } as const satisfies Record<
-  Mood,
+  Emotion,
   { color: string; angle: number; spread: number }
 >;
 
 /**
- * The 7 `Mood` literals as an ordered tuple — the single source for the Drizzle
+ * The 12 `Emotion` literals as an ordered tuple — the single source for the Drizzle
  * `mood` enum (`schema.ts`) and the Workers-AI structured-output enum
- * (`mood-detect.ts`), so the DB column, the AI classifier, and the `Mood` type
- * can never drift apart (the `satisfies` pins it to `Mood`; `seed.test.ts` pins
+ * (`mood-detect.ts`), so the DB column, the AI classifier, and the `Emotion` type
+ * can never drift apart (the `satisfies` pins it to `Emotion`; `seed.test.ts` pins
  * it to every `MOODS` key).
  */
-export const MOOD_VALUES = [
+export const EMOTION_VALUES = [
   "joyful",
   "tender",
   "grieving",
-  "wistful",
-  "peaceful",
-  "nostalgic",
   "wonder",
-] as const satisfies readonly Mood[];
+  "nostalgic",
+  "hope",
+  "peaceful",
+  "wistful",
+  "gratitude",
+  "courage",
+  "pride",
+  "longing",
+] as const satisfies readonly Emotion[];
 
-/** Runtime guard: is an arbitrary value one of the 7 `Mood` literals? */
-export const isMood = (value: unknown): value is Mood =>
+/**
+ * @deprecated Use {@link EMOTION_VALUES}. Back-compat alias so consumers that import
+ * `MOOD_VALUES` (the Drizzle enum, the classifier) keep compiling through the 7→12
+ * widening.
+ */
+export const MOOD_VALUES = EMOTION_VALUES;
+
+/** Runtime guard: is an arbitrary value one of the 12 `Emotion` literals? */
+export const isMood = (value: unknown): value is Emotion =>
   typeof value === "string" &&
-  (MOOD_VALUES as readonly string[]).includes(value);
+  (EMOTION_VALUES as readonly string[]).includes(value);
+
+/**
+ * The owner-approved emotion→host-galaxy partition (BR26, ADR-0014 §3). Exactly one
+ * galaxy per emotion; the 12 keys are exhaustive over `Emotion` (compile-checked by
+ * `Record<Emotion, string>`). Ids match `realdata.ts`
+ * (`home`/`andromeda`/`triangulum`/`lmc`). The host galaxy is NEVER stored on a star
+ * — it is derived from the star's emotion via this map, so it can never drift.
+ */
+export const EMOTION_GALAXY: Record<Emotion, string> = {
+  // Milky Way
+  joyful: "home",
+  tender: "home",
+  grieving: "home",
+  // Andromeda
+  wonder: "andromeda",
+  nostalgic: "andromeda",
+  hope: "andromeda",
+  // Triangulum
+  peaceful: "triangulum",
+  wistful: "triangulum",
+  gratitude: "triangulum",
+  // LMC
+  courage: "lmc",
+  pride: "lmc",
+  longing: "lmc",
+};
+
+/** The galaxy id that hosts a given emotion's figure (BR26). */
+export const hostGalaxyFor = (e: Emotion): string => EMOTION_GALAXY[e];
 
 /** The default dim procedural galaxy. Palette defaults to `ember` (amber) — owner
  *  resolved amber-vs-green → amber (2026-06-04), matching ASTRO/STARLIGHT + loader. */
@@ -97,40 +160,17 @@ export const placeStar = (
   return { r, angle };
 };
 
-// ── mood constellations (Layer B — ADR-0010 §1/§4-④, #146; owner rules 2026-06-06) ──
-// Each constellation is an AUTHORED figure (issue #154 amendment): one mood per
-// figure (rule 1 — hence one colour, rule 2), a designed edge topology like a real
-// constellation (rule 3 — never an emergent `createdAt` chain). The `group` key is
-// the stable membership marker mirrored on each member star; member ids are the
-// `s${index+1}` ids `buildSeedSky` derives from SEED order (a drifted id fails the
-// seed mood-purity test). Same-mood members share a `placeStar` wedge, so each
-// figure reads as a local shape. Mom's star stays ungrouped (standalone), per
-// ADR-0010 §1 + the Mom's-star treatment (2026-06-06).
-export const CONSTELLATIONS = {
-  // "bright days" — the joyful figure: a slightly irregular closed triangle
-  // (3 nodes / 3 edges — deliberately MORE edges than a chain could draw).
-  brightDays: {
-    group: "bright-days",
-    mood: "joyful",
-    members: ["s01", "s07", "s08"],
-    edges: [
-      ["s01", "s07"],
-      ["s07", "s08"],
-      ["s08", "s01"],
-    ],
-  },
-  // "quiet ache" — the wistful figure: an open arc routed through s04 as its
-  // hub (s09—s04—s10) — NOT the s04→s09→s10 createdAt chain.
-  quietAche: {
-    group: "quiet-ache",
-    mood: "wistful",
-    members: ["s04", "s09", "s10"],
-    edges: [
-      ["s09", "s04"],
-      ["s04", "s10"],
-    ],
-  },
-} as const satisfies Record<string, ConstellationFigure>;
+// ── emotion constellations (Layer B — ADR-0014 §2; #187) ───────────────────────
+// The two prototype figures (`brightDays` joyful / `quietAche` wistful) are RETIRED
+// (spike #194 §5, AC8): they used member-id edges + 3-member thresholds, which the
+// designed-anchor model (anchor-id edges, `threshold >= 10`) supersedes. Their seed
+// stars' `group` is cleared below → they render SOLO until designed figures claim
+// them. `CONSTELLATIONS` starts EMPTY: the per-emotion silhouette geometries
+// (`anchors`/`edges`/`threshold`) are a design-role deliverable, authored + verified
+// per emotion (BR30-gated) in the downstream per-emotion design stories. Each future
+// entry must satisfy `anchors.length >= 10 && threshold >= 10 && hostGalaxyId ===
+// hostGalaxyFor(emotion)` (the structural gate). Typed by the new anchor-model shape.
+export const CONSTELLATIONS: Record<string, ConstellationFigure> = {};
 
 // ── the curated seed corpus (subset of the prototype's 36) ─────────────────────
 // `copyKey` indexes the i18n `memoryStars` catalog — no inline name/text here
@@ -142,16 +182,16 @@ type SeedSpec = {
   group?: string;
 };
 
+// The prototype figures are retired (AC8), so every seed star is now SOLO — no
+// `group`. Hover gives each the short description only (like Mom's star), per the
+// emotion-figure redesign (ADR-0014 §2). Designed figures will claim stars once the
+// per-emotion silhouettes land (BR30-gated).
 const SEED = [
   {
     mood: "joyful",
     copyKey: "s01",
     who: "marco",
-    group: CONSTELLATIONS.brightDays.group,
   },
-  // s02/s03/s05/s06 are SOLO stars — their moods have no authored figure yet, so
-  // hover gives them the short description only (like Mom's star), per the
-  // mood-pure redesign (owner rules, 2026-06-06).
   {
     mood: "tender",
     copyKey: "s02",
@@ -164,7 +204,6 @@ const SEED = [
   {
     mood: "wistful",
     copyKey: "s04",
-    group: CONSTELLATIONS.quietAche.group,
   },
   {
     mood: "peaceful",
@@ -176,29 +215,23 @@ const SEED = [
     copyKey: "s06",
     who: "ken",
   },
-  // The corpus growth (owner rule 4): two more joyful + two more wistful stars so
-  // both authored figures have >= 3 same-mood nodes.
   {
     mood: "joyful",
     copyKey: "s07",
-    group: CONSTELLATIONS.brightDays.group,
   },
   {
     mood: "joyful",
     copyKey: "s08",
     who: "noor",
-    group: CONSTELLATIONS.brightDays.group,
   },
   {
     mood: "wistful",
     copyKey: "s09",
-    group: CONSTELLATIONS.quietAche.group,
   },
   {
     mood: "wistful",
     copyKey: "s10",
     who: "tomas",
-    group: CONSTELLATIONS.quietAche.group,
   },
 ] as const satisfies readonly SeedSpec[];
 

@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
-  constellationNodes,
-  constellationSegments,
+  assignAnchors,
   figureColor,
   figureForGroup,
+  figureSegments,
+  figureState,
+  ghostSegments,
   hoverAffordanceFor,
+  slotBeyondCompletion,
 } from "#/lib/galaxy/constellation";
 import { polarToXY } from "#/lib/galaxy/place";
-import { buildSeedSky, CONSTELLATIONS, MOODS } from "#/lib/galaxy/seed";
+import { MOODS } from "#/lib/galaxy/seed";
 import type {
   ConstellationFigure,
+  FigureAnchor,
   MemoryStar,
   RealObject,
 } from "#/lib/galaxy/types";
@@ -17,7 +21,7 @@ import type {
 const mkStar = (over: Partial<MemoryStar> & { id: string }): MemoryStar => ({
   text: "t",
   mood: "wistful",
-  color: "#c8d4e8",
+  color: "#b8c4e0",
   r: 0.5,
   angle: 1,
   brightness: 0.7,
@@ -25,15 +29,25 @@ const mkStar = (over: Partial<MemoryStar> & { id: string }): MemoryStar => ({
   ...over,
 });
 
+// A tiny 3-anchor figure for the unit tests (the real ≥10 silhouettes are a
+// design-role deliverable; these fixtures exercise the pure helpers only).
+const ANCHORS: readonly FigureAnchor[] = [
+  { id: "n1", r: 0.2, angle: 0.5 },
+  { id: "n2", r: 0.6, angle: 1.5 },
+  { id: "n3", r: 0.9, angle: 2.5 },
+];
+
 const mkFigure = (
   over?: Partial<ConstellationFigure>,
 ): ConstellationFigure => ({
   group: "g",
-  mood: "wistful",
-  members: ["a", "b", "c"],
+  emotion: "wistful",
+  hostGalaxyId: "triangulum",
+  threshold: 3,
+  anchors: ANCHORS,
   edges: [
-    ["a", "b"],
-    ["b", "c"],
+    ["n1", "n2"],
+    ["n2", "n3"],
   ],
   ...over,
 });
@@ -52,185 +66,249 @@ const mkReal = (): RealObject => ({
   loreKey: "andromeda",
 });
 
-describe("constellationNodes — validated, mood-pure figure membership (rule 1)", () => {
-  it("returns the figure's members in AUTHORED order — not createdAt order", () => {
+describe("assignAnchors — stable createdAt-order, append-only binding", () => {
+  it("binds members to anchors by ascending createdAt (anchorId → star)", () => {
     const a = mkStar({ id: "a", group: "g", createdAt: 300 });
     const b = mkStar({ id: "b", group: "g", createdAt: 100 });
     const c = mkStar({ id: "c", group: "g", createdAt: 200 });
-    const nodes = constellationNodes([b, c, a], mkFigure());
-    expect(nodes.map((n) => n.id)).toEqual(["a", "b", "c"]);
+    // Input order is shuffled — binding follows createdAt, not array order.
+    const bound = assignAnchors([a, b, c], ANCHORS);
+    expect(bound.get("n1")?.id).toBe("b"); // earliest
+    expect(bound.get("n2")?.id).toBe("c");
+    expect(bound.get("n3")?.id).toBe("a"); // latest
   });
 
-  it("EXCLUDES a forged cross-mood member — same mood only (owner rule 1, 2026-06-06)", () => {
-    const a = mkStar({ id: "a", group: "g" });
-    const intruder = mkStar({ id: "b", group: "g", mood: "joyful" });
-    const c = mkStar({ id: "c", group: "g" });
-    const nodes = constellationNodes([a, intruder, c], mkFigure());
-    expect(nodes.map((n) => n.id)).toEqual(["a", "c"]);
+  it("partial fill: fewer members than anchors leaves later anchors open", () => {
+    const a = mkStar({ id: "a", group: "g", createdAt: 100 });
+    const b = mkStar({ id: "b", group: "g", createdAt: 200 });
+    const bound = assignAnchors([a, b], ANCHORS);
+    expect(bound.size).toBe(2);
+    expect(bound.get("n1")?.id).toBe("a");
+    expect(bound.get("n2")?.id).toBe("b");
+    expect(bound.has("n3")).toBe(false);
   });
 
-  it("skips member ids that resolve to no star", () => {
-    const a = mkStar({ id: "a", group: "g" });
-    const nodes = constellationNodes([a], mkFigure());
-    expect(nodes.map((n) => n.id)).toEqual(["a"]);
+  it("exact threshold: every anchor is filled", () => {
+    const stars = [
+      mkStar({ id: "a", group: "g", createdAt: 1 }),
+      mkStar({ id: "b", group: "g", createdAt: 2 }),
+      mkStar({ id: "c", group: "g", createdAt: 3 }),
+    ];
+    const bound = assignAnchors(stars, ANCHORS);
+    expect(bound.size).toBe(ANCHORS.length);
   });
 
-  it("NEVER includes a deep star — even one wrongly authored into a figure (owner hard constraint, 2026-06-06)", () => {
-    const a = mkStar({ id: "a", group: "g" });
-    const moms = mkStar({ id: "b", group: "g", deep: true });
-    const nodes = constellationNodes([a, moms], mkFigure());
-    expect(nodes.map((n) => n.id)).toEqual(["a"]);
+  it("append-only: adding a later member never moves an earlier binding", () => {
+    const a = mkStar({ id: "a", group: "g", createdAt: 100 });
+    const b = mkStar({ id: "b", group: "g", createdAt: 200 });
+    const before = assignAnchors([a, b], ANCHORS);
+    const c = mkStar({ id: "c", group: "g", createdAt: 300 });
+    const after = assignAnchors([a, b, c], ANCHORS);
+    // The earlier two bindings are unchanged; only the new open anchor fills.
+    expect(after.get("n1")?.id).toBe(before.get("n1")?.id);
+    expect(after.get("n2")?.id).toBe(before.get("n2")?.id);
+    expect(after.get("n3")?.id).toBe("c");
   });
 
-  it("the shipped seed sky is mood-pure: every figure member resolves and shares the figure's mood", () => {
-    const { stars } = buildSeedSky();
-    for (const figure of Object.values(CONSTELLATIONS)) {
-      const nodes = constellationNodes(stars, figure);
-      // Nothing excluded — the real data satisfies rule 1 by authorship, and the
-      // validation in the builder is a guard, never a silent data patch.
-      expect(nodes.map((n) => n.id)).toEqual([...figure.members]);
-      for (const node of nodes) expect(node.mood).toBe(figure.mood);
-    }
-  });
-
-  it("Mom's star (irina, deep) and the egg are never nodes of any seed figure", () => {
-    const { stars } = buildSeedSky();
-    const irina = stars.find((s) => s.deep === true);
-    expect(irina).toBeDefined();
-    // The seed keeps Mom's star ungrouped — and it must stay that way (ADR-0010 §1).
-    expect(irina?.group).toBeUndefined();
-    for (const figure of Object.values(CONSTELLATIONS)) {
-      const ids = constellationNodes(stars, figure).map((n) => n.id);
-      expect(ids).not.toContain(irina?.id);
-      expect(ids).not.toContain("egg");
-      expect(figure.members).not.toContain(irina?.id);
-    }
+  it("ties on createdAt break by id so the order is total + stable", () => {
+    const a = mkStar({ id: "a", group: "g", createdAt: 5 });
+    const b = mkStar({ id: "b", group: "g", createdAt: 5 });
+    const bound = assignAnchors([b, a], ANCHORS);
+    expect(bound.get("n1")?.id).toBe("a");
+    expect(bound.get("n2")?.id).toBe("b");
   });
 });
 
-describe("constellationSegments — authored edge topology (rule 3)", () => {
-  it("draws exactly the authored edges, in order, at the nodes' polar positions", () => {
-    const a = mkStar({ id: "a", group: "g", r: 0.2, angle: 0.5 });
-    const b = mkStar({ id: "b", group: "g", r: 0.6, angle: 1.5 });
-    const c = mkStar({ id: "c", group: "g", r: 0.9, angle: 2.5 });
-    // A closed triangle: 3 nodes / 3 edges — a createdAt-chain builder (N-1
-    // segments) could never produce this figure.
-    const triangle = mkFigure({
-      edges: [
-        ["a", "b"],
-        ["b", "c"],
-        ["c", "a"],
-      ],
-    });
-    const segs = constellationSegments([a, b, c], triangle);
-    expect(segs).toHaveLength(3);
+describe("figureState — derived forming/finished (never stored)", () => {
+  it("is 'forming' below the threshold", () => {
+    const members = [
+      mkStar({ id: "a", createdAt: 1 }),
+      mkStar({ id: "b", createdAt: 2 }),
+    ];
+    expect(figureState(members, mkFigure({ threshold: 3 }))).toBe("forming");
+  });
+
+  it("is 'finished' at the exact threshold boundary", () => {
+    const members = [
+      mkStar({ id: "a", createdAt: 1 }),
+      mkStar({ id: "b", createdAt: 2 }),
+      mkStar({ id: "c", createdAt: 3 }),
+    ];
+    expect(figureState(members, mkFigure({ threshold: 3 }))).toBe("finished");
+  });
+
+  it("is 'finished' beyond the threshold", () => {
+    const members = Array.from({ length: 5 }, (_, i) =>
+      mkStar({ id: `m${i}`, createdAt: i }),
+    );
+    expect(figureState(members, mkFigure({ threshold: 3 }))).toBe("finished");
+  });
+});
+
+describe("figureSegments — only edges whose BOTH anchors are filled", () => {
+  it("draws an edge at the bound members' anchor positions, in order", () => {
+    const a = mkStar({ id: "a", group: "g", createdAt: 1 });
+    const b = mkStar({ id: "b", group: "g", createdAt: 2 });
+    const c = mkStar({ id: "c", group: "g", createdAt: 3 });
+    const segs = figureSegments([a, b, c], mkFigure());
+    expect(segs).toHaveLength(2);
+    // n1→n2 and n2→n3 at the AUTHORED anchor positions (not the star's own r/angle).
     expect(segs[0]).toEqual({
-      from: polarToXY(a.r, a.angle),
-      to: polarToXY(b.r, b.angle),
+      from: polarToXY(ANCHORS[0].r, ANCHORS[0].angle),
+      to: polarToXY(ANCHORS[1].r, ANCHORS[1].angle),
     });
     expect(segs[1]).toEqual({
-      from: polarToXY(b.r, b.angle),
-      to: polarToXY(c.r, c.angle),
-    });
-    expect(segs[2]).toEqual({
-      from: polarToXY(c.r, c.angle),
-      to: polarToXY(a.r, a.angle),
+      from: polarToXY(ANCHORS[1].r, ANCHORS[1].angle),
+      to: polarToXY(ANCHORS[2].r, ANCHORS[2].angle),
     });
   });
 
-  it("drops an edge touching an excluded node (cross-mood / deep / missing)", () => {
-    const a = mkStar({ id: "a", group: "g" });
-    const intruder = mkStar({ id: "b", group: "g", mood: "joyful" });
-    const c = mkStar({ id: "c", group: "g" });
-    const figure = mkFigure({
-      edges: [
-        ["a", "b"],
-        ["a", "c"],
-      ],
-    });
-    const segs = constellationSegments([a, intruder, c], figure);
+  it("omits an edge whose endpoint anchor has no bound member yet (forming)", () => {
+    const a = mkStar({ id: "a", group: "g", createdAt: 1 });
+    const b = mkStar({ id: "b", group: "g", createdAt: 2 });
+    // Only n1, n2 filled → edge n2→n3 is dropped (n3 empty).
+    const segs = figureSegments([a, b], mkFigure());
     expect(segs).toHaveLength(1);
     expect(segs[0]).toEqual({
-      from: polarToXY(a.r, a.angle),
-      to: polarToXY(c.r, c.angle),
+      from: polarToXY(ANCHORS[0].r, ANCHORS[0].angle),
+      to: polarToXY(ANCHORS[1].r, ANCHORS[1].angle),
     });
   });
 
-  it("a degenerate figure (fewer than two resolvable nodes) draws nothing", () => {
-    const solo = mkStar({ id: "a", group: "g" });
-    expect(constellationSegments([solo], mkFigure())).toEqual([]);
-    expect(constellationSegments([], mkFigure())).toEqual([]);
+  it("excludes a cross-emotion member (#154 rule 1 retained)", () => {
+    const a = mkStar({ id: "a", group: "g", createdAt: 1 });
+    const intruder = mkStar({
+      id: "b",
+      group: "g",
+      mood: "joyful",
+      createdAt: 2,
+    });
+    const c = mkStar({ id: "c", group: "g", createdAt: 3 });
+    // The intruder is removed BEFORE binding, so a/c bind to n1/n2; edge n2→n3
+    // (n3 empty) drops → only n1→n2 remains.
+    const segs = figureSegments([a, intruder, c], mkFigure());
+    expect(segs).toHaveLength(1);
+    expect(segs[0]).toEqual({
+      from: polarToXY(ANCHORS[0].r, ANCHORS[0].angle),
+      to: polarToXY(ANCHORS[1].r, ANCHORS[1].angle),
+    });
   });
 
-  it("the shipped brightDays figure is a closed triangle — NOT a chain (rule 3)", () => {
-    const { stars } = buildSeedSky();
-    const figure = CONSTELLATIONS.brightDays;
-    const segs = constellationSegments(stars, figure);
-    expect(segs).toHaveLength(figure.edges.length);
-    // The authored topology has MORE edges than a chain over the same nodes —
-    // the discriminator an emergent createdAt-chain could never satisfy.
-    expect(figure.edges.length).toBeGreaterThan(figure.members.length - 1);
+  it("NEVER binds a deep star — Mom's star stays a lone point (#154 hard rule)", () => {
+    const a = mkStar({ id: "a", group: "g", createdAt: 1 });
+    const moms = mkStar({ id: "b", group: "g", deep: true, createdAt: 2 });
+    // Only `a` survives → no edge has both endpoints filled → nothing drawn.
+    expect(figureSegments([a, moms], mkFigure())).toEqual([]);
   });
 
-  it("the shipped quietAche figure routes through its authored hub — not the createdAt chain", () => {
-    const { stars } = buildSeedSky();
-    const figure = CONSTELLATIONS.quietAche;
-    const segs = constellationSegments(stars, figure);
-    expect(segs).toHaveLength(figure.edges.length);
-    // The chain over these nodes in createdAt order would link s04 first
-    // (earliest seed star) — the authored arc instead places s04 as the hub.
-    const chainEndpoints = constellationNodes(stars, figure)
-      .slice()
-      .sort((x, y) => x.createdAt - y.createdAt)
-      .map((n) => n.id);
-    expect(figure.edges.map(([from, to]) => `${from}-${to}`)).not.toEqual(
-      chainEndpoints.slice(1).map((id, i) => `${chainEndpoints[i]}-${id}`),
-    );
+  it("a figure with no members draws nothing", () => {
+    expect(figureSegments([], mkFigure())).toEqual([]);
   });
 });
 
-describe("figureColor — single colour by construction (rule 2)", () => {
-  it("is exactly the figure's mood colour from MOODS", () => {
-    expect(figureColor(mkFigure({ mood: "joyful" }))).toBe(MOODS.joyful.color);
-    expect(figureColor(mkFigure({ mood: "wistful" }))).toBe(
+describe("ghostSegments — the full silhouette outline, regardless of fill", () => {
+  it("draws ALL authored anchor edges at authored positions even with no members", () => {
+    const segs = ghostSegments(mkFigure());
+    expect(segs).toHaveLength(2);
+    expect(segs[0]).toEqual({
+      from: polarToXY(ANCHORS[0].r, ANCHORS[0].angle),
+      to: polarToXY(ANCHORS[1].r, ANCHORS[1].angle),
+    });
+    expect(segs[1]).toEqual({
+      from: polarToXY(ANCHORS[1].r, ANCHORS[1].angle),
+      to: polarToXY(ANCHORS[2].r, ANCHORS[2].angle),
+    });
+  });
+
+  it("is independent of how many members exist (it is the figure's geometry)", () => {
+    const a = mkFigure();
+    expect(ghostSegments(a)).toEqual(ghostSegments(a));
+    expect(ghostSegments(a)).toHaveLength(a.edges.length);
+  });
+
+  it("drops an edge that references an undeclared anchor (defensive)", () => {
+    const broken = mkFigure({
+      edges: [
+        ["n1", "n2"],
+        ["n2", "nope"],
+      ],
+    });
+    expect(ghostSegments(broken)).toHaveLength(1);
+  });
+});
+
+describe("slotBeyondCompletion — SSR-safe, deterministic edge-midpoint densification", () => {
+  const EDGES: readonly (readonly [string, string])[] = [
+    ["n1", "n2"],
+    ["n2", "n3"],
+  ];
+
+  it("is deterministic — same inputs → same output", () => {
+    const a = slotBeyondCompletion("mem-x", ANCHORS, EDGES, 0);
+    const b = slotBeyondCompletion("mem-x", ANCHORS, EDGES, 0);
+    expect(a).toEqual(b);
+  });
+
+  it("different memberId → different output (no visual stacking)", () => {
+    const a = slotBeyondCompletion("mem-x", ANCHORS, EDGES, 0);
+    const b = slotBeyondCompletion("mem-y", ANCHORS, EDGES, 0);
+    expect(a).not.toEqual(b);
+  });
+
+  it("lands near an edge midpoint (within the ±0.05 perturbation envelope)", () => {
+    const pos = slotBeyondCompletion("mem-x", ANCHORS, EDGES, 0);
+    // priorBeyondCount 0 → the first beyond-member takes the least-occupied edge
+    // (index 0 by tie-break): midpoint of n1/n2.
+    const midR = (ANCHORS[0].r + ANCHORS[1].r) / 2;
+    const midAngle = (ANCHORS[0].angle + ANCHORS[1].angle) / 2;
+    expect(Math.abs(pos.r - midR)).toBeLessThanOrEqual(0.05 + 1e-9);
+    expect(Math.abs(pos.angle - midAngle)).toBeLessThanOrEqual(0.05 + 1e-9);
+  });
+
+  it("distributes across edges as priorBeyondCount grows (least-occupied first)", () => {
+    const first = slotBeyondCompletion("m1", ANCHORS, EDGES, 0);
+    const second = slotBeyondCompletion("m2", ANCHORS, EDGES, 1);
+    // With 2 edges, the 2nd beyond-member targets the OTHER edge's midpoint.
+    const mid0 = {
+      r: (ANCHORS[0].r + ANCHORS[1].r) / 2,
+      angle: (ANCHORS[0].angle + ANCHORS[1].angle) / 2,
+    };
+    const mid1 = {
+      r: (ANCHORS[1].r + ANCHORS[2].r) / 2,
+      angle: (ANCHORS[1].angle + ANCHORS[2].angle) / 2,
+    };
+    expect(Math.abs(first.r - mid0.r)).toBeLessThanOrEqual(0.05 + 1e-9);
+    expect(Math.abs(second.r - mid1.r)).toBeLessThanOrEqual(0.05 + 1e-9);
+  });
+});
+
+describe("figureColor — single colour by construction (rule 2), via emotion", () => {
+  it("is exactly the figure's emotion colour from MOODS", () => {
+    expect(figureColor(mkFigure({ emotion: "joyful" }))).toBe(
+      MOODS.joyful.color,
+    );
+    expect(figureColor(mkFigure({ emotion: "wistful" }))).toBe(
       MOODS.wistful.color,
     );
   });
 
-  it("every shipped figure's segment endpoints share ONE colour === MOODS[figure.mood].color", () => {
-    const { stars } = buildSeedSky();
-    for (const figure of Object.values(CONSTELLATIONS)) {
-      const nodes = constellationNodes(stars, figure);
-      const colours = new Set(nodes.map((n) => n.color));
-      expect(colours.size).toBe(1);
-      expect([...colours][0]).toBe(figureColor(figure));
-      expect(figureColor(figure)).toBe(MOODS[figure.mood].color);
-    }
+  it("resolves a NEW (12-emotion) colour token", () => {
+    expect(figureColor(mkFigure({ emotion: "courage" }))).toBe(
+      MOODS.courage.color,
+    );
   });
 });
 
 describe("figureForGroup — a star's group key resolves to its authored figure", () => {
-  it("resolves a shipped group key to its figure", () => {
-    expect(figureForGroup(CONSTELLATIONS.quietAche.group)).toBe(
-      CONSTELLATIONS.quietAche,
-    );
-    expect(figureForGroup(CONSTELLATIONS.brightDays.group)).toBe(
-      CONSTELLATIONS.brightDays,
-    );
-  });
-
-  it("an unknown group resolves to null", () => {
+  it("an unknown group resolves to null (CONSTELLATIONS is empty post-retirement)", () => {
     expect(figureForGroup("no-such-figure")).toBeNull();
   });
 });
 
 describe("hoverAffordanceFor — what hover lights (interaction spec §3)", () => {
-  it("a grouped memory star gets short-desc + its constellation", () => {
-    const star = mkStar({ id: "s", group: CONSTELLATIONS.quietAche.group });
-    expect(hoverAffordanceFor(star)).toEqual({
-      kind: "memory",
-      group: CONSTELLATIONS.quietAche.group,
-    });
+  it("a grouped memory star gets short-desc + its constellation group", () => {
+    const star = mkStar({ id: "s", group: "g" });
+    expect(hoverAffordanceFor(star)).toEqual({ kind: "memory", group: "g" });
   });
 
   it("an ungrouped memory star gets short-desc only (no constellation)", () => {

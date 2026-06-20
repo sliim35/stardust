@@ -22,7 +22,7 @@ import {
   sqliteTable,
   text,
 } from "drizzle-orm/sqlite-core";
-import { MOOD_VALUES } from "#/lib/galaxy/seed";
+import { EMOTION_VALUES } from "#/lib/galaxy/seed";
 
 export const memoryStars = sqliteTable(
   "memory_stars",
@@ -30,9 +30,11 @@ export const memoryStars = sqliteTable(
     id: text("id").primaryKey(),
     text: text("text").notNull(),
     name: text("name"),
-    // The 7 Mood literals — enforced in TS (Drizzle `{ enum }`), not a DB CHECK.
-    // `MOOD_VALUES` is the single source shared with the AI classifier + `Mood`.
-    mood: text("mood", { enum: MOOD_VALUES }).notNull(),
+    // The 12 Emotion literals — enforced in TS (Drizzle `{ enum }`), not a DB CHECK.
+    // `EMOTION_VALUES` is the single source shared with the AI classifier + `Emotion`.
+    // Widening 7→12 is type-only: SQLite TEXT has no stored enum constraint, so the
+    // generated migration is a no-op (existing rows with old mood values stay valid).
+    mood: text("mood", { enum: EMOTION_VALUES }).notNull(),
     color: text("color").notNull(),
     r: real("r").notNull(),
     angle: real("angle").notNull(),

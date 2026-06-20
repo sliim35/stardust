@@ -12,9 +12,17 @@
  */
 
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
-import type { MemoryStar, Mood } from "#/lib/galaxy/types";
+import type { Emotion, MemoryStar } from "#/lib/galaxy/types";
 
-/** Short mood labels for hover/eyebrow text (design spec mood table). */
+/**
+ * Short emotion labels for hover/eyebrow text (design spec mood table) — the
+ * **fallback** only: the user-facing labels come from the i18n catalog
+ * (`moodLabels` / `en.moods`), used here when a star has no `name`. Widened 7→12
+ * to stay exhaustive over `Emotion` (#200); the en+ru catalog widening + the
+ * `wistful`→"WISTFUL" rename (so `longing` owns "LONGING") is #193-B. `wistful`
+ * keeps "longing" here for now to avoid changing the displayed fallback ahead of
+ * that ratified i18n rename.
+ */
 export const MOOD_LABELS = {
   joyful: "joy",
   tender: "love",
@@ -23,7 +31,12 @@ export const MOOD_LABELS = {
   peaceful: "peace",
   nostalgic: "memory",
   wonder: "wonder",
-} as const satisfies Record<Mood, string>;
+  hope: "hope",
+  gratitude: "gratitude",
+  courage: "courage",
+  pride: "pride",
+  longing: "longing",
+} as const satisfies Record<Emotion, string>;
 
 export type BloomSizing = {
   bloom: number; // soft radial halo diameter (px)
