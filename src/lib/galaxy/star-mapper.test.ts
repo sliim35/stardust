@@ -97,6 +97,36 @@ describe("rowToMemoryStar", () => {
     expect(star.placement?.parentId).toBe("andromeda");
   });
 
+  it("a PARTIALLY-NULL quartet (corrupt row) keeps placement ABSENT — never synthesizes from intrinsic coords", () => {
+    // The synthesis branch is the genuine pre-migration case (the WHOLE quartet
+    // is NULL). A partial-null quartet — tier NULL but a coord present, which
+    // atomic writes shouldn't produce — is corrupt data; we must NOT silently
+    // synthesize a galaxy placement from the star's intrinsic (r, angle).
+    const tierNullCoordPresent = rowToMemoryStar(
+      fullRow({
+        mood: "wonder",
+        tier: null,
+        parentId: null,
+        placementR: 0.4,
+        placementAngle: 1.1,
+      }),
+    );
+    expect(tierNullCoordPresent.placement).toBeUndefined();
+    expect("placement" in tierNullCoordPresent).toBe(false);
+
+    // The mirror corruption: tier present but a coord NULL.
+    const tierPresentCoordNull = rowToMemoryStar(
+      fullRow({
+        tier: "galaxy",
+        parentId: "home",
+        placementR: null,
+        placementAngle: 1.1,
+      }),
+    );
+    expect(tierPresentCoordNull.placement).toBeUndefined();
+    expect("placement" in tierPresentCoordNull).toBe(false);
+  });
+
   it("a present placement with a NULL parent_id keeps parentId absent (parentId is itself optional)", () => {
     // parent_id is absent at the local-group tier.
     const star = rowToMemoryStar(
