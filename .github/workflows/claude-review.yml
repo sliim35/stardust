@@ -37,9 +37,6 @@ jobs:
           # default ("Workflow initiated by non-human actor"). Allowlist exactly that bot.
           # NOT "*": on a public repo "*" would let external Apps invoke the action.
           allowed_bots: "reviewer-stardust-project[bot]"
-          # TEMP (diagnostic — revert after): the review run finishes in ~2s with
-          # is_error and no comments; the cause is suppressed by default. Surface it.
-          show_full_output: true
           prompt: |
             You are the `reviewer` agent for this repo (stardust / Memory Galaxy).
             The conventions you MUST enforce live in files present in this checkout:
