@@ -104,11 +104,16 @@ folder (templates in `.claude/skills/templates/`), append a line to
 issue bodies must duplicate goal + acceptance criteria. See
 `.claude/skills/references/docs-contract.md` and `docs/README.md`.
 
-### Traceability is a MUST — work on the PR + the issue, never only in chat
+### Traceability is the #1 priority — work on the PR + the issue + `docs/`, never only in chat
 
-**(Owner rule, emphatic.)** Every load-bearing action and decision must leave a durable
-trail on **GitHub** — work that lives only in chat (or only in an agent's head) is, to the
-owner, lost.
+**(Owner rule, emphatic — this outranks every other convention in this file.)** This is a
+**fully autonomous SDLC**: the loop runs agent-to-agent and the owner reviews
+**asynchronously, after the fact**, so **GitHub (PRs + issues) plus `docs/` is the only
+observable, durable record of what happened**. Anything that lives only in chat — or only in
+an agent's head — is invisible to the owner and to the next agent in the loop, and is therefore
+**lost**. So every load-bearing action and decision MUST leave a durable trail across the
+**PR, the issue, and `docs/`**. When traceability competes with speed, **traceability wins** —
+an undocumented result is treated as not done.
 
 - **Run the whole review/QA loop on the PR, visibly:** open the PR, post the review as a real
   PR review (inline, batched), push fixes as commits, reply accept/reject-with-why on **every**
