@@ -24,6 +24,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # post inline review comments
+      id-token: write # OIDC token the action needs to authenticate
     steps:
       - uses: actions/checkout@v6
         with:
