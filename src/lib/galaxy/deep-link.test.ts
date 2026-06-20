@@ -6,6 +6,7 @@ import {
   validateDeepLinkSearch,
 } from "#/lib/galaxy/deep-link";
 import { HOME_MILKY_WAY_ID, REAL_OBJECTS, SOL_ID } from "#/lib/galaxy/realdata";
+import { availableTiersFor } from "#/lib/galaxy/tier-nav";
 import type { MemoryStar, RealObject, Tier } from "#/lib/galaxy/types";
 
 // The full (post-#127) tier ladder — drives the at=system path that the v1
@@ -135,6 +136,27 @@ describe("resolveDeepLink — pure URL → camera target", () => {
   it("at=galaxy:andromeda dives into Andromeda (gateway → galaxy tier, BR22)", () => {
     expect(resolve({ at: "galaxy:andromeda" })).toEqual({
       dive: { id: "andromeda", tier: "galaxy" },
+      star: null,
+    });
+  });
+
+  // AC5 (#197) — the resolver honours the FOCUSED galaxy's available set. A
+  // neighbour (Andromeda) has no solarSystem tier, so a malformed `?at=system:…`
+  // link resolved against `availableTiersFor('andromeda')` falls back to null —
+  // no crash, no wrong-tier dive — even though the full ladder would enter it.
+  it("at=system:sol falls back to null inside a neighbour galaxy's tier set (AC5)", () => {
+    const andromedaTiers = availableTiersFor("andromeda");
+    expect(andromedaTiers).not.toContain("solarSystem");
+    expect(resolve({ at: `system:${SOL_ID}` }, andromedaTiers)).toBeNull();
+  });
+
+  // AC5 — the home Milky Way's set DOES include solarSystem, so the same link
+  // resolves there (the asymmetry is per-galaxy, not a global toggle).
+  it("at=system:sol still dives with the home galaxy's tier set (AC5)", () => {
+    expect(
+      resolve({ at: `system:${SOL_ID}` }, availableTiersFor("home")),
+    ).toEqual({
+      dive: { id: SOL_ID, tier: "solarSystem" },
       star: null,
     });
   });

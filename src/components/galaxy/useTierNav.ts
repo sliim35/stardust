@@ -6,6 +6,7 @@
  */
 import { useCallback, useReducer, useRef } from "react";
 import {
+  availableTiersFor,
   initialTierNav,
   type TierNavAction,
   type TierNavState,
@@ -19,11 +20,18 @@ export const WHEEL_COOLDOWN_MS = 500;
 /**
  * Two-arg adapter for React's `useReducer`. The pure reducer carries an optional
  * 3rd `available` param (parameterised for #127 + the headless tests), which trips
- * React 19's `AnyActionArg` reducer signature — so the hook pins it to the v1
- * default set here.
+ * React 19's `AnyActionArg` reducer signature — so the hook supplies it here.
+ *
+ * BR22 (#197): the `available` set is derived from the FOCUSED galaxy
+ * (`availableTiersFor(state.galaxyId ?? "home")`) on every dispatch, so the
+ * asymmetric per-galaxy ladder (only the home Milky Way owns the third
+ * Solar-System tier) drives `descend`/`ascend`/`diveTo` — not the global v1
+ * default. `galaxyId` is `null` at the LG overview, where the fallback to
+ * `"home"` keeps the wheel-driven dive INTO the Milky Way following the home
+ * ladder.
  */
 const reduce = (state: TierNavState, action: TierNavAction): TierNavState =>
-  tierNavReducer(state, action);
+  tierNavReducer(state, action, availableTiersFor(state.galaxyId ?? "home"));
 
 export const useTierNav = (now: () => number = () => performance.now()) => {
   const [state, dispatch] = useReducer(reduce, initialTierNav);
