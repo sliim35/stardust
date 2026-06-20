@@ -94,6 +94,14 @@ writing-plans, verification, code-review, worktrees) rather than re-implementing
 `orchestrator`/`md-learn` (retro: distill the session → route to docs/memory/skills).
 Full diagram + gates: `.claude/skills/references/sdlc-loop.md`.
 
+**CI auto-reviewer (additive — not a phase).** `.github/workflows/claude-review.yml` runs
+`anthropics/claude-code-action` on every PR (on the owner's Claude subscription) for a fast
+automatic first pass that *echoes* the `reviewer`/`md-review-pr` conventions. It does **not**
+replace the `reviewer` phase — that agent still owns spec/ADR conformance and grows
+`conventions/code-style.md`. Gotcha: claude-code-action only activates **after** a workflow
+change merges to `main` (security guard), so a PR that edits `claude-review.yml` shows a green
+`review` check that *skipped* the actual review. (#195/#203)
+
 ### The docs/ contract — read before you act, write after you decide
 
 `docs/` is the local context substrate (it is **gitignored**); **GitHub Issues are the
