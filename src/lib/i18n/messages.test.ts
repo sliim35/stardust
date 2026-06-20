@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Emotion } from "#/lib/galaxy/types";
 import { getMessages, interpolate } from "#/lib/i18n";
 import { en } from "#/lib/i18n/messages/en";
 import { ru } from "#/lib/i18n/messages/ru";
@@ -155,5 +156,78 @@ describe("ASTRO loading screen catalog (#79 copy, localized — #103 fold-in)", 
   it("carries the AI-generated ru loader copy", () => {
     expect(ru.loader.thinking).toBe("думаю");
     expect(ru.loader.label).toBe("собираю её звёзды");
+  });
+});
+
+describe("mood-caption catalog widening 7→12 (#193-B, AC1–AC3)", () => {
+  // The 12 partitioned emotions (the `Emotion` union) + Mom's standalone
+  // `memory` caption — 13 keys total. Listing them explicitly here so a dropped
+  // or typo'd key is a test failure, not only a (silently waived) compile error.
+  const emotions: readonly Emotion[] = [
+    "joyful",
+    "tender",
+    "grieving",
+    "wonder",
+    "nostalgic",
+    "hope",
+    "peaceful",
+    "wistful",
+    "gratitude",
+    "courage",
+    "pride",
+    "longing",
+  ];
+
+  it("AC1 — en.moods declares all 12 emotions plus `memory` (13 keys)", () => {
+    for (const e of emotions) {
+      expect(en.moods[e].length).toBeGreaterThan(0);
+    }
+    expect(en.moods.memory.length).toBeGreaterThan(0);
+    expect(Object.keys(en.moods).sort()).toEqual(
+      [...emotions, "memory"].sort(),
+    );
+  });
+
+  it("AC1 — ru.moods declares the identical 13-key set (parity)", () => {
+    expect(Object.keys(ru.moods).sort()).toEqual(Object.keys(en.moods).sort());
+  });
+
+  it("AC2 — en carries the 5 new caption values + the wistful rename", () => {
+    expect(en.moods.hope).toBe("HOPE");
+    expect(en.moods.gratitude).toBe("GRATITUDE");
+    expect(en.moods.courage).toBe("COURAGE");
+    expect(en.moods.pride).toBe("PRIDE");
+    expect(en.moods.longing).toBe("LONGING");
+    // wistful renamed "LONGING" → "WISTFUL" so `longing` owns "LONGING".
+    expect(en.moods.wistful).toBe("WISTFUL");
+  });
+
+  it("AC3 — ru carries the 5 new caption values + the wistful rename", () => {
+    expect(ru.moods.hope).toBe("НАДЕЖДА");
+    expect(ru.moods.gratitude).toBe("БЛАГОДАРНОСТЬ");
+    expect(ru.moods.courage).toBe("СМЕЛОСТЬ");
+    expect(ru.moods.pride).toBe("ГОРДОСТЬ");
+    expect(ru.moods.longing).toBe("ТОСКА");
+    // wistful renamed "ТОСКА" → "МЕЧТАТЕЛЬНОСТЬ" so `longing` owns "ТОСКА".
+    expect(ru.moods.wistful).toBe("МЕЧТАТЕЛЬНОСТЬ");
+  });
+
+  it("AC2/AC3 — `LONGING`/`ТОСКА` belongs to `longing`, freed from `wistful`", () => {
+    // The rename's whole point: the two captions must not collide. `wistful`
+    // must no longer carry the value `longing` now owns.
+    expect(en.moods.wistful).not.toBe(en.moods.longing);
+    expect(ru.moods.wistful).not.toBe(ru.moods.longing);
+  });
+});
+
+describe("card.trigger.* chip catalog (BR28, #193-B AC2/AC3)", () => {
+  it("AC2 — en gains the trigger chip copy (person / moment)", () => {
+    expect(en.card.trigger.person).toBe("person");
+    expect(en.card.trigger.action).toBe("moment");
+  });
+
+  it("AC3 — ru gains the trigger chip copy (человек / событие)", () => {
+    expect(ru.card.trigger.person).toBe("человек");
+    expect(ru.card.trigger.action).toBe("событие");
   });
 });

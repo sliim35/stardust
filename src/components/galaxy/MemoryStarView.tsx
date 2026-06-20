@@ -125,9 +125,9 @@ export const MemoryStarView = ({
         <span className="mem-star__label" aria-hidden="true">
           {star.name && <em className="mem-star__name">{star.name}</em>}
           <span className="mem-star__mood">
-            {/* `mood` widened to 12 (#200); the i18n `moods` catalog (7 keys) is
-                widened by #193-B. Cast keeps the lookup type-safe until then. */}
-            {(moodLabels ?? en.moods)[star.mood as keyof Messages["moods"]]}
+            {/* The `moods` catalog is now 12-wide (#193-B), so `star.mood` (typed
+                `Mood = Emotion`) indexes it directly — the bridging cast is gone. */}
+            {(moodLabels ?? en.moods)[star.mood]}
             {star.who ? ` · ${star.who}` : ""}
           </span>
         </span>

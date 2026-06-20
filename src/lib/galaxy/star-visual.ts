@@ -18,16 +18,15 @@ import type { Emotion, MemoryStar } from "#/lib/galaxy/types";
  * Short emotion labels for hover/eyebrow text (design spec mood table) — the
  * **fallback** only: the user-facing labels come from the i18n catalog
  * (`moodLabels` / `en.moods`), used here when a star has no `name`. Widened 7→12
- * to stay exhaustive over `Emotion` (#200); the en+ru catalog widening + the
- * `wistful`→"WISTFUL" rename (so `longing` owns "LONGING") is #193-B. `wistful`
- * keeps "longing" here for now to avoid changing the displayed fallback ahead of
- * that ratified i18n rename.
+ * to stay exhaustive over `Emotion` (#200). The en+ru catalog widening + the
+ * `wistful`→"WISTFUL" rename (so `longing` owns "LONGING") was done in #193-B —
+ * `wistful` now carries its own word here so it no longer collides with `longing`.
  */
 export const MOOD_LABELS = {
   joyful: "joy",
   tender: "love",
   grieving: "grief",
-  wistful: "longing",
+  wistful: "wistful",
   peaceful: "peace",
   nostalgic: "memory",
   wonder: "wonder",
