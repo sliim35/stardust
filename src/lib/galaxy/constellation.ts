@@ -1,36 +1,43 @@
 /**
- * Mood-constellation building + the hover affordance — the pure, headless half of
- * the #154 hover behaviour (interaction spec §3). The SVG overlay component only
- * draws what this module computes.
+ * Emotion-constellation building + the hover affordance — the pure, headless half
+ * of the figure behaviour (ADR-0014 §2, evolving the #154 interaction spec §3). The
+ * SVG overlay component only draws what this module computes.
  *
- * Hovering (or keyboard-focusing) a memory star fades up its short description
- * and, when the star belongs to an **authored constellation figure**, lights the
- * figure's designed edges while everything else dims. The owner-pinned rules
- * (2026-06-06, issue #154):
+ * Hovering (or keyboard-focusing) a memory star fades up its short description and,
+ * when the star belongs to an **authored constellation figure**, lights the figure's
+ * designed edges while everything else dims. The owner-pinned rules (2026-06-06,
+ * issue #154) carry over, re-expressed for the designed-anchor model:
  *
- *  - **rule 1 — same mood only**: a figure connects same-`mood` stars; a member
- *    whose mood differs from the figure's mood is EXCLUDED (validated here,
- *    never trusted);
- *  - **rule 2 — no cross-colour connections**: colour maps from mood, so a
- *    figure strokes ONE colour by construction — `figureColor` is the single
- *    source (`MOODS[figure.mood].color`);
+ *  - **rule 1 — same emotion only**: a figure connects same-`emotion` stars; a member
+ *    whose mood differs from the figure's emotion is EXCLUDED (validated here, never
+ *    trusted);
+ *  - **rule 2 — no cross-colour connections**: colour maps from emotion, so a figure
+ *    strokes ONE colour by construction — `figureColor` is the single source
+ *    (`MOODS[figure.emotion].color`);
  *  - **rule 3 — pre-created figures**: segments come from the figure's authored
- *    `edges` only — never an emergent `createdAt`-ordered chain;
+ *    anchor `edges` only — never an emergent `createdAt`-ordered chain;
  *  - **a `deep` star is NEVER a node** — Mom's star (`irina`) stays a lone,
- *    unconnected point even if a future dataset wrongly authors it into a
- *    figure (ADR-0010 §1, the singular exception). Hover gives it the short
- *    description only — exactly like any solo-mood star without a figure.
+ *    unconnected point even if a future dataset wrongly authors it into a figure
+ *    (ADR-0010 §1, the singular exception). Hover gives it the short description only.
+ *
+ * The figure model (ADR-0014 §2): membership is the set of stars whose
+ * `group === figure.group`; the Nth-created member (stable `createdAt`/id order) binds
+ * to the Nth open anchor (`assignAnchors`), so adding a star never moves an earlier
+ * one. `forming`/`finished` is derived from the live member count vs `threshold`,
+ * never stored. Beyond completion, members densify between anchors along the
+ * silhouette (`slotBeyondCompletion`), append-only.
  *
  * Real objects (Layer A) have no constellation — hover resolves to a subtle
- * "clickable" highlight only (`kind: "real"`); the real-object layer adopts it
- * when its interactive DOM lands (slice I, #112).
+ * "clickable" highlight only (`kind: "real"`).
  */
 
 import { isRealObject } from "#/lib/galaxy/click-router";
 import { type Point, polarToXY } from "#/lib/galaxy/place";
+import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import { CONSTELLATIONS, MOODS } from "#/lib/galaxy/seed";
 import type {
   ConstellationFigure,
+  FigureAnchor,
   MemoryStar,
   RealObject,
 } from "#/lib/galaxy/types";
@@ -62,50 +69,112 @@ export const figureForGroup = (group: string): ConstellationFigure | null =>
   Object.values(CONSTELLATIONS).find((f) => f.group === group) ?? null;
 
 /**
- * The single stroke colour of a figure — its mood's colour (rule 2). Colour maps
- * from mood and a figure has ONE mood, so cross-colour lines are impossible by
+ * The single stroke colour of a figure — its emotion's colour (rule 2). Colour maps
+ * from emotion and a figure has ONE emotion, so cross-colour lines are impossible by
  * construction.
  */
 export const figureColor = (figure: ConstellationFigure): string =>
-  MOODS[figure.mood].color;
-
-/**
- * The VALIDATED nodes of an authored figure, in authored member order: a member
- * id must resolve to a star that shares the figure's `mood` (rule 1) and is not
- * `deep` (the owner hard constraint) — anything else is excluded, never drawn.
- * Pure; never mutates the input.
- */
-export const constellationNodes = (
-  stars: readonly MemoryStar[],
-  figure: ConstellationFigure,
-): MemoryStar[] => {
-  const byId = new Map(stars.map((s) => [s.id, s]));
-  return figure.members.flatMap((id) => {
-    const star = byId.get(id);
-    return star !== undefined && star.mood === figure.mood && !star.deep
-      ? [star]
-      : [];
-  });
-};
+  MOODS[figure.emotion].color;
 
 /** One thin connect-line of the overlay, in stage pixels. */
 export type ConstellationSegment = { from: Point; to: Point };
 
 /**
- * The figure's connect-lines: exactly its authored `edges` (rule 3) at the
- * nodes' `polarToXY` stage positions. An edge touching an excluded node
- * (cross-mood / deep / missing) is dropped with it.
+ * The VALIDATED members of a figure (rule 1 + the deep-star hard rule), in stable
+ * append-only order: a star must share the figure's `emotion` and not be `deep`.
+ * Anything else is excluded, never bound. Sorted by `createdAt` ascending (ties
+ * broken by `id`) so the order is total + stable — the Nth member always binds to
+ * the same open anchor regardless of input array order. Pure; never mutates input.
  */
-export const constellationSegments = (
-  stars: readonly MemoryStar[],
+const validMembers = (
+  members: readonly MemoryStar[],
+  figure: ConstellationFigure,
+): MemoryStar[] =>
+  members
+    .filter((s) => s.mood === figure.emotion && !s.deep)
+    .sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1));
+
+/**
+ * Bind members to anchors by stable `createdAt`-ascending order (ties by `id`),
+ * append-only: the Nth valid member fills the Nth anchor. A later call with one
+ * more member never changes an earlier binding (each member's slot depends only on
+ * its rank among earlier members, not on the array order). Returns a map of
+ * `anchorId → MemoryStar` for the filled anchors only (partial fill leaves later
+ * anchors absent from the map). Pure; never mutates input.
+ */
+export const assignAnchors = (
+  members: readonly MemoryStar[],
+  anchors: readonly FigureAnchor[],
+): Map<string, MemoryStar> => {
+  const ordered = [...members].sort(
+    (a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1),
+  );
+  const bound = new Map<string, MemoryStar>();
+  for (let i = 0; i < anchors.length && i < ordered.length; i++) {
+    bound.set(anchors[i].id, ordered[i]);
+  }
+  return bound;
+};
+
+/**
+ * Derived figure state (never stored): `finished` once the live valid-member count
+ * reaches the figure's `threshold`, else `forming`. A pure function of the data —
+ * it can never drift from the live count (ADR-0014 §2, the no-drift rule).
+ */
+export const figureState = (
+  members: readonly MemoryStar[],
+  figure: ConstellationFigure,
+): "forming" | "finished" =>
+  validMembers(members, figure).length >= figure.threshold
+    ? "finished"
+    : "forming";
+
+/**
+ * The figure's REAL connect-lines: exactly the authored anchor `edges` whose BOTH
+ * endpoint anchors are filled by a bound member, drawn at the AUTHORED anchor
+ * `(r, angle)` positions via `polarToXY` (NOT the member's own scattered position).
+ * A forming figure therefore shows only the edges it can honestly draw — no phantom
+ * stars, no faked completion (BR27). Cross-emotion / deep / unfilled endpoints drop
+ * with their edge. Pure; never mutates input.
+ */
+export const figureSegments = (
+  members: readonly MemoryStar[],
   figure: ConstellationFigure,
 ): ConstellationSegment[] => {
-  const nodes = new Map(
-    constellationNodes(stars, figure).map((s) => [s.id, s]),
-  );
+  const filled = assignAnchors(validMembers(members, figure), figure.anchors);
+  const byId = new Map(figure.anchors.map((a) => [a.id, a]));
   return figure.edges.flatMap(([a, b]) => {
-    const from = nodes.get(a);
-    const to = nodes.get(b);
+    const from = byId.get(a);
+    const to = byId.get(b);
+    // Both endpoint anchors must be DECLARED and FILLED to draw a real segment.
+    return from !== undefined &&
+      to !== undefined &&
+      filled.has(a) &&
+      filled.has(b)
+      ? [
+          {
+            from: polarToXY(from.r, from.angle),
+            to: polarToXY(to.r, to.angle),
+          },
+        ]
+      : [];
+  });
+};
+
+/**
+ * The figure's GHOST outline: ALL authored anchor `edges` at their authored
+ * positions, regardless of which anchors are filled — the full silhouette drawn at
+ * low opacity behind the real segments (BR27). It is the figure's geometry, so it
+ * is independent of how many members exist. An edge that references an undeclared
+ * anchor is dropped (defensive). Pure.
+ */
+export const ghostSegments = (
+  figure: ConstellationFigure,
+): ConstellationSegment[] => {
+  const byId = new Map(figure.anchors.map((a) => [a.id, a]));
+  return figure.edges.flatMap(([a, b]) => {
+    const from = byId.get(a);
+    const to = byId.get(b);
     return from !== undefined && to !== undefined
       ? [
           {
@@ -116,3 +185,53 @@ export const constellationSegments = (
       : [];
   });
 };
+
+/**
+ * Densify a member that arrives BEYOND completion (all anchors filled): slot it at
+ * the midpoint of the least-occupied edge (by `priorBeyondCount % edges.length`,
+ * ties by edge index), perturbed by ±0.05 in both `r` and `angle` via
+ * `mulberry32(hashStr(memberId))` so members never visually stack. SSR-safe (the
+ * shared `placeStar`/backdrop RNG pattern — no `Math.random()`/`Date.now()`) and a
+ * pure function of `memberId` + `anchors` + `edges` + `priorBeyondCount`: re-running
+ * for the same member always returns the same `(r, angle)`, and a later member never
+ * changes an earlier one (append-only, ADR-0014 §2 / spike #194 §3).
+ */
+export const slotBeyondCompletion = (
+  memberId: string,
+  anchors: readonly FigureAnchor[],
+  edges: readonly (readonly [string, string])[],
+  priorBeyondCount: number,
+): { r: number; angle: number } => {
+  const byId = new Map(anchors.map((a) => [a.id, a]));
+  const usable = edges.filter(([a, b]) => byId.has(a) && byId.has(b));
+  const fallback = anchors[0] ?? { r: 0.5, angle: 0 };
+  if (usable.length === 0) return { r: fallback.r, angle: fallback.angle };
+  // Round-robin the least-occupied edge: the Nth beyond-member targets edge N.
+  const [aId, bId] = usable[priorBeyondCount % usable.length];
+  const a = byId.get(aId) as FigureAnchor;
+  const b = byId.get(bId) as FigureAnchor;
+  const rng = mulberry32(hashStr(memberId));
+  const jitterR = (rng() - 0.5) * 0.1; // [-0.05, +0.05]
+  const jitterAngle = (rng() - 0.5) * 0.1; // [-0.05, +0.05]
+  return {
+    r: (a.r + b.r) / 2 + jitterR,
+    angle: (a.angle + b.angle) / 2 + jitterAngle,
+  };
+};
+
+// ── back-compat shims for the overlay host (GalaxyStage.tsx, #194-B owns rewiring) ──
+// `GalaxyStage.tsx` still imports `constellationNodes` / `constellationSegments`
+// (it is out of scope here — the overlay ghost-pass rewiring is story #194-B). With
+// `CONSTELLATIONS` now EMPTY, `figureForGroup` returns null there so these are dead
+// at runtime, but they must stay exported + type-compatible with the NEW figure
+// shape so the whole repo keeps compiling. They re-express the old semantics over the
+// anchor model: nodes = validated members bound to anchors; segments = `figureSegments`.
+
+/** @deprecated The bound members of a figure (validated, append-only order). */
+export const constellationNodes = (
+  stars: readonly MemoryStar[],
+  figure: ConstellationFigure,
+): MemoryStar[] => [...assignAnchors(stars, figure.anchors).values()];
+
+/** @deprecated The figure's real connect-lines — alias of {@link figureSegments}. */
+export const constellationSegments = figureSegments;

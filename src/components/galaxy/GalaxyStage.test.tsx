@@ -30,7 +30,7 @@ import { GalaxyStage } from "#/components/galaxy/GalaxyStage";
 import { gsap } from "#/components/galaxy/gsap-setup";
 import { cameraTransform } from "#/lib/galaxy/camera";
 import { resolveFocusTarget } from "#/lib/galaxy/focus";
-import { buildSeedSky, CONSTELLATIONS, MOODS } from "#/lib/galaxy/seed";
+import { buildSeedSky } from "#/lib/galaxy/seed";
 import { en } from "#/lib/i18n/messages/en";
 
 const stubReducedMotion = (matches: boolean) => {
@@ -346,44 +346,19 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
 });
 
 describe("GalaxyStage — hover lights the mood constellation + dims the rest (#154)", () => {
-  // Derive expected counts from the live seed fixture + the authored figures so
-  // seed/figure edits surface here as a deliberate diff, not a magic number
-  // drifting out of date (owner rules, 2026-06-06: figures are authored —
-  // segments == edges, lit == members — never an emergent createdAt chain).
-  // Every case dives into the MW first: the LG landing hides the memory layer,
-  // so hover is a post-first-dive affordance now.
-  const seedStars = buildSeedSky().stars;
-  const quietAche = CONSTELLATIONS.quietAche;
-
-  it("focusing a grouped star (after the first dive) draws its AUTHORED edges in the figure's single mood colour, dims everything else, and blur restores", () => {
+  // The two prototype seed figures (brightDays / quietAche) are RETIRED (#200 AC8,
+  // spike #194 §5): `CONSTELLATIONS` is now empty, so EVERY seed star is solo until
+  // the designed per-emotion figures land (BR30-gated). The "grouped star lights its
+  // authored edges" case therefore moves to the per-emotion figure stories (the
+  // pure overlay math is pinned in constellation.test.ts); here we assert the solo +
+  // Mom's-star behaviour the empty-figure seed sky guarantees. Every case dives into
+  // the MW first: the LG landing hides the memory layer, so hover is a post-first-
+  // dive affordance.
+  it("every seed star is solo now — focusing one lights no constellation and dims nothing", () => {
     renderDivedIntoMilkyWay();
-    // s04 "the old number" is a member of the wistful quiet-ache figure.
+    // s04 "the old number" was a quiet-ache member; post-retirement it is solo.
     const button = screen.getByRole("button", { name: "the old number" });
     fireEvent.focus(button);
-    const lines = document.querySelectorAll(".galaxy-constellation line");
-    expect(lines).toHaveLength(quietAche.edges.length);
-    // Rule 2 — no cross-colour connections: every segment strokes the ONE
-    // figure-mood colour, by construction.
-    const strokes = new Set(
-      [...lines].map((line) => line.getAttribute("stroke")),
-    );
-    expect(strokes).toEqual(new Set([MOODS[quietAche.mood].color]));
-    // The figure members stay lit; every other star dims — Mom's star
-    // included (interaction spec §3: hovering a grouped star dims everything
-    // else; the treatment only exempts irina from being a constellation NODE,
-    // not from being dimmed).
-    expect(document.querySelectorAll(".mem-star[data-dimmed]")).toHaveLength(
-      seedStars.length - quietAche.members.length,
-    );
-    expect(
-      document.querySelector('.mem-star[data-mood="nostalgic"][data-dimmed]'),
-    ).not.toBeNull();
-    // …and the disk + deep field fade back so the group reads alone.
-    expect(document.querySelector(".galaxy-l2-wrap")?.className).toContain(
-      "opacity-40",
-    );
-    // Un-hover/blur restores all layers.
-    fireEvent.blur(button);
     expect(
       document.querySelectorAll(".galaxy-constellation line"),
     ).toHaveLength(0);
@@ -391,6 +366,8 @@ describe("GalaxyStage — hover lights the mood constellation + dims the rest (#
     expect(document.querySelector(".galaxy-l2-wrap")?.className).not.toContain(
       "opacity-40",
     );
+    fireEvent.blur(button);
+    expect(document.querySelectorAll(".mem-star[data-dimmed]")).toHaveLength(0);
   });
 
   it("a solo-mood star (no figure) lights no constellation and dims nothing — short-desc only, like Mom's", () => {

@@ -125,7 +125,9 @@ export const MemoryStarView = ({
         <span className="mem-star__label" aria-hidden="true">
           {star.name && <em className="mem-star__name">{star.name}</em>}
           <span className="mem-star__mood">
-            {(moodLabels ?? en.moods)[star.mood]}
+            {/* `mood` widened to 12 (#200); the i18n `moods` catalog (7 keys) is
+                widened by #193-B. Cast keeps the lookup type-safe until then. */}
+            {(moodLabels ?? en.moods)[star.mood as keyof Messages["moods"]]}
             {star.who ? ` · ${star.who}` : ""}
           </span>
         </span>

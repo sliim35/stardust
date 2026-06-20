@@ -138,7 +138,12 @@ const MemoryBody = ({
     <p className="m-0 mb-[10px] font-mono text-[10px] uppercase tracking-[0.22em]">
       {/* The mood word carries the agent's mood colour (the earned accent); the
           attribution stays dim so the mood reads first. */}
-      <span className="text-(--card-accent)">{messages.moods[model.mood]}</span>
+      {/* `mood` widened to 12 (#200); the i18n `moods` catalog (7 keys) is widened
+          by #193-B. Cast keeps the lookup type-safe until then — the 5 new emotions
+          can't reach a card before #193-B/#193-D land. */}
+      <span className="text-(--card-accent)">
+        {messages.moods[model.mood as keyof Messages["moods"]]}
+      </span>
       {model.who ? <span className="text-dim-2"> · {model.who}</span> : null}
     </p>
     {model.name && (

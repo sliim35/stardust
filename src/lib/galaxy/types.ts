@@ -20,14 +20,40 @@ import type { Messages } from "#/lib/i18n/types";
  */
 export type LoreKey = keyof Messages["lore"];
 
-export type Mood =
+/**
+ * The 12 emotions that partition across the Local Group's galaxies (ADR-0014 §1,
+ * BR25/BR26). Listed in **galaxy-partition order** — the 3 Milky Way emotions, then
+ * Andromeda, Triangulum, LMC (`EMOTION_GALAXY` in `seed.ts` is the source of truth
+ * for the partition itself). The first 7 are the original `Mood` literals; the last
+ * 5 (`hope`/`gratitude`/`courage`/`pride`/`longing`) are the #187 widening.
+ */
+export type Emotion =
   | "joyful"
   | "tender"
   | "grieving"
-  | "wistful"
-  | "peaceful"
+  | "wonder"
   | "nostalgic"
-  | "wonder";
+  | "hope"
+  | "peaceful"
+  | "wistful"
+  | "gratitude"
+  | "courage"
+  | "pride"
+  | "longing";
+
+/**
+ * @deprecated Use {@link Emotion}. Kept as a back-compat alias so every existing
+ * `Mood` consumer (`MemoryStar.mood`, `placeStar`, `isMood`, the Drizzle enum, the
+ * AI classifier) compiles unchanged through the 7→12 widening (ADR-0014 §1).
+ */
+export type Mood = Emotion;
+
+/**
+ * What sparked a memory (BR28): a **person** or an **action/event**. Same kind of
+ * star, same figure either way — `trigger` is card metadata, not a layer or a
+ * membership change (ADR-0014 §4). Optional on `MemoryStar` → fully back-compat.
+ */
+export type Trigger = "person" | "action";
 
 /** Backdrop sky tone. Default is `ember` (amber) — owner resolved amber-vs-green → amber (2026-06-04). */
 export type Palette = "ember" | "ice" | "auroral";
@@ -76,6 +102,10 @@ export type MemoryStar = {
   // absent/undefined = standalone (Mom's gold star, solo moods). Additive +
   // optional → fully back-compat with today's flat stars.
   group?: string;
+  // What sparked this memory (BR28 — ADR-0014 §4): a person or an action/event.
+  // Optional → seeded stars + existing rows default to absent (no trigger chip).
+  // Same figure either way; this is card metadata, not a membership change.
+  trigger?: Trigger;
   // Where this star lives in the universe (ADR-0008 §2). Optional for back-compat:
   // a star without `placement` defaults to the home galaxy (`tier:'galaxy', parentId:'home'`).
   placement?: Placement;
@@ -88,22 +118,40 @@ export type GalaxySky = {
 };
 
 /**
- * One authored mood-constellation figure (owner rules, 2026-06-06 — issue #154):
- * a **pre-created** figure with a designed edge topology, like a real
- * constellation — NEVER an emergent `createdAt`-ordered chain (rule 3). Every
- * member shares the figure's single `mood` (rule 1), and since colour maps from
- * mood (`MOODS[mood].color`), a figure is single-colour **by construction**
- * (rule 2). The builder (`constellation.ts`) validates membership rather than
- * trusting it — a cross-mood or `deep` member is excluded, never drawn.
+ * A designed slot in a figure's silhouette (ADR-0014 §2): a stable `id` plus the
+ * polar position a member bound to it renders at. The silhouette geometry is
+ * hand-authored per figure (a design-role deliverable, BR30-gated) — the same
+ * `(r, angle)` convention as `placeStar` / `polarToXY`.
+ */
+export type FigureAnchor = { id: string; r: number; angle: number };
+
+/**
+ * One authored emotion-constellation figure (ADR-0014 §2, evolving the #154 owner
+ * rules). A **pre-designed** figure whose anchor topology must read as the emotion
+ * — NEVER an emergent `createdAt`-ordered chain (rule 3). Every member shares the
+ * figure's single `emotion` (rule 1), and since colour maps from emotion
+ * (`MOODS[emotion].color`), a figure is single-colour **by construction** (rule 2).
+ *
+ * Membership is **derived** — the set of stars whose `group === figure.group` — so
+ * the figure no longer carries a `members[]` id list. The Nth-created member (stable
+ * `createdAt`/id order) binds to the Nth open anchor (`assignAnchors`), so adding a
+ * star never moves an existing one (the `placeStar` invariant, generalized to a
+ * designed shape). `forming`/`finished` is derived from the live member count vs
+ * `threshold` — never stored. The host galaxy is derived from `emotion` via the
+ * partition map (`EMOTION_GALAXY`); `hostGalaxyId` must equal `hostGalaxyFor(emotion)`.
  */
 export type ConstellationFigure = {
   /** Stable membership key — mirrored in each member star's `group`. */
   group: string;
-  /** The ONE mood every member shares; the figure's stroke colour derives from it. */
-  mood: Mood;
-  /** The figure's nodes (star ids), in authored order. */
-  members: readonly string[];
-  /** The designed edge topology — pairs of member ids; segments come from these only. */
+  /** The ONE emotion every member shares; the figure's stroke colour derives from it. */
+  emotion: Emotion;
+  /** The real galaxy that hosts this figure (§3); equals `hostGalaxyFor(emotion)`. */
+  hostGalaxyId: string;
+  /** The per-figure "finished" member count (BR27 — `>= 10`). */
+  threshold: number;
+  /** The designed silhouette slots — hand-authored polar positions. */
+  anchors: readonly FigureAnchor[];
+  /** The designed edge topology — pairs of ANCHOR ids; segments come from these only. */
   edges: readonly (readonly [string, string])[];
 };
 

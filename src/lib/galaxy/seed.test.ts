@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSeedSky,
+  CONSTELLATIONS,
+  EMOTION_GALAXY,
+  EMOTION_VALUES,
+  hostGalaxyFor,
   isMood,
   MOOD_VALUES,
   MOODS,
@@ -8,17 +12,87 @@ import {
 } from "#/lib/galaxy/seed";
 import { en } from "#/lib/i18n/messages/en";
 
-describe("MOOD_VALUES", () => {
+describe("EMOTION_VALUES / MOOD_VALUES", () => {
   it("covers exactly the keys of MOODS (single source — no drift)", () => {
-    expect([...MOOD_VALUES].sort()).toEqual(Object.keys(MOODS).sort());
+    expect([...EMOTION_VALUES].sort()).toEqual(Object.keys(MOODS).sort());
   });
 
-  it("isMood accepts every literal and rejects anything else", () => {
-    for (const mood of MOOD_VALUES) expect(isMood(mood)).toBe(true);
+  it("widened to all 12 emotions", () => {
+    expect(EMOTION_VALUES).toHaveLength(12);
+  });
+
+  it("MOOD_VALUES is the back-compat alias of EMOTION_VALUES (same 12 literals)", () => {
+    expect([...MOOD_VALUES].sort()).toEqual([...EMOTION_VALUES].sort());
+  });
+
+  it("isMood accepts every literal (all 12) and rejects anything else", () => {
+    for (const emotion of EMOTION_VALUES) expect(isMood(emotion)).toBe(true);
     expect(isMood("ecstatic")).toBe(false);
     expect(isMood("")).toBe(false);
     expect(isMood(null)).toBe(false);
     expect(isMood(42)).toBe(false);
+  });
+
+  it("includes the 5 new emotions", () => {
+    for (const e of ["hope", "gratitude", "courage", "pride", "longing"]) {
+      expect((EMOTION_VALUES as readonly string[]).includes(e)).toBe(true);
+    }
+  });
+});
+
+describe("EMOTION_GALAXY — the emotion→host-galaxy partition (BR26)", () => {
+  const GALAXY_IDS = new Set(["home", "andromeda", "triangulum", "lmc"]);
+
+  it("is exhaustive over all 12 emotions", () => {
+    expect(Object.keys(EMOTION_GALAXY)).toHaveLength(12);
+    expect([...EMOTION_VALUES].sort()).toEqual(
+      Object.keys(EMOTION_GALAXY).sort(),
+    );
+  });
+
+  it("every value is a real galaxy id present in realdata.ts", () => {
+    for (const id of Object.values(EMOTION_GALAXY)) {
+      expect(GALAXY_IDS.has(id)).toBe(true);
+    }
+  });
+
+  it("hostGalaxyFor returns a non-null galaxy id for every emotion", () => {
+    for (const e of EMOTION_VALUES) {
+      const galaxy = hostGalaxyFor(e);
+      expect(galaxy).toBeTruthy();
+      expect(GALAXY_IDS.has(galaxy)).toBe(true);
+    }
+  });
+
+  it("matches the owner-approved partition (ADR-0014 §3)", () => {
+    expect(EMOTION_GALAXY).toEqual({
+      joyful: "home",
+      tender: "home",
+      grieving: "home",
+      wonder: "andromeda",
+      nostalgic: "andromeda",
+      hope: "andromeda",
+      peaceful: "triangulum",
+      wistful: "triangulum",
+      gratitude: "triangulum",
+      courage: "lmc",
+      pride: "lmc",
+      longing: "lmc",
+    });
+  });
+});
+
+describe("CONSTELLATIONS — retired prototypes, anchor-model shape (AC8)", () => {
+  it("retires the prototype figures (brightDays / quietAche removed)", () => {
+    expect("brightDays" in CONSTELLATIONS).toBe(false);
+    expect("quietAche" in CONSTELLATIONS).toBe(false);
+  });
+
+  it("every entry (if any) satisfies the structural floor: anchors >= 10 && threshold >= 10", () => {
+    for (const figure of Object.values(CONSTELLATIONS)) {
+      expect(figure.anchors.length).toBeGreaterThanOrEqual(10);
+      expect(figure.threshold).toBeGreaterThanOrEqual(10);
+    }
   });
 });
 
@@ -75,25 +149,12 @@ describe("buildSeedSky", () => {
     }
   });
 
-  // ── Layer-B mood constellations (ADR-0010 §1/§4-④, #146; owner rules 2026-06-06) ──
-  it("groups the seed corpus into >= 2 MOOD-PURE figures of >= 3 stars each (owner rules 1+4)", () => {
-    const stars = buildSeedSky().stars;
-    const byGroup = new Map<string, typeof stars>();
-    for (const s of stars) {
-      if (s.group) byGroup.set(s.group, [...(byGroup.get(s.group) ?? []), s]);
-    }
-    expect(byGroup.size).toBeGreaterThanOrEqual(2);
-    for (const [group, members] of byGroup) {
-      expect(
-        members.length,
-        `figure "${group}" needs >= 3 stars`,
-      ).toBeGreaterThanOrEqual(3);
-      // Rule 1 — same mood only. Colour maps from mood, so mood-purity IS the
-      // single-colour-figure guarantee (rule 2) at the data level.
-      expect(
-        new Set(members.map((m) => m.mood)).size,
-        `figure "${group}" must be mood-pure`,
-      ).toBe(1);
+  // ── Figure retirement (AC8 / spike #194 §5) ───────────────────────────────
+  // The two prototype figures are retired; their member stars' `group` is
+  // cleared so they render as SOLO stars until designed figures claim them.
+  it("clears the group of every seed star (prototype figures retired)", () => {
+    for (const s of buildSeedSky().stars) {
+      expect(s.group).toBeUndefined();
     }
   });
 
@@ -136,6 +197,14 @@ describe("placeStar", () => {
   it("places a star within its mood's angular wedge, r in 0..1", () => {
     const m = MOODS.peaceful;
     const { r, angle } = placeStar("xyz", "peaceful");
+    expect(r).toBeGreaterThanOrEqual(0);
+    expect(r).toBeLessThanOrEqual(1);
+    expect(Math.abs(angle - m.angle)).toBeLessThanOrEqual(m.spread / 2 + 1e-9);
+  });
+
+  it("places a star in a NEW (12-emotion) wedge too", () => {
+    const m = MOODS.courage;
+    const { r, angle } = placeStar("xyz", "courage");
     expect(r).toBeGreaterThanOrEqual(0);
     expect(r).toBeLessThanOrEqual(1);
     expect(Math.abs(angle - m.angle)).toBeLessThanOrEqual(m.spread / 2 + 1e-9);

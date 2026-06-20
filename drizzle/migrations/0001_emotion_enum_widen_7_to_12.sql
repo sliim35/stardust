@@ -1,0 +1,10 @@
+-- emotion enum widened 7→12 (type-only, no SQL change)
+--
+-- The `mood` column is SQLite TEXT, which has no stored enum constraint — the
+-- Drizzle `{ enum: EMOTION_VALUES }` is a TypeScript type guard only (ADR-0012 §3,
+-- spike #193 §3). Widening `Mood` (7) → `Emotion` (12) therefore produces NO SQL
+-- diff; `drizzle-kit generate` correctly emits nothing. This file is committed as a
+-- traceable, no-op checkpoint so the migration history records the contract change
+-- (ADR-0014 §1; story #200 AC13). Existing rows with the original 7 mood values stay
+-- valid. No `wrangler d1 migrations apply` is required for behaviour — applying it is
+-- a harmless no-op.
