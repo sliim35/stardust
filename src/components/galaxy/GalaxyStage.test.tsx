@@ -211,29 +211,26 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
   });
 
-  it("clicking a neighbour opens its lore card in place — no dive; one at a time; ESC + × dismiss (#169)", () => {
+  // BR22 (#196, data slice): every Local-Group galaxy is now a `gateway`, so a
+  // neighbour click DIVES into its galaxy tier through the SAME `resolveClick` seam
+  // as the MW — it no longer opens a lore card. The per-galaxy scene-swap (rendering
+  // Andromeda's own disk + breadcrumb + ASTRO lore at the dive) is wired in slice 3
+  // (#198 — GalaxyStage de-hardcode); this slice only flips the routing to a dive.
+  it("clicking a neighbour now dives into its galaxy tier — no card opens (BR22 #196)", () => {
     stubReducedMotion(true);
     render(<GalaxyStage />);
+    expect(screen.getByText("2.5 Mly")).toBeTruthy(); // the LG landing
     fireEvent.click(lgTarget("andromeda"));
-    // The lore card opens (its unique catalog lore line) over the dismiss scrim…
-    expect(screen.getByText(en.lore.andromeda.line)).toBeTruthy();
-    expect(document.querySelectorAll(".galaxy-card-backdrop")).toHaveLength(1);
-    // …with NO dive: still the LG tier (scale net + the neighbour targets stay).
-    expect(screen.getByText("2.5 Mly")).toBeTruthy();
-    expect(lgTarget("triangulum")).toBeTruthy();
-    // A second neighbour REPLACES the first (one card at a time, the reducer).
-    fireEvent.click(lgTarget("triangulum"));
-    expect(screen.getByText(en.lore.triangulum.line)).toBeTruthy();
-    expect(screen.queryByText(en.lore.andromeda.line)).toBeNull();
-    expect(document.querySelectorAll(".galaxy-card-backdrop")).toHaveLength(1);
-    // Escape (on the focused dialog) dismisses it.
-    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
-    fireEvent.keyDown(dialog, { key: "Escape" });
-    expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
-    // Re-open and dismiss via the × close button.
-    fireEvent.click(lgTarget("lmc"));
-    expect(screen.getByText(en.lore.lmc.line)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: en.card.close }));
+    // The dive reuses the descend timeline (snap under reduced motion) → the galaxy
+    // tier: the scale net relabels and the LG layer (its neighbour targets) unmounts…
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    expect(screen.queryByText("2.5 Mly")).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: `${en.lore.andromeda.name} · ${en.lore.andromeda.sublabel}`,
+      }),
+    ).toBeNull();
+    // …and a gateway dive is NOT a card.
     expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
   });
 

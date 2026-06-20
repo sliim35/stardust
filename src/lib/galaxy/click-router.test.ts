@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveClick } from "#/lib/galaxy/click-router";
 import { HOME_MILKY_WAY_ID, REAL_OBJECTS, SOL_ID } from "#/lib/galaxy/realdata";
+import { availableTiersFor } from "#/lib/galaxy/tier-nav";
 import type { RealObject, Tier } from "#/lib/galaxy/types";
 
 const FULL: readonly Tier[] = ["localGroup", "galaxy", "solarSystem"];
@@ -42,11 +43,30 @@ describe("resolveClick", () => {
     });
   });
 
-  it("a non-gateway neighbour opens a lore card", () => {
-    expect(resolveClick(byId("andromeda"))).toEqual({
-      kind: "card",
-      target: byId("andromeda"),
+  it("each neighbour galaxy is now a gateway — dives into its (galaxy) tier (BR22)", () => {
+    for (const id of ["andromeda", "lmc", "triangulum"]) {
+      expect(resolveClick(byId(id), availableTiersFor(id))).toEqual({
+        kind: "dive",
+        id,
+        tier: "galaxy",
+      });
+    }
+  });
+
+  it("the Milky Way still dives with its own available set (regression)", () => {
+    expect(
+      resolveClick(byId(HOME_MILKY_WAY_ID), availableTiersFor("home")),
+    ).toEqual({
+      kind: "dive",
+      id: "home",
+      tier: "galaxy",
     });
+  });
+
+  it("a neighbour never exposes the solarSystem tier — Sol-style dive stays a galaxy dive", () => {
+    // availableTiersFor('andromeda') excludes solarSystem, so even though andromeda
+    // is a gateway the deepest it dives to is its galaxy tier.
+    expect(availableTiersFor("andromeda")).not.toContain("solarSystem");
   });
 
   it("an interior feature (nebula) opens a lore card", () => {

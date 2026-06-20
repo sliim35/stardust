@@ -43,7 +43,8 @@ export const ANDROMEDA_ID = "andromeda";
  *    Sol (gateway), and the 3 named nebulae (Pillars, Crab, Orion).
  *
  * Cool palette throughout; GOLD (`#f5d6a0`) is reserved for chrome + Sol — neighbours
- * never gold-ify (ADR-0010 §4). `gateway:true` is set on ONLY the home Milky Way + Sol.
+ * never gold-ify (ADR-0010 §4). `gateway:true` is set on ALL 4 Local-Group galaxies
+ * (BR22 — every galaxy is enterable, #196) + Sol; Sol is the only tier-3 gateway.
  *
  * Authored as `as const satisfies` (per-field literal-checked against `RealObject`),
  * then exported through the **widened** `REAL_OBJECTS` below so consumers see the full
@@ -83,6 +84,7 @@ const REAL_OBJECTS_DATA = [
     brightness: 0.7,
     color: "#b6c6e6",
     loreKey: "lmc",
+    gateway: true, // BR22 — every Local-Group galaxy is enterable (#196)
   },
   {
     id: ANDROMEDA_ID,
@@ -97,6 +99,7 @@ const REAL_OBJECTS_DATA = [
     brightness: 0.82,
     color: "#8fb0e4",
     loreKey: "andromeda",
+    gateway: true, // BR22 — every Local-Group galaxy is enterable (#196)
     arms: 2,
     barAngle: -0.55, // sky position angle — the "/" diagonal of the FINAL proof
     tilt: 0.42, // steep ~77° inclination → a thin tilted disk
@@ -149,6 +152,7 @@ const REAL_OBJECTS_DATA = [
     brightness: 0.62,
     color: "#93b6dd",
     loreKey: "triangulum",
+    gateway: true, // BR22 — every Local-Group galaxy is enterable (#196)
     arms: 5, // many short arm fragments, not the MW's 4 grand sweeps
     barAngle: 0,
     tilt: 0.9,

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
+import { ANDROMEDA_ID } from "#/lib/galaxy/realdata";
+import {
+  buildLocalGroup,
+  HOME_GALAXY_ID,
+  starsForView,
+} from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import type { GalaxySky, MemoryStar } from "#/lib/galaxy/types";
 
@@ -294,5 +299,57 @@ describe("createInMemoryStore — universe seam (ADR-0008)", () => {
       expect(now?.r).toBe(prev.r);
       expect(now?.angle).toBe(prev.angle);
     }
+  });
+});
+
+describe("skyFor — a valid neighbour returns ITS sky, not the home fallback (BR22)", () => {
+  it("skyFor('andromeda') uses Andromeda's own backdrop, not the home snapshot", () => {
+    const store = createInMemoryStore();
+    const seed = store.getSky().backdrop.seed;
+    const andromedaNode = buildLocalGroup(seed).galaxies.find(
+      (g) => g.id === ANDROMEDA_ID,
+    );
+    expect(andromedaNode).toBeDefined();
+
+    const sky = store.skyFor?.(ANDROMEDA_ID);
+    expect(sky?.backdrop).toEqual(andromedaNode?.backdrop);
+    // …and that is NOT the home snapshot (the line-108 fallback did not trigger).
+    expect(sky?.backdrop).not.toEqual(store.getSky().backdrop);
+  });
+
+  it("skyFor('andromeda') filters stars to (tier:'galaxy', parentId:'andromeda')", () => {
+    const store = createInMemoryStore();
+    // An Andromeda-parented star vs a home star: only the former shows in Andromeda's sky.
+    store.addStar(
+      sampleStar({
+        id: "andro-1",
+        placement: {
+          tier: "galaxy",
+          parentId: ANDROMEDA_ID,
+          r: 0.4,
+          angle: 1,
+        },
+      }),
+    );
+    const sky = store.skyFor?.(ANDROMEDA_ID);
+    const expected = starsForView(
+      store.getSky().stars,
+      "galaxy",
+      ANDROMEDA_ID,
+    ).map((s) => s.id);
+    expect((sky?.stars ?? []).map((s) => s.id)).toEqual(expected);
+    expect((sky?.stars ?? []).map((s) => s.id)).toContain("andro-1");
+    // the home-seeded stars (no explicit placement → default home) are NOT here
+    const homeStarIds = store.getSky().stars.map((s) => s.id);
+    expect((sky?.stars ?? []).length).toBeLessThan(homeStarIds.length);
+  });
+
+  it("skyFor('andromeda') is empty of stars at launch (a real, figure-empty neighbour)", () => {
+    // No Andromeda-parented memory stars seeded → empty figure layer, but the disk
+    // (backdrop) still renders. Empty entry is a first-class state, not a fallback.
+    const store = createInMemoryStore();
+    const sky = store.skyFor?.(ANDROMEDA_ID);
+    expect(sky?.stars).toEqual([]);
+    expect(sky?.backdrop).toBeDefined();
   });
 });

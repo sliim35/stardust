@@ -7,7 +7,11 @@ import { HOME_TIER } from "#/lib/galaxy/tier-nav";
 describe("useTierNav", () => {
   it("starts on the landing tier (HOME_TIER — the LG overview)", () => {
     const { result } = renderHook(() => useTierNav(() => 0));
-    expect(result.current.state).toEqual({ tier: HOME_TIER, focusedId: null });
+    expect(result.current.state).toEqual({
+      tier: HOME_TIER,
+      focusedId: null,
+      galaxyId: null,
+    });
   });
 
   it("a wheel-up step descends; a wheel-down step ascends; one step per gesture", () => {
@@ -30,6 +34,10 @@ describe("useTierNav", () => {
   it("diveTo centres on a gateway in its tier", () => {
     const { result } = renderHook(() => useTierNav(() => 0));
     act(() => result.current.diveTo("home", "galaxy"));
-    expect(result.current.state).toEqual({ tier: "galaxy", focusedId: "home" });
+    expect(result.current.state).toEqual({
+      tier: "galaxy",
+      focusedId: "home",
+      galaxyId: "home",
+    });
   });
 });

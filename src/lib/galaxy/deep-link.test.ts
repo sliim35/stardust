@@ -128,10 +128,13 @@ describe("resolveDeepLink — pure URL → camera target", () => {
     ).toBeNull();
   });
 
-  // AC3 — a non-gateway neighbour can't be entered; focus it at its OWN tier.
-  it("at=galaxy:andromeda focuses the neighbour at the Local-Group tier (no interior)", () => {
+  // BR22 (#196) — every Local-Group galaxy is now a gateway, so `?at=galaxy:andromeda`
+  // ENTERS Andromeda (dives into its galaxy interior), like the home MW does. The
+  // per-galaxy asymmetric `available` set (a neighbour has no solarSystem tier) is
+  // threaded through the resolver in slice 2 (#197); here the galaxy interior is built.
+  it("at=galaxy:andromeda dives into Andromeda (gateway → galaxy tier, BR22)", () => {
     expect(resolve({ at: "galaxy:andromeda" })).toEqual({
-      dive: { id: "andromeda", tier: "localGroup" },
+      dive: { id: "andromeda", tier: "galaxy" },
       star: null,
     });
   });

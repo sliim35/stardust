@@ -55,11 +55,29 @@ describe("REAL_OBJECTS — the curated real-astronomy dataset (ADR-0010 §4)", (
     }
   });
 
-  it("sets gateway:true on ONLY the home Milky Way + Sol", () => {
+  it("sets gateway:true on all 4 Local-Group galaxies + Sol (BR22 — every galaxy enterable)", () => {
     const gateways = REAL_OBJECTS.filter((o) => o.gateway === true).map(
       (o) => o.id,
     );
-    expect(gateways.sort()).toEqual([HOME_MILKY_WAY_ID, SOL_ID].sort());
+    expect(gateways.sort()).toEqual(
+      [HOME_MILKY_WAY_ID, "lmc", ANDROMEDA_ID, "triangulum", SOL_ID].sort(),
+    );
+  });
+
+  it("marks every localGroup-tier galaxy (home + 3 neighbours) as a gateway (BR22)", () => {
+    const localGroupGalaxies = REAL_OBJECTS.filter(
+      (o) => o.tier === "localGroup" && o.kind === "galaxy",
+    );
+    for (const g of localGroupGalaxies) {
+      expect(g.gateway).toBe(true);
+    }
+  });
+
+  it("keeps Sol as the ONLY tier-3 (galaxy-interior) gateway", () => {
+    const interiorGateways = REAL_OBJECTS.filter(
+      (o) => o.tier === "galaxy" && o.gateway === true,
+    ).map((o) => o.id);
+    expect(interiorGateways).toEqual([SOL_ID]);
   });
 
   it("reserves gold (#f5d6a0) for Sol only — neighbours stay cool", () => {
