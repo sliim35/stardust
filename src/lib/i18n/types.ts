@@ -167,15 +167,6 @@ export type Messages = {
     fieldLog: string;
     /** Dismiss-button accessible name (aria-label / sr-only). */
     close: string;
-    /**
-     * The "what sparked this memory" chip (BR28 — `Trigger`). `person` labels a
-     * memory triggered by someone; `action` labels one triggered by a moment/event.
-     * Authored here in #193-B; the chip itself is rendered by #193-D.
-     */
-    trigger: {
-      person: string;
-      action: string;
-    };
   };
   /**
    * The bottom-left scale net (interaction spec §5.3, #112) — the display-only

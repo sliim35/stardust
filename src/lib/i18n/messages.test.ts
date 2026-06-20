@@ -219,15 +219,3 @@ describe("mood-caption catalog widening 7→12 (#193-B, AC1–AC3)", () => {
     expect(ru.moods.wistful).not.toBe(ru.moods.longing);
   });
 });
-
-describe("card.trigger.* chip catalog (BR28, #193-B AC2/AC3)", () => {
-  it("AC2 — en gains the trigger chip copy (person / moment)", () => {
-    expect(en.card.trigger.person).toBe("person");
-    expect(en.card.trigger.action).toBe("moment");
-  });
-
-  it("AC3 — ru gains the trigger chip copy (человек / событие)", () => {
-    expect(ru.card.trigger.person).toBe("человек");
-    expect(ru.card.trigger.action).toBe("событие");
-  });
-});

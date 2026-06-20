@@ -212,11 +212,6 @@ export const en = {
   card: {
     fieldLog: "FIELD LOG",
     close: "Close",
-    // The "what sparked this memory" chip (BR28); rendered by #193-D.
-    trigger: {
-      person: "person",
-      action: "moment",
-    },
   },
   // Scale net (#112, spec §5.3) — the bottom-left range rings' accessible name;
   // the visible ring distances are formatted from values, not from the catalog.

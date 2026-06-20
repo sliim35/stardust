@@ -125,8 +125,6 @@ export const MemoryStarView = ({
         <span className="mem-star__label" aria-hidden="true">
           {star.name && <em className="mem-star__name">{star.name}</em>}
           <span className="mem-star__mood">
-            {/* The `moods` catalog is now 12-wide (#193-B), so `star.mood` (typed
-                `Mood = Emotion`) indexes it directly — the bridging cast is gone. */}
             {(moodLabels ?? en.moods)[star.mood]}
             {star.who ? ` · ${star.who}` : ""}
           </span>

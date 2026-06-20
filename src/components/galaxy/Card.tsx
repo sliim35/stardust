@@ -137,9 +137,7 @@ const MemoryBody = ({
   <>
     <p className="m-0 mb-[10px] font-mono text-[10px] uppercase tracking-[0.22em]">
       {/* The mood word carries the agent's mood colour (the earned accent); the
-          attribution stays dim so the mood reads first. The `moods` catalog is now
-          12-wide (#193-B), so `model.mood` (typed `Emotion`) indexes it directly —
-          the bridging cast is gone. */}
+          attribution stays dim so the mood reads first. */}
       <span className="text-(--card-accent)">{messages.moods[model.mood]}</span>
       {model.who ? <span className="text-dim-2"> · {model.who}</span> : null}
     </p>
