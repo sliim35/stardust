@@ -1,7 +1,7 @@
 ---
 title: Code-style & conventions guide
 updated: 2026-06-14
-last_learned: "#113-branch (2026-06-14)"  # watermark — feat/113-star-search reviewed (no open PR); zero human inline threads; one new rule distilled: dead catalog keys (YAGNI/DRY) + one rule: wrapper div for viewport-fixed chrome should be named component (existing rule confirmed).
+last_learned: "#203 (2026-06-20)"  # watermark — guide promoted to a tracked/public file for the CI auto-reviewer (PR #203); PRs #202–#203 reviewed, zero human inline threads, no new rules.
 maintained_by: reviewer (md-review-pr)
 ---
 
