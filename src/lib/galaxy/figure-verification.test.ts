@@ -1,24 +1,4 @@
-/**
- * BR30 gate-1 — the automated **structural-test harness** for emotion figures
- * (ADR-0014 §5.1). Every authored `ConstellationFigure` must pass `assertFigureValid`
- * before it ships; the second gate (owner legibility sign-off on the preview URL) is a
- * human QA step, out of scope for this pure, headless test.
- *
- * The bar (issue #212 AC1, mirroring ADR-0014 §5.1):
- *  - `anchors.length >= 10`;
- *  - `threshold >= 10`;
- *  - `hostGalaxyId === hostGalaxyFor(figure.emotion)`;
- *  - anchor ids are unique;
- *  - every `edges` endpoint is a declared anchor id;
- *  - a fixture of exactly `threshold` valid members **resolves** — `assignAnchors`
- *    fills EVERY anchor and `figureState` returns `'finished'`.
- *
- * `CONSTELLATIONS` is currently EMPTY (the per-emotion silhouette geometries are a
- * downstream design-role deliverable, BR30-gated), so the iterate-the-real-figures
- * suite passes vacuously today. An `it.todo(<emotion>)` placeholder per emotion holds
- * a slot for each authored figure — flip a `todo` to a real `assertFigureValid` call
- * once that emotion's silhouette lands.
- */
+// BR30 gate-1: structural harness for emotion figures (ADR-0014 §5.1, issue #212).
 
 import { describe, expect, it } from "vitest";
 import { assignAnchors, figureState } from "#/lib/galaxy/constellation";
@@ -34,11 +14,7 @@ import type {
   MemoryStar,
 } from "#/lib/galaxy/types";
 
-/**
- * Build a fixture of exactly `count` valid members for a figure: same `emotion`,
- * not `deep`, distinct ascending `createdAt` so the binding order is total + stable.
- * Pure — no `Date.now()` / `Math.random()`.
- */
+// Ascending `createdAt` keeps the binding order total + stable (pure, no `Date.now()`).
 const membersFor = (figure: ConstellationFigure, count: number): MemoryStar[] =>
   Array.from({ length: count }, (_, i) => ({
     id: `${figure.group}-m${String(i).padStart(3, "0")}`,
@@ -52,36 +28,25 @@ const membersFor = (figure: ConstellationFigure, count: number): MemoryStar[] =>
     group: figure.group,
   }));
 
-/**
- * The reusable BR30 gate-1 assertion. Throws (via vitest `expect`) with a clear,
- * figure-scoped message on the first violated structural rule. Reused by both the
- * real-`CONSTELLATIONS` iteration and the self-test of broken variants. Kept module-
- * local (not exported): Biome forbids exports from a test file, and nothing outside
- * this harness consumes it — when a future story authors a figure it imports its
- * geometry HERE and re-runs the gate, it does not import the gate elsewhere.
- */
+// Module-local (not exported): Biome noExportsInTest forbids exporting from a test file.
 const assertFigureValid = (figure: ConstellationFigure): void => {
   const where = `figure "${figure.group}" (${figure.emotion})`;
 
-  // ── anchors.length >= 10 ──────────────────────────────────────────────────
   expect(
     figure.anchors.length,
     `${where}: needs >= 10 anchors, has ${figure.anchors.length}`,
   ).toBeGreaterThanOrEqual(10);
 
-  // ── threshold >= 10 ───────────────────────────────────────────────────────
   expect(
     figure.threshold,
     `${where}: threshold must be >= 10, is ${figure.threshold}`,
   ).toBeGreaterThanOrEqual(10);
 
-  // ── hostGalaxyId === hostGalaxyFor(emotion) (derived, never drifts) ────────
   expect(
     figure.hostGalaxyId,
     `${where}: hostGalaxyId must equal hostGalaxyFor("${figure.emotion}")`,
   ).toBe(hostGalaxyFor(figure.emotion));
 
-  // ── anchor ids are unique ─────────────────────────────────────────────────
   const ids = figure.anchors.map((a) => a.id);
   const uniqueIds = new Set(ids);
   expect(
@@ -89,7 +54,6 @@ const assertFigureValid = (figure: ConstellationFigure): void => {
     `${where}: anchor ids must be unique, found ${ids.length - uniqueIds.size} duplicate(s) in [${ids.join(", ")}]`,
   ).toBe(ids.length);
 
-  // ── every edge endpoint is a declared anchor id ───────────────────────────
   for (const [a, b] of figure.edges) {
     expect(
       uniqueIds.has(a),
@@ -101,7 +65,6 @@ const assertFigureValid = (figure: ConstellationFigure): void => {
     ).toBe(true);
   }
 
-  // ── a `threshold`-member fixture resolves: every anchor filled + finished ──
   const members = membersFor(figure, figure.threshold);
   const bound = assignAnchors(members, figure.anchors);
   expect(
