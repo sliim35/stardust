@@ -41,6 +41,20 @@ describe("useTierNav", () => {
     });
   });
 
+  // AC1 — at the localGroup overview galaxyId is null; the hook falls back to
+  // "home", so the first descend (LG → galaxy) works and a second (galaxy →
+  // solarSystem) follows the home ladder, matching the wheel-driven path.
+  it("descend from the overview falls back to home (galaxyId null → home) (AC1)", () => {
+    const { result } = renderHook(() => useTierNav(() => 0));
+    expect(result.current.state.galaxyId).toBeNull();
+
+    act(() => result.current.descend());
+    expect(result.current.state.tier).toBe("galaxy");
+
+    act(() => result.current.descend());
+    expect(result.current.state.tier).toBe("solarSystem");
+  });
+
   // AC2 — inside a neighbour galaxy (no solarSystem tier), descending from the
   // galaxy tier is a clamped no-op: the hook must source `available` from the
   // focused galaxyId, not the global v1 default.
@@ -72,19 +86,5 @@ describe("useTierNav", () => {
       focusedId: null,
       galaxyId: "home",
     });
-  });
-
-  // AC1 — at the localGroup overview galaxyId is null; the hook falls back to
-  // "home", so the first descend (LG → galaxy) works and a second (galaxy →
-  // solarSystem) follows the home ladder, matching the wheel-driven path.
-  it("descend from the overview falls back to home (galaxyId null → home) (AC1)", () => {
-    const { result } = renderHook(() => useTierNav(() => 0));
-    expect(result.current.state.galaxyId).toBeNull();
-
-    act(() => result.current.descend());
-    expect(result.current.state.tier).toBe("galaxy");
-
-    act(() => result.current.descend());
-    expect(result.current.state.tier).toBe("solarSystem");
   });
 });
