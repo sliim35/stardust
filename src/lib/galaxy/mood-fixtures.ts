@@ -1,17 +1,8 @@
 /**
- * The labeled accuracy set for the emotion classifier (#211 AC3, ADR-0014 §1).
- *
- * 54 fixtures = a BASE set of 3 clear memories per emotion (36) + an ADVERSARIAL set
- * of 2 memories per near-pair (18) that deliberately sits on the boundary between two
- * confusable emotions (it reads like the wrong one's surface words but means the right
- * one). The adversarial entries stress exactly the disambiguation guidance in
- * `buildMoodMessages` — they are the fixtures most likely to regress if the prompt drifts.
- *
- * This is dev test data (i18n-exempt): the strings are fixture inputs, never rendered to
- * a user. `mood-detect.smoke.test.ts` (excluded from the default Vitest run) runs the
- * real `env.AI` classifier over these and scores accuracy — a NON-BLOCKING regression
- * guard. `mood-fixtures.test.ts` only checks the SET's shape (count / coverage), which is
- * pure and runs in the default gate.
+ * The 54-fixture labeled accuracy set for the emotion classifier (#211 AC3, ADR-0014 §1):
+ * 36 clear base memories (3/emotion) + 18 adversarial near-pair memories (2/pair) that sit
+ * on a confusable boundary to stress `buildMoodMessages`'s disambiguation. i18n-exempt —
+ * these are test inputs, never user-facing; scored live by `mood-detect.smoke.ts`.
  */
 
 import type { Emotion } from "#/lib/galaxy/types";
@@ -337,7 +328,7 @@ const accuracyOf = (results: readonly FixtureResult[]): number =>
  * Pure scoring core for the smoke harness: zip a list of predictions against the labeled
  * fixtures (same order, same length) and report overall / base / adversarial accuracy +
  * the misses. Kept pure (no `env.AI`, no clock) so the default gate can unit-test the
- * scoring math; the live `*.smoke.test.ts` feeds it real classifier output.
+ * scoring math; the live `*.smoke.ts` harness feeds it real classifier output.
  */
 export const scoreClassifications = (
   fixtures: readonly MoodFixture[],

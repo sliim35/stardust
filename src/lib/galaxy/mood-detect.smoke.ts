@@ -1,28 +1,10 @@
 /**
- * NON-BLOCKING live accuracy smoke test for the emotion classifier (#211 AC3/AC4).
+ * Non-blocking live-accuracy eval for the emotion classifier (#211 AC3/AC4): `.smoke.ts`
+ * so Vitest skips it by default; opt-in `RUN_MOOD_SMOKE=1` adds the glob AND un-skips,
+ * scoring the 54 `MOOD_FIXTURES` against the real Workers-AI model over its REST endpoint.
  *
- * ── Why it can't run in the default gate ──────────────────────────────────────
- * This file ends in `.smoke.ts` — NOT `.test.ts` — so it is NOT matched by the default
- * Vitest `include` glob (the `*.test.ts` pattern in `vitest.config.ts`), and `pnpm test`
- * / CI never pick it up. It is a manual/preview eval, because scoring real accuracy needs
- * the REAL Workers-AI model — there is no `env.AI` binding in a plain-node Vitest run.
- *
- * ── How to run it ─────────────────────────────────────────────────────────────
- * It calls the Workers-AI REST endpoint (`POST .../ai/run/{model}`), so any node context
- * with account creds can run it — no deploy needed. `RUN_MOOD_SMOKE=1` flips
- * `vitest.config.ts` to add the `*.smoke.ts` glob to `include` (Vitest 4 dropped the
- * `--include` CLI flag), so the same flag both collects the file AND un-skips it:
- *
- *   export CLOUDFLARE_ACCOUNT_ID=$(wrangler whoami | ...)   # your account id
- *   export CLOUDFLARE_API_TOKEN=$(wrangler auth token)      # a Workers-AI-scoped token
- *   RUN_MOOD_SMOKE=1 pnpm test src/lib/galaxy/mood-detect.smoke.ts
- *
- * Without `RUN_MOOD_SMOKE=1` the file is not even collected; with the flag but missing
- * creds the suite SKIPS itself — double safety, so it can never fail the default gate.
- *
- * It scores all 54 fixtures (`MOOD_FIXTURES`) and asserts a SOFT accuracy floor so a
- * prompt/model regression is caught — but only when explicitly run. Tune the floors as
- * the prompt evolves; record the run on the story issue (#211) per the traceability rule.
+ *   CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… RUN_MOOD_SMOKE=1 \
+ *     pnpm test src/lib/galaxy/mood-detect.smoke.ts
  */
 
 import { describe, expect, it } from "vitest";

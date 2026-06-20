@@ -15,9 +15,9 @@
  * The 7→12 widening (#187/#193) makes several emotions sit close together, so the
  * system prompt carries explicit near-pair disambiguation (`MOOD_DISAMBIGUATION_PAIRS`)
  * for the hard pairs the spike flagged: hope/wonder, gratitude/tender, longing/wistful,
- * pride/joyful, courage/hope. A `*.smoke.test.ts` (excluded from the default Vitest run)
+ * pride/joyful, courage/hope. A `*.smoke.ts` file (excluded from the default Vitest run)
  * scores live accuracy against a 54-fixture set — a non-blocking regression guard, run
- * manually against the real `env.AI` (see `mood-detect.smoke.test.ts`).
+ * manually against the real `env.AI` (see `mood-detect.smoke.ts`).
  *
  * Model: `@cf/meta/llama-3.1-8b-instruct-fast` — a current Workers AI text model that
  * supports JSON mode (structured output), low-latency at this scale, no external key.
@@ -53,7 +53,7 @@ export const MOOD_JSON_SCHEMA = {
  * One-line sense of each emotion, in `EMOTION_VALUES` order. Keeps the 12-way glossary
  * the system prompt lists co-located with the enum so the two can't silently diverge.
  */
-const EMOTION_GLOSS: Record<Emotion, string> = {
+const EMOTION_GLOSS = {
   joyful: "bright, present happiness; delight, fun, celebration",
   tender: "warm love and closeness toward a person; affection, intimacy, care",
   grieving: "active loss and mourning; sorrow at someone or something gone",
@@ -66,7 +66,7 @@ const EMOTION_GLOSS: Record<Emotion, string> = {
   courage: "facing fear or hardship; bravery, resolve, standing firm",
   pride: "earned self-worth in an achievement (own or a loved one's)",
   longing: "yearning to have/reach someone or something absent; deep wanting",
-};
+} as const satisfies Record<Emotion, string>;
 
 /**
  * The hard near-pairs the spike (#193) flagged as the classifier's biggest confusions.
@@ -82,8 +82,29 @@ export const MOOD_DISAMBIGUATION_PAIRS = [
   ["courage", "hope"],
 ] as const satisfies readonly (readonly [Emotion, Emotion])[];
 
+/** The `${a}|${b}` key a single near-pair tuple maps to (non-distributive over a union). */
+type PairKeyOf<P> = P extends readonly [
+  infer A extends string,
+  infer B extends string,
+]
+  ? `${A}|${B}`
+  : never;
+
+/**
+ * The `${a}|${b}` key for every pair in `MOOD_DISAMBIGUATION_PAIRS`, derived per-tuple so
+ * `PAIR_GUIDANCE` is exhaustive by construction: a pair without guidance (or a typo'd key)
+ * is a COMPILE error, not a runtime `undefined` slipping into the prompt. The mapped type
+ * keys each tuple individually — `(typeof PAIRS)[number]` would union the elements first and
+ * yield the a×b cross-product instead of the 5 real keys.
+ */
+type PairGuidanceKey = {
+  [K in keyof typeof MOOD_DISAMBIGUATION_PAIRS]: PairKeyOf<
+    (typeof MOOD_DISAMBIGUATION_PAIRS)[K]
+  >;
+}[number];
+
 /** The explicit contrast guidance for each hard near-pair, keyed by `${a}|${b}`. */
-const PAIR_GUIDANCE: Record<string, string> = {
+const PAIR_GUIDANCE = {
   "hope|wonder":
     'hope vs wonder — hope FACES FORWARD to a wanted future outcome ("it will get better", "I can\'t wait"); wonder is AWE at the present vastness/mystery itself, with no wanting attached. A starry sky that simply astonishes = wonder; a wish on that star = hope.',
   "gratitude|tender":
@@ -94,7 +115,17 @@ const PAIR_GUIDANCE: Record<string, string> = {
     'pride vs joyful — pride is EARNED self-worth in an ACHIEVEMENT (own or a loved one\'s: "she graduated", "I finally did it"); joyful is undirected bright happiness/fun with no accomplishment behind it. If a hard-won win is the cause, pride; if it\'s just delight, joyful.',
   "courage|hope":
     "courage vs hope — courage is FACING fear/hardship in the moment (bravery, resolve, standing firm despite); hope is the forward-looking trust that good will come. Courage acts against fear NOW; hope expects good LATER. Stepping onstage terrified = courage; believing it'll go well = hope.",
-};
+} as const satisfies Record<PairGuidanceKey, string>;
+
+/**
+ * Build the `${a}|${b}` lookup key from one near-pair tuple. The generic infers each
+ * tuple's literal elements WITHOUT widening (destructuring `[a, b]` off the array would
+ * union both columns into the a×b cross-product), so the result is a real `PairGuidanceKey`
+ * and the `PAIR_GUIDANCE[...]` lookup is statically exhaustive — never `string | undefined`.
+ */
+const pairGuidanceKey = <P extends readonly [Emotion, Emotion]>(
+  pair: P,
+): PairKeyOf<P> => `${pair[0]}|${pair[1]}` as PairKeyOf<P>;
 
 type ChatMessage = { role: "system" | "user"; content: string };
 
@@ -110,7 +141,7 @@ export const buildMoodMessages = (description: string): ChatMessage[] => {
     (e) => `- ${e}: ${EMOTION_GLOSS[e]}`,
   ).join("\n");
   const disambiguation = MOOD_DISAMBIGUATION_PAIRS.map(
-    ([a, b]) => `- ${PAIR_GUIDANCE[`${a}|${b}`]}`,
+    (pair) => `- ${PAIR_GUIDANCE[pairGuidanceKey(pair)]}`,
   ).join("\n");
 
   return [
