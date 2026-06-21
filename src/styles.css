@@ -668,8 +668,11 @@ body {
 /* The mood-constellation overlay (#154, interaction spec §3) — thin SVG connect-
    lines over L3 (ConstellationOverlay.tsx; layout/stroke are Tailwind/props).
    Only the animation side lives here (the card/loader precedent): the lines fade
-   up on hover; prefers-reduced-motion snaps them instant (the gate below). */
-.constellation-lines {
+   up on hover; prefers-reduced-motion snaps them instant (the gate below). The
+   BR27 forming-ghost (#227) shares the same fade-up so the silhouette + real lines
+   arrive together. */
+.constellation-lines,
+.constellation-ghost {
   animation: constellation-in 0.3s ease-out both;
 }
 @keyframes constellation-in {
@@ -797,9 +800,10 @@ body {
   .galaxy-l2__hover {
     transition: none;
   }
-  /* #154 — the hover affordance cross-fades instantly: the constellation lines
-     skip their fade-up (the star/layer dims use motion-reduce: utilities). */
-  .constellation-lines {
+  /* #154/#227 — the hover affordance cross-fades instantly: the constellation
+     lines + forming-ghost skip their fade-up (dims use motion-reduce: utilities). */
+  .constellation-lines,
+  .constellation-ghost {
     animation: none;
   }
   /* ASTRO holds a single static idle frame at rest — bob + drift disabled.
