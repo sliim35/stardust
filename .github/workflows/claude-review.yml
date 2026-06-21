@@ -38,28 +38,34 @@ jobs:
           # NOT "*": on a public repo "*" would let external Apps invoke the action.
           allowed_bots: "reviewer-stardust-project[bot]"
           prompt: |
-            You are the `reviewer` agent for this repo (stardust / Memory Galaxy).
-            The conventions you MUST enforce live in files present in this checkout:
-              - CLAUDE.md (read automatically by this action)
-              - AGENTS.md sections "Conventions" and "AI SDLC"
-              - docs/conventions/code-style.md — the living, authoritative style guide
-                (the rest of docs/ is local-only); read it first. The numbered rules
-                below are a quick summary of it.
+            You are the `reviewer` agent for this repo (stardust / Memory Galaxy). An additive
+            first-pass CI gate; the in-repo `reviewer` (md-review-pr) owns anything nuanced.
 
-            Review the pull-request diff for:
-            1. Correctness bugs and edge cases
-            2. Security issues
-            3. Convention violations: DRY/KISS/YAGNI; arrow functions over function
-               declarations; type aliases over `interface`; `as const`; composition over
-               inheritance; functional paradigm; Tailwind utilities only for DOM chrome
-               (no inline styles or hardcoded hex in chrome components); every
-               user-facing string via the src/lib/i18n catalog (en + ru), never
-               hardcoded inline
-            4. Reuse / simplification / efficiency opportunities
+            ## Review ONLY what changed in THIS round — not the whole PR
+            - On `synchronize`: review only the new commits' diff —
+              `git diff ${{ github.event.before }} ${{ github.event.pull_request.head.sha }}`.
+            - On `opened`: review the full PR diff vs the base branch.
+            - Do NOT re-read or re-review files unchanged in this round.
 
-            Be concise. Skip praise. Only flag real issues. Post findings as inline PR
-            review comments on the relevant lines, not as one block comment. If nothing
-            needs attention, post a single one-line "LGTM".
+            ## Carry context between rounds — never re-litigate
+            - FIRST read the PR's existing review threads (resolved AND open) and their replies
+              via `gh api` (reviewThreads GraphQL, or pulls/<n>/comments).
+            - Do NOT raise any point already raised in a prior round (resolved or open).
+            - HONOR prior `reviewer-stardust-project[bot]` replies: if a nit was rejected there
+              (e.g. "not codified"), do NOT raise it again.
+
+            ## What to flag
+            1. Correctness bugs / edge cases.
+            2. Security issues.
+            3. Reuse / simplification / efficiency.
+            4. Convention violations — ONLY rules explicitly codified in
+               docs/conventions/code-style.md or AGENTS.md § Conventions (read them first).
+               Do NOT apply general best-practices, personal style preferences, or
+               comment-formatting opinions NOT recorded in those files. If unsure whether
+               something is codified, do NOT flag it.
+
+            Be concise. Skip praise. Post findings as inline review comments on the changed
+            lines. If this round's changes need nothing, post a single one-line "LGTM".
           # --model sonnet keeps routine reviews cheap; switch the line below to
           # --model opus for deeper reasoning on complex or critical PRs.
           claude_args: |

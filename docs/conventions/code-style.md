@@ -1,7 +1,7 @@
 ---
 title: Code-style & conventions guide
 updated: 2026-06-14
-last_learned: "#203 (2026-06-20)"  # watermark — guide promoted to a tracked/public file for the CI auto-reviewer (PR #203); PRs #202–#203 reviewed, zero human inline threads, no new rules.
+last_learned: "#217 (2026-06-21)"  # watermark — guide promoted to a tracked/public file for the CI auto-reviewer (PR #203); PRs #202–#203 reviewed, zero human inline threads, no new rules. PR #217: codified the code-comments (one-line WHY) rule that the CI reviewer kept flagging un-codified.
 maintained_by: reviewer (md-review-pr)
 ---
 
@@ -301,6 +301,11 @@ hand-written one. A learned signal that contradicts a hand-written rule lands in
   "100k ly". Fix: check `transition.thresholdFired` in `killTransition` and emit
   `{ kind: 'arrive', tier: plan.from }` if true (PR #167 minor finding, 2026-06-06).
 - **Source:** PR #167 reviewer finding (kill-without-arrive gap), 2026-06-06.
+
+### Code comments — one short line, WHY not WHAT
+- **Rule:** Prefer a single short comment line stating the non-obvious WHY. Avoid multi-paragraph / multi-line comment blocks and docstrings in source; the code + test failure messages already show WHAT. Extended rationale (design notes, task/PR refs) belongs in the PR description or the story doc, not the source.
+- **Why:** Long comments restate the code (which then drifts) and bury the one load-bearing reason; terse WHY-comments age better (KISS).
+- **Source:** PR #217 review (comment-nit thrash, 4 rounds), learned 2026-06-21.
 
 ## Conflicts to resolve (human)
 <!-- A learned signal that contradicts a hand-written rule lands here, not above. -->
