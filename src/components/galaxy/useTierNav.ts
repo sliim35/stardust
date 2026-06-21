@@ -6,6 +6,7 @@
  */
 import { useCallback, useReducer, useRef } from "react";
 import {
+  availableTiersFor,
   initialTierNav,
   type TierNavAction,
   type TierNavState,
@@ -17,13 +18,14 @@ import type { Tier } from "#/lib/galaxy/types";
 export const WHEEL_COOLDOWN_MS = 500;
 
 /**
- * Two-arg adapter for React's `useReducer`. The pure reducer carries an optional
- * 3rd `available` param (parameterised for #127 + the headless tests), which trips
- * React 19's `AnyActionArg` reducer signature — so the hook pins it to the v1
- * default set here.
+ * Two-arg adapter for React's `useReducer` (the reducer's 3rd `available` param
+ * trips React 19's `AnyActionArg` signature, so the hook supplies it).
+ * `available` is per-galaxy asymmetric: home gets the Sol tier, neighbours stop
+ * at galaxy. `null → "home"` fallback at the LG overview keeps the wheel dive INTO
+ * the Milky Way on the home ladder.
  */
 const reduce = (state: TierNavState, action: TierNavAction): TierNavState =>
-  tierNavReducer(state, action);
+  tierNavReducer(state, action, availableTiersFor(state.galaxyId ?? "home"));
 
 export const useTierNav = (now: () => number = () => performance.now()) => {
   const [state, dispatch] = useReducer(reduce, initialTierNav);
