@@ -191,14 +191,21 @@ export const en = {
     },
   },
   // Mood-constellation captions (Layer B) — the one-word MOOD label beside a group.
+  // Widened 7→12 (#193-B): the 5 new emotions + the wistful rename ("LONGING" →
+  // "WISTFUL") so the new `longing` emotion owns "LONGING".
   moods: {
     joyful: "JOY",
     tender: "LOVE",
     grieving: "GRIEF",
-    wistful: "LONGING",
+    wistful: "WISTFUL",
     peaceful: "PEACE",
     nostalgic: "MEMORY",
     wonder: "WONDER",
+    hope: "HOPE",
+    gratitude: "GRATITUDE",
+    courage: "COURAGE",
+    pride: "PRIDE",
+    longing: "LONGING",
     memory: "MEMORY",
   },
   // Card chrome (#146/#5) — the soft-glass panel's own labels; object copy is elsewhere.

@@ -135,7 +135,10 @@ export type Messages = {
   };
   /**
    * Mood-constellation labels (Layer B — the one-word MOOD caption beside a group).
-   * Keyed by `Mood` + `memory` (Mom's gold standalone star).
+   * Keyed by the 12-wide `Emotion` union (ADR-0014 §1, the #187 widening: the
+   * original 7 + `hope`/`gratitude`/`courage`/`pride`/`longing`) plus `memory`
+   * (Mom's gold standalone star). The `wistful` caption was renamed off "LONGING"
+   * so the new `longing` emotion owns it (#193-B).
    */
   moods: {
     joyful: string;
@@ -145,6 +148,11 @@ export type Messages = {
     peaceful: string;
     nostalgic: string;
     wonder: string;
+    hope: string;
+    gratitude: string;
+    courage: string;
+    pride: string;
+    longing: string;
     memory: string;
   };
   /**
