@@ -39,7 +39,7 @@ export const buildTriggerMessages = (description: string): ChatMessage[] => [
   { role: "user", content: `Memory: ${description}` },
 ];
 
-const isTrigger = (value: unknown): value is Trigger =>
+export const isTrigger = (value: unknown): value is Trigger =>
   typeof value === "string" &&
   (TRIGGER_VALUES as readonly string[]).includes(value);
 

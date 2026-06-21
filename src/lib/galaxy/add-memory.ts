@@ -28,13 +28,9 @@ import {
   type ModerationErrorKey,
   moderateMemory,
 } from "#/lib/galaxy/moderation";
-import { TRIGGER_VALUES } from "#/lib/galaxy/schema";
 import { hostGalaxyFor, isMood } from "#/lib/galaxy/seed";
+import { isTrigger } from "#/lib/galaxy/trigger-detect";
 import type { MemoryStar, Mood, Trigger } from "#/lib/galaxy/types";
-
-/** Runtime guard for the committed trigger — anything else is dropped. */
-const isTrigger = (value: unknown): value is Trigger =>
-  (TRIGGER_VALUES as readonly string[]).includes(value as string);
 
 /**
  * The `chat.error.*` catalog keys a rejection maps to. `unclear` = the model
@@ -107,16 +103,7 @@ export const proposeMemory = async (
   return { ok: true, star, hostGalaxyId: hostGalaxyFor(mood) };
 };
 
-/**
- * Step 2 — persist the confirmed proposal + return it for ignition.
- *
- * SECURITY (#221): the commit endpoint is reachable directly (a caller can skip
- * `proposeMemory` and POST any payload), so it must NOT trust the client `star`.
- * It re-runs moderation on `text`, re-validates `mood`, and **re-derives** every
- * render/identity/routing field server-side via `deriveMemoryStar` — so a forged
- * colour / placement / group / brightness / `egg` / `deep` is discarded and an
- * unmoderated or out-of-enum payload can never be persisted as-is.
- */
+/** Step 2 — persist the confirmed star. SECURITY (#221): reachable directly, so the client `star` is UNTRUSTED — re-moderate, re-validate `mood`, re-derive every field server-side. */
 export const commitMemory = async (
   star: MemoryStar,
   deps: CommitMemoryDeps,
@@ -128,8 +115,7 @@ export const commitMemory = async (
   // Re-validate the emotion — a forged/out-of-enum mood routes nowhere safe.
   if (!isMood(star.mood)) return { ok: false, errorKey: "unclear" };
 
-  // Re-derive from the TRUSTED fields only; a re-validated trigger is the sole
-  // client-carried metadata (anything out-of-enum is dropped, never persisted).
+  // Re-derive from trusted fields only; an out-of-enum trigger is dropped.
   const derived = deriveMemoryStar({
     id: star.id,
     text: moderation.text,
