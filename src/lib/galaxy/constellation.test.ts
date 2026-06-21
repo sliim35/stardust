@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as constellation from "#/lib/galaxy/constellation";
 import {
   assignAnchors,
   figureColor,
@@ -440,5 +441,14 @@ describe("hoverAffordanceFor — what hover lights (interaction spec §3)", () =
 
   it("a real object gets only the subtle clickable highlight — never a constellation", () => {
     expect(hoverAffordanceFor(mkReal())).toEqual({ kind: "real" });
+  });
+});
+
+describe("retired #200 back-compat shims (#227 AC3)", () => {
+  it("no longer exports the deprecated constellationNodes / constellationSegments", () => {
+    // The shims bridged GalaxyStage through the anchor-model rewrite; with the host
+    // rewired to figureSegments + assignAnchors, the dead exports are removed.
+    expect("constellationNodes" in constellation).toBe(false);
+    expect("constellationSegments" in constellation).toBe(false);
   });
 });
