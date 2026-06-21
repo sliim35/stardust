@@ -84,16 +84,12 @@ const TAU = Math.PI * 2;
 const ARM_WIND = 1.8; // log-spiral winding: theta = base + ln(r/startR) * ARM_WIND
 const START_R = 0.12; // inner radius where the arms begin
 
-/**
- * Per-galaxy grand-spiral tuning (#226): DEFAULTS are today's exact literals
- * (`ARM_WIND`, ×1), so the home Milky Way call passes nothing and stays
- * byte-identical (ADR-0011 §1); M31 overrides them to a tighter, grander pinwheel.
- */
+/** Per-galaxy grand-spiral overrides (#226); defaults reproduce today's MW literals so the home call stays byte-identical. */
 export type ArmTuning = { wind?: number; spreadScale?: number };
-const ARM_TUNING_DEFAULT: Required<ArmTuning> = {
+const ARM_TUNING_DEFAULT = {
   wind: ARM_WIND,
   spreadScale: 1,
-};
+} as const satisfies Required<ArmTuning>;
 
 /**
  * Disk-polar (rNorm 0..1, theta rad) → stage pixels for one placement: scale by
@@ -262,12 +258,7 @@ export const buildArmsAndBulge = (
 /** The xor fold that derives a backdrop's deep-field rng stream from its seed. */
 const BG_STREAM_XOR = 0x9e3779b9;
 
-/**
- * The full-stage deep field — a faint seeded stipple over the whole stage. Owned by
- * the home backdrop (a neighbour seen from outside never adds its own), and now also
- * by the entered-galaxy seam (#226): once you're INSIDE a neighbour the home MW disk
- * is gone, so that galaxy's sky needs its own deep field or the background goes empty.
- */
+/** The full-stage deep field — extracted (#226) so the entered-galaxy seam can reuse the home backdrop's stipple. */
 export const buildDeepField = (seed: number): BackdropPoint[] => {
   const bgRng = mulberry32(seed ^ BG_STREAM_XOR);
   const bgStars: BackdropPoint[] = [];

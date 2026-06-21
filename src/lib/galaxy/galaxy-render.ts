@@ -79,23 +79,12 @@ export const tuningFor = (o: RealObject): GalaxyBackdrop => ({
   palette: "ember",
 });
 
-/**
- * Per-galaxy grand-spiral tuning (#226, AC4), keyed by object id. MW is ABSENT →
- * the default (today's `ARM_WIND`/×1 spread) so its home path is byte-identical;
- * M31 reads as a tighter, grander Sb pinwheel (more winding, slimmer arms) than
- * the MW's SBbc. Hand-tuned, bake the values into the PR like the `FLOC` block.
- */
-const GRAND_TUNING: Record<string, ArmTuning> = {
+/** Per-galaxy grand-spiral overrides keyed by id (#226, AC4); MW absent → byte-identical default. */
+const GRAND_TUNING = {
   andromeda: { wind: 2.5, spreadScale: 0.7 }, // tighter wound + slimmer arms
-};
+} as const satisfies Record<string, ArmTuning>;
 
-/**
- * The spiral recipe (barred-spiral / spiral) — delegates to the shared
- * `buildArmsAndBulge` (the SAME arm + core generator as the home disk), placement-
- * aware, WITHOUT the full-stage `bgStars` deep field (the MW backdrop owns the one
- * deep field; a neighbour contributes only its own disk). One generator, no drift.
- * `armTuning` (default `{}` = MW literals) is the per-galaxy grand differentiation.
- */
+/** Spiral recipe — reuses the shared `buildArmsAndBulge` generator (one visual family, no drift); `armTuning` carries the per-galaxy grand differentiation. */
 const buildSpiralGeometry = (
   tuning: GalaxyBackdrop,
   place: DiskPlacement,
@@ -297,13 +286,7 @@ const buildClumpyGeometry = (
   return { bgStars: [], arms, bulge };
 };
 
-/**
- * Barred-irregular tuning (LMC = SBm, #226). The bar is authored along DISK-SPACE
- * angle 0, so the placement's `pa` (= the authored `barAngle`) rotates it onto the
- * sky exactly like the spiral arms. One ragged arm hangs off the +x bar end; the
- * scatter is biased toward that side so the silhouette is lopsided (the Magellanic
- * signature) — not the radially-symmetric blob the bar-less clumpy recipe gives.
- */
+/** Barred-irregular tuning (LMC = SBm, #226); bar in disk space (angle 0), one ragged arm + lopsided scatter off the +x end. */
 const BAR = {
   count: 240, // points along the central stellar bar
   halfLen: 0.5, // bar reaches ±0.5·r along the disk x-axis
@@ -314,13 +297,7 @@ const BAR = {
   scatterBias: 0.32, // shove the clump cloud toward +x so the disk reads lopsided
 } as const;
 
-/**
- * The barred-irregular recipe (LMC / SBm) — a central stellar bar + ONE ragged
- * asymmetric arm trailing off it + a lopsided clumpy scatter. The bar lives in
- * disk space (angle 0) so `place.pa` turns it on the sky; the arm + the off-centre
- * scatter break radial symmetry the way the real Magellanic Cloud does. Same
- * `pointAt` projection as every recipe (soft glow, clamp, SSR-safe quantize).
- */
+/** Barred-irregular recipe (LMC / SBm) — bar + one ragged arm + lopsided scatter break radial symmetry like the real Magellanic Cloud. */
 const buildBarredIrregularGeometry = (
   tuning: GalaxyBackdrop,
   place: DiskPlacement,
@@ -440,19 +417,7 @@ export type PlacedGalaxy = {
   place: DiskPlacement;
 };
 
-/**
- * The `shape`→recipe dispatch (ADR-0011 §1, the #226 amendment): one source of
- * truth shared by the LG-overview path (`buildGalaxyGeometry`, bgStars empty) and
- * the entered-galaxy seam (`buildEnteredGalaxyGeometry`, with a deep field). Every
- * recipe returns `bgStars:[]`; the caller decides whether to add the deep field.
- *
- * v1 recipe map: barred-spiral / spiral reuse the arm+core generator with a
- * per-galaxy grand tuning (MW = today's literals → byte-identical; M31 = a tighter,
- * grander pinwheel); flocculent-spiral (M33) gets the beaded-knot builder;
- * magellanic (LMC = SBm) gets the barred-irregular builder (bar + ragged arm +
- * lopsided scatter); irregular / dwarf-spheroidal (M31's satellites) fall through
- * to the bar-less clumpy variant. The map is the seam #155 / #127 extend later.
- */
+/** Shared `shape`→recipe dispatch (#226); every recipe returns `bgStars:[]` so the caller owns the deep-field choice. Recipe map: see PR #230. */
 const dispatchDiskGeometry = (
   o: RealObject,
   place: DiskPlacement,
@@ -461,7 +426,11 @@ const dispatchDiskGeometry = (
   switch (o.shape) {
     case "barred-spiral":
     case "spiral":
-      return buildSpiralGeometry(tuning, place, GRAND_TUNING[o.id]);
+      return buildSpiralGeometry(
+        tuning,
+        place,
+        GRAND_TUNING[o.id as keyof typeof GRAND_TUNING],
+      );
     case "flocculent-spiral":
       // M33 (owner pass 2026-06-10): beaded patchy arms, not a MW twin.
       return buildFlocculentGeometry(tuning, place);
@@ -474,26 +443,13 @@ const dispatchDiskGeometry = (
   }
 };
 
-/**
- * Render-capability for ONE real object on the LG OVERVIEW (ADR-0011 §1): the
- * `shape`-dispatched soft-glow disk at `place`, WITHOUT a deep field — the home MW
- * backdrop owns the one full-stage stipple; a neighbour seen from outside adds only
- * its own disk.
- */
+/** LG-overview render for one object: the `shape`-dispatched disk WITHOUT a deep field (the home MW backdrop owns the one full-stage stipple). */
 export const buildGalaxyGeometry = (
   o: RealObject,
   place: DiskPlacement = placementFor(o),
 ): BackdropGeometry => dispatchDiskGeometry(o, place);
 
-/**
- * Render-capability for ONE real object on the ENTERED (tier-2) view (#226, the
- * ADR-0011 §1 amendment). The fix for #225: when you DESCEND into a neighbour the
- * home MW disk is gone, so this seam paints the galaxy's OWN `shape`-dispatched disk
- * (M33 flocculent, LMC barred-irregular, M31 a grander spiral than the MW) PLUS its
- * own full-stage deep field — instead of the shape-agnostic grand spiral the old
- * `buildBackdropGeometry` path wore for every entered galaxy. Pure + SSR-safe; the
- * home Milky Way keeps its untouched `buildBackdropGeometry(backdrop, MW_PLACEMENT)`.
- */
+/** Entered (tier-2) render for one object: its OWN `shape`-dispatched disk PLUS its own deep field (the #225 fix — see PR #230). */
 export const buildEnteredGalaxyGeometry = (
   o: RealObject,
   place: DiskPlacement = placementFor(o),
@@ -502,13 +458,7 @@ export const buildEnteredGalaxyGeometry = (
   return { bgStars: buildDeepField(hashStr(o.id)), arms, bulge };
 };
 
-/**
- * The entered-galaxy builder selection (#226): a displayed galaxy id → the real
- * neighbour whose own morphology the entered backdrop must paint, or `null` for the
- * home Milky Way (`HOME_MILKY_WAY_ID` / `null` / unknown) — which keeps its untouched
- * `buildBackdropGeometry` path. The one place `GalaxyBackdrop` asks "am I inside a
- * neighbour?" so the component stays declarative and the choice stays unit-tested.
- */
+/** Displayed galaxy id → the neighbour whose morphology the entered backdrop paints, or `null` for the home MW (keeps its untouched path) (#226). */
 export const enteredObjectFor = (
   galaxyId: string | null | undefined,
 ): RealObject | null => {
