@@ -8,11 +8,13 @@ vi.mock("#/lib/i18n", async (importOriginal) => ({
 }));
 
 // Astro now hosts the add-star form (AstroComposer) in its bubble (#183 dir. A),
-// which imports the server fn at module scope — stub it so the bubble renders in
-// jsdom without a binding.
-const addStarFn = vi.fn();
+// which imports the confirm-first server fns (#219) at module scope — stub them so
+// the bubble renders in jsdom without a binding.
+const proposeStarFn = vi.fn();
+const commitStarFn = vi.fn();
 vi.mock("#/server/add-star", () => ({
-  addStarFn: (...args: unknown[]) => addStarFn(...args),
+  proposeStarFn: (...args: unknown[]) => proposeStarFn(...args),
+  commitStarFn: (...args: unknown[]) => commitStarFn(...args),
 }));
 
 import { Astro } from "#/components/galaxy/Astro";
@@ -93,8 +95,14 @@ describe("Astro — add-star lives in the bubble (#183, dir. A)", () => {
     expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
   });
 
-  it("CTA opens the composer in the bubble; a saved star ignites + ASTRO speaks the confirmation", async () => {
-    addStarFn.mockResolvedValueOnce({ ok: true, star: savedStar });
+  it("CTA opens the composer; propose → confirm → commit ignites + ASTRO speaks the confirmation", async () => {
+    // Confirm-first (#219): submit proposes (no persist), the user confirms, commit ignites.
+    proposeStarFn.mockResolvedValueOnce({
+      ok: true,
+      star: savedStar,
+      hostGalaxyId: "home",
+    });
+    commitStarFn.mockResolvedValueOnce({ ok: true, star: savedStar });
     const onStarAdded = vi.fn();
     render(<Astro onStarAdded={onStarAdded} canAddStar />);
     fireEvent.click(screen.getByRole("button", { name: en.chat.open }));
@@ -103,6 +111,11 @@ describe("Astro — add-star lives in the bubble (#183, dir. A)", () => {
       target: { value: "a memory" },
     });
     fireEvent.click(screen.getByRole("button", { name: en.chat.submit }));
+    // the routing confirmation appears; the user confirms
+    await screen.findByRole("button", { name: en.chat.confirm.confirm });
+    fireEvent.click(
+      screen.getByRole("button", { name: en.chat.confirm.confirm }),
+    );
     await waitFor(() => expect(onStarAdded).toHaveBeenCalledWith(savedStar));
     // ASTRO speaks the confirmation; the form is gone; the CTA is back
     expect(screen.getByText(en.chat.success)).toBeTruthy();

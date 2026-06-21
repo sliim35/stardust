@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { deriveMemoryStar } from "#/lib/galaxy/add-star";
-import { MOOD_VALUES, MOODS, placeStar } from "#/lib/galaxy/seed";
+import {
+  hostGalaxyFor,
+  MOOD_VALUES,
+  MOODS,
+  placeStar,
+} from "#/lib/galaxy/seed";
 
 describe("deriveMemoryStar", () => {
   it("derives color from the mood (MOODS[mood].color) — the AI never sets color", () => {
@@ -58,7 +63,7 @@ describe("deriveMemoryStar", () => {
     expect(a.brightness).toBe(b.brightness);
   });
 
-  it("never produces egg/deep/placement (authored-only fields the AI cannot set)", () => {
+  it("never produces egg/deep (authored-only fields the AI cannot set)", () => {
     const star = deriveMemoryStar({
       id: "u-1",
       text: "a memory",
@@ -67,7 +72,6 @@ describe("deriveMemoryStar", () => {
     });
     expect("egg" in star).toBe(false);
     expect("deep" in star).toBe(false);
-    expect("placement" in star).toBe(false);
   });
 
   it("only the mood crosses in — the produced star's mood is exactly the input mood", () => {
@@ -78,5 +82,68 @@ describe("deriveMemoryStar", () => {
       createdAt: 1,
     });
     expect(star.mood).toBe("grieving");
+  });
+
+  // ── #219 AC1: emotion → galaxy routing + figure group + trigger ───────────────
+  it("routes the star to its emotion's host galaxy (placement.parentId = hostGalaxyFor)", () => {
+    const cases: Array<[(typeof MOOD_VALUES)[number], string]> = [
+      ["joyful", "home"],
+      ["wonder", "andromeda"],
+      ["peaceful", "triangulum"],
+      ["courage", "lmc"],
+    ];
+    for (const [mood, galaxy] of cases) {
+      const star = deriveMemoryStar({
+        id: "u-1",
+        text: "m",
+        mood,
+        createdAt: 1,
+      });
+      expect(star.placement?.tier).toBe("galaxy");
+      expect(star.placement?.parentId).toBe(galaxy);
+      expect(star.placement?.parentId).toBe(hostGalaxyFor(mood));
+    }
+  });
+
+  it("mirrors the star's own (r, angle) into its placement (galaxy-tier view)", () => {
+    const star = deriveMemoryStar({
+      id: "abc",
+      text: "m",
+      mood: "wistful",
+      createdAt: 1,
+    });
+    expect(star.placement?.r).toBe(star.r);
+    expect(star.placement?.angle).toBe(star.angle);
+  });
+
+  it("derives the figure group from the emotion (one figure-group key per emotion)", () => {
+    for (const mood of MOOD_VALUES) {
+      const star = deriveMemoryStar({
+        id: "u-1",
+        text: "m",
+        mood,
+        createdAt: 1,
+      });
+      expect(star.group).toBe(mood);
+    }
+  });
+
+  it("persists a captured trigger; omits the field entirely when none is given", () => {
+    const withTrigger = deriveMemoryStar({
+      id: "u-1",
+      text: "m",
+      mood: "tender",
+      createdAt: 1,
+      trigger: "person",
+    });
+    expect(withTrigger.trigger).toBe("person");
+
+    const without = deriveMemoryStar({
+      id: "u-2",
+      text: "m",
+      mood: "tender",
+      createdAt: 1,
+    });
+    expect("trigger" in without).toBe(false);
   });
 });

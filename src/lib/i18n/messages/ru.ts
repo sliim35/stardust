@@ -209,6 +209,11 @@ export const ru = {
   card: {
     fieldLog: "БОРТОВОЙ ЖУРНАЛ",
     close: "Закрыть",
+    // Чип-триггер (BR28) — что вызвало воспоминание; возвращён вместе с рендером (#193-D).
+    trigger: {
+      person: "человек",
+      action: "событие",
+    },
   },
   // Масштабная сетка (#112, §5.3) — доступное имя колец расстояний внизу слева;
   // видимые подписи расстояний формируются из значений, а не из каталога.
@@ -226,6 +231,13 @@ export const ru = {
     submitting: "Finding its place…",
     success:
       "Your star is in the sky now — I found it a place among the others. Thank you for sharing it.",
+    // Подтверждение перед сохранением (#219) — показываем, куда попадёт звезда.
+    confirm: {
+      prompt:
+        "Это похоже на {emotion} — место для неё в галактике {galaxy}. Добавить туда?",
+      confirm: "Добавить туда",
+      back: "Не совсем — назад",
+    },
     error: {
       empty: "Write a few words first, and I'll find your star a place.",
       tooLong: "That's a long one — try trimming it to a sentence or two.",

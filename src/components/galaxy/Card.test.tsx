@@ -118,6 +118,44 @@ describe("Card — memory skin (MemoryStar → memory text + mood eyebrow)", () 
   });
 });
 
+describe("Card — trigger chip (#219 AC5, BR28)", () => {
+  it("renders the `person` chip from card.trigger.person when trigger is person", () => {
+    const star: MemoryStar = { ...memoryStar, trigger: "person" };
+    render(
+      <Card model={resolveCardTarget(star)} messages={en} onClose={() => {}} />,
+    );
+    expect(screen.getByText(en.card.trigger.person)).toBeTruthy();
+  });
+
+  it("renders the `action` chip (moment) when trigger is action", () => {
+    const star: MemoryStar = { ...memoryStar, trigger: "action" };
+    render(
+      <Card model={resolveCardTarget(star)} messages={en} onClose={() => {}} />,
+    );
+    expect(screen.getByText(en.card.trigger.action)).toBeTruthy();
+  });
+
+  it("localizes the trigger chip from the ru catalog", () => {
+    const star: MemoryStar = { ...memoryStar, trigger: "person" };
+    render(
+      <Card model={resolveCardTarget(star)} messages={ru} onClose={() => {}} />,
+    );
+    expect(screen.getByText(ru.card.trigger.person)).toBeTruthy();
+  });
+
+  it("renders NO trigger chip when the star has no trigger (back-compat)", () => {
+    render(
+      <Card
+        model={resolveCardTarget(memoryStar)}
+        messages={en}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.queryByText(en.card.trigger.person)).toBeNull();
+    expect(screen.queryByText(en.card.trigger.action)).toBeNull();
+  });
+});
+
 describe("Card — dismiss, keyboard, focus, reduced-motion", () => {
   it("calls onClose when the close button is clicked", () => {
     const onClose = vi.fn();

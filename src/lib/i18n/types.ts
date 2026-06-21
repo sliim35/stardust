@@ -167,6 +167,15 @@ export type Messages = {
     fieldLog: string;
     /** Dismiss-button accessible name (aria-label / sr-only). */
     close: string;
+    /**
+     * The "what sparked this memory" chip (BR28 — `Trigger`). `person` labels a
+     * memory triggered by someone; `action` labels one triggered by a moment/event.
+     * Re-added alongside its consumer (the chip render) in #193-D.
+     */
+    trigger: {
+      person: string;
+      action: string;
+    };
   };
   /**
    * The bottom-left scale net (interaction spec §5.3, #112) — the display-only
@@ -200,6 +209,20 @@ export type Messages = {
     submitting: string;
     /** ASTRO's confirmation line after a star is saved (spoken in its bubble). */
     success: string;
+    /**
+     * Confirm-first routing copy (#219, BR-add-star) — the owner's safety net for
+     * shipping the 12-way classifier on llama-8b. After the classifier reads a
+     * memory's emotion, the user sees WHERE it will go (the emotion + host galaxy)
+     * and confirms before anything is persisted, so a misroute is caught first.
+     */
+    confirm: {
+      /** The routing prompt — carries `{emotion}` (caption) + `{galaxy}` (name). */
+      prompt: string;
+      /** The "yes, add it there" commit button. */
+      confirm: string;
+      /** The "no, take me back" button — returns to the textarea without persisting. */
+      back: string;
+    };
     /** Rejection messages — keyed by the handler's `AddMemoryErrorKey`. */
     error: {
       /** Empty / whitespace-only submission. */

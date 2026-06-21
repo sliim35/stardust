@@ -1,41 +1,68 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { AddMemoryErrorKey } from "#/lib/galaxy/add-memory";
 import type { MemoryStar } from "#/lib/galaxy/types";
-import { getMessages, useLocale } from "#/lib/i18n";
-import { addStarFn } from "#/server/add-star";
+import { getMessages, interpolate, useLocale } from "#/lib/i18n";
+import type { Messages } from "#/lib/i18n/types";
+import { commitStarFn, proposeStarFn } from "#/server/add-star";
 
 /**
  * The "add your star" form, rendered INSIDE ASTRO's speech bubble (#183 redesign,
  * dir. A). ASTRO invites the memory and the form lives in the *same* glass surface —
- * one voice, no second panel competing for the bottom-right corner (the old layout
- * collided with the bubble + sprite). Submit calls the `addStarFn` server fn
- * (moderate → Workers-AI mood → derive → D1 insert); on success the parent ignites
- * the returned star in the live sky and ASTRO speaks the confirmation. Cancelling is
- * the bubble's own × (the parent flips composing off) — no second close control.
+ * one voice, no second panel competing for the bottom-right corner.
+ *
+ * **Confirm-first (#219, BR-add-star).** The submit is now two steps: `proposeStarFn`
+ * classifies the emotion (the now-12-way model) + trigger and routes the star to its
+ * host galaxy WITHOUT persisting, then the user sees WHERE it will go (the emotion +
+ * target galaxy) and confirms before `commitStarFn` writes it — the owner's safety net
+ * for shipping a 12-way classifier on llama-8b, where a misroute is permanent. "Back"
+ * returns to the textarea with the typed text intact so a misclassification isn't lost.
  *
  * Chrome is Tailwind utilities reading the `@theme` tokens (#75 boundary); every
- * string comes from the typed catalog (#103). Typography FLOWS with the bubble —
- * Nunito body at 16px (`text-base`), an accent CTA at `text-sm` — never the 10px mono
- * eyebrow the standalone panel mistakenly used.
+ * string comes from the typed catalog (#103). SSR-safe: no module-scope clock/random;
+ * the only async is the click-driven propose/commit. A `mounted` ref guards the
+ * post-await path so an unmount mid-flight can't fire `onSuccess` on a gone parent.
  *
- * SSR-safe: no module-scope clock/random; the only async is the click-driven submit.
- * A `mounted` ref guards the post-await path so an unmount mid-flight can't fire
- * `onSuccess` on a gone parent.
+ * Cross-galaxy fly-to on confirm (ADR-0014 open Q4) is the nav track's surface (#198
+ * owns the transition layer). When that fly API lands, the confirm path is the seam to
+ * call it with the proposal's `placement.parentId`; until then we persist + ignite in
+ * place. TODO(#198): on confirm, fly the camera to `proposed.placement.parentId`.
  */
 type Props = {
   /** A saved star: ignite it (parent) + the line ASTRO should speak next. */
   onSuccess: (star: MemoryStar, confirmation: string) => void;
 };
 
+/**
+ * Host-galaxy id → the lore catalog key for its display name. The partition ids
+ * (`hostGalaxyFor`) are `home`/`andromeda`/`triangulum`/`lmc`; the catalog keys its
+ * names under `lore.*`, so this small map is the single seam between them (no inline
+ * galaxy names — ADR-0007). An unknown id falls back to the Milky Way name.
+ */
+const GALAXY_LORE_KEY: Record<string, keyof Messages["lore"]> = {
+  home: "milkyWay",
+  andromeda: "andromeda",
+  triangulum: "triangulum",
+  lmc: "lmc",
+};
+
+const galaxyName = (m: Messages, hostGalaxyId: string): string =>
+  m.lore[GALAXY_LORE_KEY[hostGalaxyId] ?? "milkyWay"].name;
+
+/**
+ * The form's state machine. `write` is the textarea; `confirm` shows the routing
+ * prompt for a classified-but-unpersisted proposal; `submitting` covers both the
+ * propose and the commit round-trips; `error` carries an authored rejection key.
+ */
 type Status =
-  | { kind: "idle" }
+  | { kind: "write" }
   | { kind: "submitting" }
+  | { kind: "confirm"; star: MemoryStar; hostGalaxyId: string }
   | { kind: "error"; errorKey: AddMemoryErrorKey };
 
 export const AstroComposer = ({ onSuccess }: Props) => {
   const m = getMessages(useLocale());
   const [text, setText] = useState("");
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [status, setStatus] = useState<Status>({ kind: "write" });
   const fieldId = useId();
   const errorId = useId();
   const mounted = useRef(true);
@@ -48,11 +75,34 @@ export const AstroComposer = ({ onSuccess }: Props) => {
 
   const submitting = status.kind === "submitting";
 
+  // Step 1 — classify + route, no persist. Surfaces the proposal for confirmation.
   const onSubmit = async () => {
     if (submitting) return;
     setStatus({ kind: "submitting" });
     try {
-      const result = await addStarFn({ data: text });
+      const result = await proposeStarFn({ data: text });
+      if (!mounted.current) return;
+      if (result.ok) {
+        setStatus({
+          kind: "confirm",
+          star: result.star,
+          hostGalaxyId: result.hostGalaxyId,
+        });
+        return;
+      }
+      setStatus({ kind: "error", errorKey: result.errorKey });
+    } catch {
+      if (!mounted.current) return;
+      setStatus({ kind: "error", errorKey: "failed" });
+    }
+  };
+
+  // Step 2 — persist the confirmed proposal, then ignite it in the live sky.
+  const onConfirm = async (star: MemoryStar) => {
+    if (submitting) return;
+    setStatus({ kind: "submitting" });
+    try {
+      const result = await commitStarFn({ data: star });
       if (!mounted.current) return;
       if (result.ok) {
         onSuccess(result.star, m.chat.success);
@@ -64,6 +114,39 @@ export const AstroComposer = ({ onSuccess }: Props) => {
       setStatus({ kind: "error", errorKey: "failed" });
     }
   };
+
+  // "Back" from confirm: return to the textarea with the typed text intact.
+  const onBack = () => setStatus({ kind: "write" });
+
+  if (status.kind === "confirm") {
+    const prompt = interpolate(m.chat.confirm.prompt, {
+      emotion: m.moods[status.star.mood],
+      galaxy: galaxyName(m, status.hostGalaxyId),
+    });
+    return (
+      <div className="mt-3 flex w-[min(280px,62vw)] flex-col gap-3">
+        <p className="m-0 font-sans text-base text-text leading-normal">
+          {prompt}
+        </p>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="cursor-pointer rounded-snug border border-accent-soft bg-transparent px-3 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+          >
+            {m.chat.confirm.back}
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(status.star)}
+            className="cursor-pointer rounded-snug border border-accent bg-accent-soft px-4 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+          >
+            {m.chat.confirm.confirm}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-3 flex w-[min(280px,62vw)] flex-col gap-3">
