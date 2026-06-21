@@ -23,6 +23,7 @@ import {
   type ProposeMemoryResult,
   proposeMemory,
 } from "#/lib/galaxy/add-memory";
+import { figureForGroup } from "#/lib/galaxy/constellation";
 import {
   buildMoodMessages,
   MOOD_JSON_SCHEMA,
@@ -30,6 +31,7 @@ import {
   parseMoodResponse,
 } from "#/lib/galaxy/mood-detect";
 import { memoryStars } from "#/lib/galaxy/schema";
+import { rowToMemoryStar } from "#/lib/galaxy/star-mapper";
 import {
   buildTriggerMessages,
   parseTriggerResponse,
@@ -58,6 +60,21 @@ const detectTrigger = async (description: string): Promise<Trigger | null> => {
     response_format: TRIGGER_JSON_SCHEMA,
   });
   return parseTriggerResponse(response);
+};
+
+/** The figure's existing same-group members from D1 (#222), for the anchor rank.
+ *  Reached only when a figure exists for the group — so today (CONSTELLATIONS empty)
+ *  it never runs in production; it is ready the moment a silhouette is authored. */
+const loadGroupMembers = async (group: string): Promise<MemoryStar[]> => {
+  const { drizzle } = await import("drizzle-orm/d1");
+  const { eq } = await import("drizzle-orm");
+  const db = drizzle(env.STARS_DB);
+  const rows = await db
+    .select()
+    .from(memoryStars)
+    .where(eq(memoryStars.grp, group))
+    .orderBy(memoryStars.createdAt);
+  return rows.map(rowToMemoryStar);
 };
 
 /** Persist the confirmed star into D1 via a per-request Drizzle connection. */
@@ -109,7 +126,15 @@ export const commitStarFn = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown): MemoryStar => raw as MemoryStar)
   .handler(async ({ data }): Promise<CommitMemoryResult> => {
     try {
-      return await commitMemory(data, { insert: insertStar });
+      // Wire the append-only anchor placement (#222): `figureForGroup` is empty in
+      // production (CONSTELLATIONS empty) so this is the placeStar wedge today, and
+      // `loadGroupMembers` is only read when a figure exists — ready for authored
+      // silhouettes without a behaviour change now.
+      return await commitMemory(data, {
+        insert: insertStar,
+        figureFor: figureForGroup,
+        groupMembers: loadGroupMembers,
+      });
     } catch {
       return { ok: false, errorKey: "failed" };
     }

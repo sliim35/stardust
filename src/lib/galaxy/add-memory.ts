@@ -24,13 +24,19 @@
  */
 
 import { deriveMemoryStar } from "#/lib/galaxy/add-star";
+import { placeOnFigure } from "#/lib/galaxy/constellation";
 import {
   type ModerationErrorKey,
   moderateMemory,
 } from "#/lib/galaxy/moderation";
 import { hostGalaxyFor, isMood } from "#/lib/galaxy/seed";
 import { isTrigger } from "#/lib/galaxy/trigger-detect";
-import type { MemoryStar, Mood, Trigger } from "#/lib/galaxy/types";
+import type {
+  ConstellationFigure,
+  MemoryStar,
+  Mood,
+  Trigger,
+} from "#/lib/galaxy/types";
 
 /**
  * The `chat.error.*` catalog keys a rejection maps to. `unclear` = the model
@@ -67,6 +73,20 @@ export type ProposeMemoryDeps = {
 export type CommitMemoryDeps = {
   /** Persist the confirmed star (Drizzle insert); returns it for the live sky. */
   insert: (star: MemoryStar) => Promise<MemoryStar>;
+  /**
+   * Resolve a star's `group` to its authored figure, or `null` for none (#222).
+   * Optional — absent (or `null`) keeps the `placeStar` wedge, which is today's
+   * production behaviour (`CONSTELLATIONS` is empty until silhouettes are authored).
+   */
+  figureFor?: (group: string) => ConstellationFigure | null;
+  /**
+   * The figure's EXISTING members (for the anchor rank), excluding the new star
+   * (#222). Required only alongside `figureFor`; the new star's slot is its rank
+   * among these + itself, so append-only never moves an earlier member. Async so
+   * the real edge can read same-group rows from D1 (reached only when a figure
+   * exists — never in production today, `CONSTELLATIONS` empty).
+   */
+  groupMembers?: (group: string) => Promise<readonly MemoryStar[]>;
 };
 
 /**
@@ -124,6 +144,41 @@ export const commitMemory = async (
     ...(isTrigger(star.trigger) ? { trigger: star.trigger } : {}),
   });
 
-  const saved = await deps.insert(derived);
+  // Anchor placement at write (#222, BR24/BR27): if the star's group has an authored
+  // figure, snap it to its next open anchor (append-only); else keep the placeStar
+  // wedge `deriveMemoryStar` already set. Production is the wedge (CONSTELLATIONS empty).
+  const placed = await placeOnAnchor(derived, deps);
+
+  const saved = await deps.insert(placed);
   return { ok: true, star: saved };
+};
+
+/**
+ * Apply the append-only anchor placement to a derived star (#222): when a figure
+ * exists for its `group` and `placeOnFigure` binds it, overwrite the star's
+ * `(r, angle)` + `placement.{r,angle}` with the anchor slot; otherwise the
+ * `placeStar` wedge stands. The host galaxy routing (`placement.parentId/tier`) is
+ * untouched. Existing members are read ONLY when a figure exists. Returns a NEW star.
+ */
+const placeOnAnchor = async (
+  star: MemoryStar,
+  deps: CommitMemoryDeps,
+): Promise<MemoryStar> => {
+  if (!deps.figureFor || !deps.groupMembers || star.group === undefined) {
+    return star;
+  }
+  const figure = deps.figureFor(star.group);
+  if (figure === null) return star; // no silhouette → the placeStar wedge stands
+  const members = await deps.groupMembers(star.group);
+  const slot = placeOnFigure(star, members, figure);
+  if (slot === null) return star; // deep / cross-emotion → never anchored
+  return {
+    ...star,
+    r: slot.r,
+    angle: slot.angle,
+    // Keep placement.parentId/tier (routing); only the coords follow the anchor.
+    ...(star.placement
+      ? { placement: { ...star.placement, r: slot.r, angle: slot.angle } }
+      : {}),
+  };
 };

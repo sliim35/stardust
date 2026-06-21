@@ -7,6 +7,7 @@ import {
   figureState,
   ghostSegments,
   hoverAffordanceFor,
+  placeOnFigure,
   slotBeyondCompletion,
 } from "#/lib/galaxy/constellation";
 import { polarToXY } from "#/lib/galaxy/place";
@@ -279,6 +280,120 @@ describe("slotBeyondCompletion — SSR-safe, deterministic edge-midpoint densifi
     };
     expect(Math.abs(first.r - mid0.r)).toBeLessThanOrEqual(0.05 + 1e-9);
     expect(Math.abs(second.r - mid1.r)).toBeLessThanOrEqual(0.05 + 1e-9);
+  });
+});
+
+describe("placeOnFigure — anchor placement at write (append-only, #222)", () => {
+  const EDGES: readonly (readonly [string, string])[] = [
+    ["n1", "n2"],
+    ["n2", "n3"],
+  ];
+  const fig = mkFigure({ edges: EDGES });
+
+  it("the 1st member of an empty group binds to the 1st anchor (AC1)", () => {
+    const star = mkStar({ id: "new", group: "g", createdAt: 100 });
+    const pos = placeOnFigure(star, [], fig);
+    expect(pos).toEqual({ r: ANCHORS[0].r, angle: ANCHORS[0].angle });
+  });
+
+  it("the Nth member binds to the Nth open anchor (existing members fill 0..N-1)", () => {
+    const existing = [
+      mkStar({ id: "a", group: "g", createdAt: 1 }),
+      mkStar({ id: "b", group: "g", createdAt: 2 }),
+    ];
+    // The new (latest) star is the 3rd member → the 3rd anchor.
+    const star = mkStar({ id: "c", group: "g", createdAt: 3 });
+    const pos = placeOnFigure(star, existing, fig);
+    expect(pos).toEqual({ r: ANCHORS[2].r, angle: ANCHORS[2].angle });
+  });
+
+  it("append-only: an earlier-placed star keeps its anchor when a later one is added (AC2)", () => {
+    const a = mkStar({ id: "a", group: "g", createdAt: 1 });
+    const b = mkStar({ id: "b", group: "g", createdAt: 2 });
+    // `a` was placed when the group was empty → anchor 0.
+    const aPos = placeOnFigure(a, [], fig);
+    // `b` arrives later with `a` already present → anchor 1; `a`'s slot is unchanged.
+    const bPos = placeOnFigure(b, [a], fig);
+    expect(aPos).toEqual({ r: ANCHORS[0].r, angle: ANCHORS[0].angle });
+    expect(bPos).toEqual({ r: ANCHORS[1].r, angle: ANCHORS[1].angle });
+    // Re-deriving `a` with `b` now present still yields anchor 0 (never reshuffled).
+    expect(placeOnFigure(a, [b], fig)).toEqual(aPos);
+  });
+
+  it("rank is by stable createdAt order, not the existing-array order", () => {
+    // Existing members shuffled; the new star's createdAt slots it deterministically.
+    const existing = [
+      mkStar({ id: "x", group: "g", createdAt: 300 }),
+      mkStar({ id: "y", group: "g", createdAt: 100 }),
+    ];
+    // Stable order is y(100) < z(200) < x(300) → z ranks at index 1 → anchor 1
+    // (createdAt, not array order, decides — the same invariant as assignAnchors).
+    const star = mkStar({ id: "z", group: "g", createdAt: 200 });
+    const pos = placeOnFigure(star, existing, fig);
+    expect(pos).toEqual({ r: ANCHORS[1].r, angle: ANCHORS[1].angle });
+  });
+
+  it("beyond completion: all anchors filled → slotBeyondCompletion in-between (AC3, SSR-safe)", () => {
+    // 3 existing valid members fill all 3 anchors; the new star is the 4th.
+    const existing = [
+      mkStar({ id: "a", group: "g", createdAt: 1 }),
+      mkStar({ id: "b", group: "g", createdAt: 2 }),
+      mkStar({ id: "c", group: "g", createdAt: 3 }),
+    ];
+    const star = mkStar({ id: "d", group: "g", createdAt: 4 });
+    const pos = placeOnFigure(star, existing, fig);
+    // priorBeyondCount = 0 (the first beyond-member) → the slotBeyondCompletion slot.
+    expect(pos).toEqual(slotBeyondCompletion(star.id, ANCHORS, EDGES, 0));
+  });
+
+  it("beyond completion is deterministic per id (SSR/client agree, no Date/random)", () => {
+    const existing = Array.from({ length: 4 }, (_, i) =>
+      mkStar({ id: `m${i}`, group: "g", createdAt: i }),
+    );
+    const star = mkStar({ id: "late", group: "g", createdAt: 99 });
+    // 4 existing fill 3 anchors + 1 beyond → the new star is the 2nd beyond member.
+    expect(placeOnFigure(star, existing, fig)).toEqual(
+      placeOnFigure(star, existing, fig),
+    );
+    expect(placeOnFigure(star, existing, fig)).toEqual(
+      slotBeyondCompletion(star.id, ANCHORS, EDGES, 1),
+    );
+  });
+
+  it("excludes cross-emotion existing members from the rank (rule 1)", () => {
+    // An intruder of a different mood does NOT consume an anchor slot.
+    const existing = [
+      mkStar({ id: "a", group: "g", createdAt: 1 }),
+      mkStar({ id: "intruder", group: "g", mood: "joyful", createdAt: 2 }),
+    ];
+    const star = mkStar({ id: "c", group: "g", createdAt: 3 });
+    // Only `a` is a valid prior member → the new star is rank 1 → anchor 1.
+    expect(placeOnFigure(star, existing, fig)).toEqual({
+      r: ANCHORS[1].r,
+      angle: ANCHORS[1].angle,
+    });
+  });
+
+  it("excludes a deep existing member from the rank (Mom's star never anchors, AC4)", () => {
+    const existing = [
+      mkStar({ id: "a", group: "g", createdAt: 1 }),
+      mkStar({ id: "irina", group: "g", deep: true, createdAt: 2 }),
+    ];
+    const star = mkStar({ id: "c", group: "g", createdAt: 3 });
+    expect(placeOnFigure(star, existing, fig)).toEqual({
+      r: ANCHORS[1].r,
+      angle: ANCHORS[1].angle,
+    });
+  });
+
+  it("returns null for a deep star — Mom's star is never bound to an anchor (AC4)", () => {
+    const moms = mkStar({ id: "irina", group: "g", deep: true, createdAt: 1 });
+    expect(placeOnFigure(moms, [], fig)).toBeNull();
+  });
+
+  it("returns null for a cross-emotion star — only same-emotion members anchor (rule 1)", () => {
+    const star = mkStar({ id: "x", group: "g", mood: "joyful", createdAt: 1 });
+    expect(placeOnFigure(star, [], fig)).toBeNull();
   });
 });
 

@@ -187,6 +187,37 @@ export const ghostSegments = (
 };
 
 /**
+ * The append-only WRITE-PATH placement (#222, ADR-0014 §3): the polar slot a NEW
+ * `star` takes in its figure, derived from its stable rank among the figure's valid
+ * members (existing + itself, same `assignAnchors` order). Rank < anchors.length →
+ * the Nth open anchor's `(r, angle)`; beyond completion → `slotBeyondCompletion`
+ * in-between (SSR-safe). `null` when the star can never anchor — it is `deep` (Mom's
+ * star, ADR-0010 §1) or its mood differs from the figure's emotion (rule 1). Rank is
+ * a pure function of `createdAt`/`id`, so it never reshuffles an earlier member
+ * (append-only) and SSR + client agree. Pure; never mutates input.
+ */
+export const placeOnFigure = (
+  star: MemoryStar,
+  existingMembers: readonly MemoryStar[],
+  figure: ConstellationFigure,
+): { r: number; angle: number } | null => {
+  // A deep or cross-emotion star never binds — it stays at its own scattered slot.
+  if (star.deep || star.mood !== figure.emotion) return null;
+  // The new star's rank = how many valid members sort before it (stable order).
+  const all = validMembers([...existingMembers, star], figure);
+  const rank = all.findIndex((m) => m.id === star.id);
+  const anchor = figure.anchors[rank];
+  if (anchor !== undefined) return { r: anchor.r, angle: anchor.angle };
+  // Beyond completion: densify between anchors; prior beyond-members offset the slot.
+  return slotBeyondCompletion(
+    star.id,
+    figure.anchors,
+    figure.edges,
+    rank - figure.anchors.length,
+  );
+};
+
+/**
  * Densify a member that arrives BEYOND completion (all anchors filled): slot it at
  * the midpoint of the least-occupied edge (by `priorBeyondCount % edges.length`,
  * ties by edge index), perturbed by ±0.05 in both `r` and `angle` via
