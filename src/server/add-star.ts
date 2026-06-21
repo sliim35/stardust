@@ -104,7 +104,12 @@ export const proposeStarFn = createServerFn({ method: "POST" })
     }
   });
 
-/** Step 2 — persist the confirmed star (the client passes back the proposal). */
+/**
+ * Step 2 — persist the confirmed star. The client passes the proposal back, but
+ * this endpoint is reachable directly, so the payload is UNTRUSTED: `commitMemory`
+ * re-runs moderation, re-validates the emotion, and re-derives every render/routing
+ * field server-side (#221), so a forged/unmoderated cast can never be persisted as-is.
+ */
 export const commitStarFn = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown): MemoryStar => raw as MemoryStar)
   .handler(async ({ data }): Promise<CommitMemoryResult> => {

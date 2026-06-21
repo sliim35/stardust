@@ -32,27 +32,20 @@ type Props = {
   onSuccess: (star: MemoryStar, confirmation: string) => void;
 };
 
-/**
- * Host-galaxy id → the lore catalog key for its display name. The partition ids
- * (`hostGalaxyFor`) are `home`/`andromeda`/`triangulum`/`lmc`; the catalog keys its
- * names under `lore.*`, so this small map is the single seam between them (no inline
- * galaxy names — ADR-0007). An unknown id falls back to the Milky Way name.
- */
-const GALAXY_LORE_KEY: Record<string, keyof Messages["lore"]> = {
+// The single seam between partition ids (`hostGalaxyFor`) and the `lore.*` catalog
+// keys for their names (no inline galaxy names — ADR-0007); unknown → Milky Way.
+const GALAXY_LORE_KEY = {
   home: "milkyWay",
   andromeda: "andromeda",
   triangulum: "triangulum",
   lmc: "lmc",
-};
+} as const satisfies Record<string, keyof Messages["lore"]>;
 
 const galaxyName = (m: Messages, hostGalaxyId: string): string =>
-  m.lore[GALAXY_LORE_KEY[hostGalaxyId] ?? "milkyWay"].name;
+  m.lore[
+    GALAXY_LORE_KEY[hostGalaxyId as keyof typeof GALAXY_LORE_KEY] ?? "milkyWay"
+  ].name;
 
-/**
- * The form's state machine. `write` is the textarea; `confirm` shows the routing
- * prompt for a classified-but-unpersisted proposal; `submitting` covers both the
- * propose and the commit round-trips; `error` carries an authored rejection key.
- */
 type Status =
   | { kind: "write" }
   | { kind: "submitting" }

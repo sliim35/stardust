@@ -110,28 +110,110 @@ describe("proposeMemory (classify + route — NO persist, the confirm-first step
   });
 });
 
-describe("commitMemory (persist the confirmed proposal)", () => {
-  it("inserts the confirmed star exactly once and returns the saved row", async () => {
-    const star: MemoryStar = {
-      id: "u-1",
-      text: "the blue door",
-      mood: "wistful",
-      color: MOODS.wistful.color,
-      r: 0.5,
-      angle: 1.9,
-      brightness: 0.7,
-      createdAt: 1748100000000,
-      group: "wistful",
-      trigger: "action",
-      placement: { tier: "galaxy", parentId: "triangulum", r: 0.5, angle: 1.9 },
-    };
+describe("commitMemory (persist the confirmed proposal — server re-validates)", () => {
+  /** A well-formed proposal whose derived fields match `deriveMemoryStar`. */
+  const validProposal = (): MemoryStar => ({
+    id: "u-1",
+    text: "the blue door",
+    mood: "wistful",
+    color: MOODS.wistful.color,
+    r: 0.5,
+    angle: 1.9,
+    brightness: 0.7,
+    createdAt: 1748100000000,
+    group: "wistful",
+    trigger: "action",
+    placement: { tier: "galaxy", parentId: "triangulum", r: 0.5, angle: 1.9 },
+  });
+
+  it("inserts a valid confirmed star exactly once and returns the saved row", async () => {
+    const star = validProposal();
     const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
       async (s) => s,
     );
     const result = await commitMemory(star, { insert });
     expect(insert).toHaveBeenCalledTimes(1);
-    expect(insert).toHaveBeenCalledWith(star);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.star).toBe(star);
+    if (result.ok) {
+      // The persisted star is RE-DERIVED server-side — placement, colour, and
+      // group all come from the (re-validated) emotion, not the client payload.
+      expect(result.star.text).toBe("the blue door");
+      expect(result.star.mood).toBe("wistful");
+      expect(result.star.color).toBe(MOODS.wistful.color);
+      expect(result.star.group).toBe("wistful");
+      expect(result.star.placement?.parentId).toBe(hostGalaxyFor("wistful"));
+      expect(result.star.trigger).toBe("action");
+    }
+  });
+
+  it("SECURITY: re-runs moderation — a flagged direct commit is REJECTED, never inserted", async () => {
+    const forged: MemoryStar = { ...validProposal(), text: "free viagra here" };
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errorKey).toBe("flagged");
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("SECURITY: an empty / whitespace-only direct commit is REJECTED before insert", async () => {
+    const forged: MemoryStar = { ...validProposal(), text: "   " };
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errorKey).toBe("empty");
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("SECURITY: a forged (out-of-enum) mood is REJECTED, never persisted as-is", async () => {
+    const forged = { ...validProposal(), mood: "evil" as unknown as Mood };
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errorKey).toBe("unclear");
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("SECURITY: a forged placement/colour/egg is OVERWRITTEN by server re-derivation", async () => {
+    // A caller forges a wrong host galaxy, a fake colour, and egg/deep flags.
+    const forged = {
+      ...validProposal(),
+      color: "#000000",
+      group: "joyful",
+      egg: true,
+      deep: true,
+      placement: { tier: "galaxy" as const, parentId: "home", r: 9, angle: 9 },
+    } as MemoryStar;
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Re-derived from the (valid) emotion — the forged values are discarded.
+      expect(result.star.color).toBe(MOODS.wistful.color);
+      expect(result.star.group).toBe("wistful");
+      expect(result.star.placement?.parentId).toBe(hostGalaxyFor("wistful"));
+      expect("egg" in result.star).toBe(false);
+      expect("deep" in result.star).toBe(false);
+    }
+  });
+
+  it("SECURITY: a forged (out-of-enum) trigger is dropped — never persisted", async () => {
+    const forged = {
+      ...validProposal(),
+      trigger: "malware" as unknown as Trigger,
+    };
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect("trigger" in result.star).toBe(false);
   });
 });

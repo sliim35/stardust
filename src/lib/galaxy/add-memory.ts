@@ -28,8 +28,13 @@ import {
   type ModerationErrorKey,
   moderateMemory,
 } from "#/lib/galaxy/moderation";
-import { hostGalaxyFor } from "#/lib/galaxy/seed";
+import { TRIGGER_VALUES } from "#/lib/galaxy/schema";
+import { hostGalaxyFor, isMood } from "#/lib/galaxy/seed";
 import type { MemoryStar, Mood, Trigger } from "#/lib/galaxy/types";
+
+/** Runtime guard for the committed trigger — anything else is dropped. */
+const isTrigger = (value: unknown): value is Trigger =>
+  (TRIGGER_VALUES as readonly string[]).includes(value as string);
 
 /**
  * The `chat.error.*` catalog keys a rejection maps to. `unclear` = the model
@@ -102,11 +107,37 @@ export const proposeMemory = async (
   return { ok: true, star, hostGalaxyId: hostGalaxyFor(mood) };
 };
 
-/** Step 2 — persist the confirmed proposal + return it for ignition. */
+/**
+ * Step 2 — persist the confirmed proposal + return it for ignition.
+ *
+ * SECURITY (#221): the commit endpoint is reachable directly (a caller can skip
+ * `proposeMemory` and POST any payload), so it must NOT trust the client `star`.
+ * It re-runs moderation on `text`, re-validates `mood`, and **re-derives** every
+ * render/identity/routing field server-side via `deriveMemoryStar` — so a forged
+ * colour / placement / group / brightness / `egg` / `deep` is discarded and an
+ * unmoderated or out-of-enum payload can never be persisted as-is.
+ */
 export const commitMemory = async (
   star: MemoryStar,
   deps: CommitMemoryDeps,
 ): Promise<CommitMemoryResult> => {
-  const saved = await deps.insert(star);
+  // Re-run the moderation gate — an unmoderated/flagged direct commit is rejected.
+  const moderation = moderateMemory(star.text);
+  if (!moderation.ok) return { ok: false, errorKey: moderation.errorKey };
+
+  // Re-validate the emotion — a forged/out-of-enum mood routes nowhere safe.
+  if (!isMood(star.mood)) return { ok: false, errorKey: "unclear" };
+
+  // Re-derive from the TRUSTED fields only; a re-validated trigger is the sole
+  // client-carried metadata (anything out-of-enum is dropped, never persisted).
+  const derived = deriveMemoryStar({
+    id: star.id,
+    text: moderation.text,
+    mood: star.mood,
+    createdAt: star.createdAt,
+    ...(isTrigger(star.trigger) ? { trigger: star.trigger } : {}),
+  });
+
+  const saved = await deps.insert(derived);
   return { ok: true, star: saved };
 };
