@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  figureSegments,
+  figureState,
+  ghostSegments,
+} from "#/lib/galaxy/constellation";
+import {
   buildSeedSky,
   CONSTELLATIONS,
   EMOTION_GALAXY,
@@ -96,6 +101,38 @@ describe("CONSTELLATIONS — retired prototypes, anchor-model shape (AC8)", () =
   });
 });
 
+// ── The Joy smile renders FORMING in the seed sky (#231) ─────────────────────
+// The first authored figure: its 3 grouped seed stars (s01/s07/s08) fill the first
+// 3 mouth anchors → forming (< 14 members), real lines for the filled run + the
+// faint full 11-edge ghost silhouette behind them (BR27).
+describe("Joy smile — forms in the seed sky", () => {
+  const joy = CONSTELLATIONS.joyful;
+  const members = () =>
+    buildSeedSky().stars.filter((s) => s.group === "joyful");
+
+  it("the seed groups exactly 3 Joy members (below the 14 threshold)", () => {
+    expect(members()).toHaveLength(3);
+    expect(members().length).toBeLessThan(joy.threshold);
+  });
+
+  it("the figure is FORMING, not finished, with the seed members", () => {
+    expect(figureState(members(), joy)).toBe("forming");
+  });
+
+  it("draws real connect-lines for the filled run (forming, non-empty)", () => {
+    // 3 members fill mouth-0..mouth-2 → the 2 edges between them draw (BR27: only
+    // edges whose BOTH endpoints are filled).
+    const segs = figureSegments(members(), joy);
+    expect(segs.length).toBeGreaterThan(0);
+    expect(segs).toHaveLength(2);
+  });
+
+  it("draws the faint full ghost silhouette (all 11 mouth edges)", () => {
+    expect(ghostSegments(joy)).toHaveLength(joy.edges.length);
+    expect(ghostSegments(joy)).toHaveLength(11);
+  });
+});
+
 describe("buildSeedSky", () => {
   it("seeds a backdrop and at least 3 stars spanning at least 2 moods", () => {
     const sky = buildSeedSky();
@@ -149,12 +186,15 @@ describe("buildSeedSky", () => {
     }
   });
 
-  // ── Figure retirement (AC8 / spike #194 §5) ───────────────────────────────
-  // The two prototype figures are retired; their member stars' `group` is
-  // cleared so they render as SOLO stars until designed figures claim them.
-  it("clears the group of every seed star (prototype figures retired)", () => {
+  // ── Joy figure membership (#231) ──────────────────────────────────────────
+  // The Joy smile is the first designed figure; the joyful seed stars (s01/s07/s08)
+  // join its "joyful" group so it renders FORMING. Every other mood stays SOLO until
+  // its own silhouette lands; Mom's deep star (irina) is figure-exempt forever.
+  it("groups exactly the joyful seed stars into the Joy figure (mood-joyful, non-deep)", () => {
     for (const s of buildSeedSky().stars) {
-      expect(s.group).toBeUndefined();
+      if (s.deep) continue;
+      const expected = s.mood === "joyful" ? "joyful" : undefined;
+      expect(s.group, `star "${s.id}" (${s.mood})`).toBe(expected);
     }
   });
 

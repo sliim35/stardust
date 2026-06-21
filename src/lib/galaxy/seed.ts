@@ -163,14 +163,59 @@ export const placeStar = (
 // ── emotion constellations (Layer B — ADR-0014 §2; #187) ───────────────────────
 // The two prototype figures (`brightDays` joyful / `quietAche` wistful) are RETIRED
 // (spike #194 §5, AC8): they used member-id edges + 3-member thresholds, which the
-// designed-anchor model (anchor-id edges, `threshold >= 10`) supersedes. Their seed
-// stars' `group` is cleared below → they render SOLO until designed figures claim
-// them. `CONSTELLATIONS` starts EMPTY: the per-emotion silhouette geometries
-// (`anchors`/`edges`/`threshold`) are a design-role deliverable, authored + verified
-// per emotion (BR30-gated) in the downstream per-emotion design stories. Each future
-// entry must satisfy `anchors.length >= 10 && threshold >= 10 && hostGalaxyId ===
-// hostGalaxyFor(emotion)` (the structural gate). Typed by the new anchor-model shape.
-export const CONSTELLATIONS: Record<string, ConstellationFigure> = {};
+// designed-anchor model (anchor-id edges, `threshold >= 10`) supersedes. The
+// per-emotion silhouette geometries (`anchors`/`edges`/`threshold`) are a design-role
+// deliverable, authored + verified per emotion (BR30-gated). Joy is the FIRST authored
+// figure (#231); the remaining 11 land in their own design stories. Each entry must
+// satisfy `anchors.length >= 10 && threshold >= 10 && hostGalaxyId ===
+// hostGalaxyFor(emotion)` (the structural gate, `figure-verification.test.ts`).
+
+// The Joy smile (home / Milky Way): a concave-up mouth arc (12 anchors, 11 edges) +
+// 2 standalone eye anchors for face legibility. Authored in screen space, inverted to
+// polar via the exact inverse of `polarToXY` so the smile reads after the disk tilt
+// (geometry spec docs/design/2026-06-21-joy-smile-figure.md). Re-deriving the formulas
+// reproduces these (r, angle) — SSR-safe, no `Math.random()`/`Date.now()`.
+const JOY_SMILE = {
+  group: "joyful",
+  emotion: "joyful",
+  hostGalaxyId: "home", // === hostGalaxyFor("joyful")
+  threshold: 14, // === anchors.length
+  anchors: [
+    // mouth — concave-up arc, left end → bottom → right end (createdAt fills this order)
+    { id: "mouth-0", r: 0.7933, angle: -2.2587 },
+    { id: "mouth-1", r: 0.6526, angle: -2.3271 },
+    { id: "mouth-2", r: 0.5141, angle: -2.3788 },
+    { id: "mouth-3", r: 0.3815, angle: -2.3885 },
+    { id: "mouth-4", r: 0.2604, angle: -2.2924 },
+    { id: "mouth-5", r: 0.1721, angle: -1.9164 },
+    { id: "mouth-6", r: 0.1721, angle: -1.2252 },
+    { id: "mouth-7", r: 0.2604, angle: -0.8492 },
+    { id: "mouth-8", r: 0.3815, angle: -0.7531 },
+    { id: "mouth-9", r: 0.5141, angle: -0.7628 },
+    { id: "mouth-10", r: 0.6526, angle: -0.8145 },
+    { id: "mouth-11", r: 0.7933, angle: -0.8829 },
+    // eyes — standalone glow anchors (no edges); above the mouth ends, inboard
+    { id: "eye-l", r: 0.7685, angle: -1.9255 },
+    { id: "eye-r", r: 0.7685, angle: -1.2161 },
+  ],
+  edges: [
+    ["mouth-0", "mouth-1"],
+    ["mouth-1", "mouth-2"],
+    ["mouth-2", "mouth-3"],
+    ["mouth-3", "mouth-4"],
+    ["mouth-4", "mouth-5"],
+    ["mouth-5", "mouth-6"],
+    ["mouth-6", "mouth-7"],
+    ["mouth-7", "mouth-8"],
+    ["mouth-8", "mouth-9"],
+    ["mouth-9", "mouth-10"],
+    ["mouth-10", "mouth-11"],
+  ],
+} as const satisfies ConstellationFigure;
+
+export const CONSTELLATIONS: Record<string, ConstellationFigure> = {
+  joyful: JOY_SMILE,
+};
 
 // ── the curated seed corpus (subset of the prototype's 36) ─────────────────────
 // `copyKey` indexes the i18n `memoryStars` catalog — no inline name/text here
@@ -182,15 +227,15 @@ type SeedSpec = {
   group?: string;
 };
 
-// The prototype figures are retired (AC8), so every seed star is now SOLO — no
-// `group`. Hover gives each the short description only (like Mom's star), per the
-// emotion-figure redesign (ADR-0014 §2). Designed figures will claim stars once the
-// per-emotion silhouettes land (BR30-gated).
+// The 3 joyful stars join the Joy figure's `"joyful"` group so the smile renders
+// FORMING in the seed sky (#231); every other mood stays SOLO until its own designed
+// silhouette lands (BR30-gated). Mom's deep star is figure-exempt (DEEP_STAR below).
 const SEED = [
   {
     mood: "joyful",
     copyKey: "s01",
     who: "marco",
+    group: "joyful",
   },
   {
     mood: "tender",
@@ -218,11 +263,13 @@ const SEED = [
   {
     mood: "joyful",
     copyKey: "s07",
+    group: "joyful",
   },
   {
     mood: "joyful",
     copyKey: "s08",
     who: "noor",
+    group: "joyful",
   },
   {
     mood: "wistful",

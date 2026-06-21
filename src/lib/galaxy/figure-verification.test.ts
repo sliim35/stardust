@@ -80,23 +80,30 @@ const assertFigureValid = (figure: ConstellationFigure): void => {
 // ── AC2 — iterate the REAL figures + an it.todo per emotion ──────────────────
 describe("CONSTELLATIONS — every authored figure passes BR30 gate-1", () => {
   const figures = Object.entries(CONSTELLATIONS);
+  // Authored emotions graduate from `it.todo` to a real `assertFigureValid` call;
+  // Joy is the first designed silhouette to land (#231).
+  const AUTHORED: ReadonlySet<string> = new Set(["joyful"]);
 
-  it("starts empty (per-emotion geometries are authored downstream)", () => {
-    // Sanity pin: the iteration below is vacuous until figures are authored, so the
-    // `it.todo` placeholders are what currently track the 12 emotions.
-    expect(figures.length).toBe(0);
+  it("the Joy smile is the first authored figure (no longer empty)", () => {
+    expect(Object.keys(CONSTELLATIONS)).toContain("joyful");
   });
 
-  // Vacuous today (empty map); becomes the live gate as figures are authored.
+  // Becomes the live gate as figures are authored — Joy is the first to land.
   for (const [key, figure] of figures) {
     it(`${key} (${figure.emotion}) is structurally valid`, () => {
       assertFigureValid(figure);
     });
   }
 
-  // One placeholder per emotion: flip its `todo` to a real `assertFigureValid`
-  // call once that emotion's silhouette geometry lands (BR30-gated).
+  // The Joy smile — the first hand-authored silhouette (#231) — passes BR30 gate-1.
+  it("authors + verifies the joyful figure (Joy smile, #231)", () => {
+    assertFigureValid(CONSTELLATIONS.joyful);
+  });
+
+  // One placeholder per still-unauthored emotion: flip its `todo` to a real
+  // `assertFigureValid` call once that emotion's silhouette geometry lands.
   for (const emotion of EMOTION_VALUES) {
+    if (AUTHORED.has(emotion)) continue;
     it.todo(`authors + verifies the ${emotion} figure`);
   }
 });
