@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -118,10 +119,17 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
   // CLEAN (zero visible titles); the names live behind the silhouettes'
   // hover/focus hit-targets. The first dive restores L3.
   const LG_LORE_KEYS = ["milkyWay", "andromeda", "triangulum", "lmc"] as const;
-  const lgLabelEl = (key: (typeof LG_LORE_KEYS)[number]) =>
-    screen
-      .getByText(en.lore[key].name)
-      .closest("[data-lg-label]") as HTMLElement;
+  // The breadcrumb now surfaces the galaxy's lore name too (BR21, #199), so the home
+  // MW name appears twice at the overview — scope to the `[data-lg-label]` title, not
+  // the breadcrumb crumb in the <nav>.
+  const lgLabelEl = (key: (typeof LG_LORE_KEYS)[number]) => {
+    const el = screen
+      .getAllByText(en.lore[key].name)
+      .map((node) => node.closest("[data-lg-label]"))
+      .find((node): node is HTMLElement => node !== null);
+    if (!el) throw new Error(`no LG label for ${key}`);
+    return el;
+  };
   const lgTarget = (key: (typeof LG_LORE_KEYS)[number]) =>
     screen.getByRole("button", {
       name: `${en.lore[key].name} · ${en.lore[key].sublabel}`,
@@ -401,6 +409,73 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
         { timeout: 3500 },
       );
     });
+  });
+});
+
+describe("GalaxyStage — node-aware breadcrumb derived from the live galaxyId (BR21, #199)", () => {
+  // The breadcrumb is a real <nav>; scope queries to it so the galaxy crumb's lore
+  // name never collides with the same name on an LG hit-target at the overview.
+  const crumbs = () => within(screen.getByRole("navigation"));
+
+  // AC6 — diving into a neighbour threads its live galaxyId to the chrome: the
+  // breadcrumb galaxy segment reads THAT galaxy's lore name (Andromeda), never the
+  // hardcoded home Milky Way. The LG hit-targets unmount on the dive, so the only
+  // "Andromeda" left in the tree is the breadcrumb's active crumb.
+  it("a neighbour dive shows that galaxy's lore name as the active breadcrumb segment (AC1/AC6)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${en.lore.andromeda.name} · ${en.lore.andromeda.sublabel}`,
+      }),
+    );
+    const active = crumbs().getByText(en.lore.andromeda.name);
+    expect(active.getAttribute("aria-current")).toBe("location");
+    // A neighbour has no SOL tier → the trail is two segments, no SOL crumb.
+    expect(crumbs().queryByText(en.chrome.breadcrumb.solarSystem)).toBeNull();
+    // …and the home MW name never leaks into a neighbour's trail.
+    expect(crumbs().queryByText(en.lore.milkyWay.name)).toBeNull();
+  });
+
+  // AC4/AC6 — the LOCAL GROUP crumb ascends and clears the galaxyId: back at the
+  // overview the trail falls back to the home ladder (MW name + SOL tail restored).
+  it("clicking LOCAL GROUP from a neighbour ascends to the overview and clears the galaxy (AC4)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${en.lore.andromeda.name} · ${en.lore.andromeda.sublabel}`,
+      }),
+    );
+    expect(screen.getByText("100k ly")).toBeTruthy(); // dived into the galaxy tier
+    fireEvent.click(
+      crumbs().getByRole("button", { name: en.chrome.breadcrumb.localGroup }),
+    );
+    // Back on the LG overview: scale net relabels, LOCAL GROUP is the active crumb,
+    // and the home ladder is restored (the SOL tail returns at the overview).
+    expect(screen.getByText("2.5 Mly")).toBeTruthy();
+    expect(
+      crumbs()
+        .getByText(en.chrome.breadcrumb.localGroup)
+        .getAttribute("aria-current"),
+    ).toBe("location");
+    expect(crumbs().getByText(en.chrome.breadcrumb.solarSystem)).toBeTruthy();
+  });
+
+  // AC3 — inside the home Milky Way the trail keeps the SOL crumb (the only galaxy
+  // with a third tier), and the galaxy segment reads the home MW lore name.
+  it("the home Milky Way dive keeps the SOL crumb and shows the MW lore name (AC3)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${en.lore.milkyWay.name} · ${en.lore.milkyWay.sublabel}`,
+      }),
+    );
+    expect(
+      crumbs().getByText(en.lore.milkyWay.name).getAttribute("aria-current"),
+    ).toBe("location");
+    expect(crumbs().getByText(en.chrome.breadcrumb.solarSystem)).toBeTruthy();
   });
 });
 

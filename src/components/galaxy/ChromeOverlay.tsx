@@ -16,7 +16,9 @@ type Props = {
    * breadcrumb + net relabel in lockstep, exactly when the scene does.
    */
   tier: Tier;
-  /** Breadcrumb click → tier navigation (ascend / dive-home in the stage). */
+  /** The live nav galaxy id (BR22, #199) — drives the node-aware breadcrumb. */
+  galaxyId?: string | null;
+  /** Breadcrumb click → tier navigation (ascend / dive in the stage). */
   onTierSelect?: (tier: Tier) => void;
   /** The active tier-transition narration line for ASTRO's bubble (#125). */
   narration?: string | null;
@@ -51,6 +53,7 @@ export const ChromeOverlay = ({
   palette,
   onPaletteChange,
   tier,
+  galaxyId = null,
   onTierSelect,
   narration = null,
   onNarrationDismiss,
@@ -58,7 +61,12 @@ export const ChromeOverlay = ({
   canAddStar = false,
 }: Props) => (
   <div className="galaxy-chrome-overlay">
-    <GalaxyChrome count={count} tier={tier} onTierSelect={onTierSelect} />
+    <GalaxyChrome
+      count={count}
+      tier={tier}
+      galaxyId={galaxyId}
+      onTierSelect={onTierSelect}
+    />
     <Astro
       narration={narration}
       onNarrationDismiss={onNarrationDismiss}

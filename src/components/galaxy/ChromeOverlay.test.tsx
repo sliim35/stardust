@@ -41,7 +41,7 @@ describe("ChromeOverlay — wires the tier-aware scale net (#112)", () => {
     expect(screen.queryByText("2.5 Mly")).toBeNull();
   });
 
-  it("drives the top-right breadcrumb from the displayed tier (LG current, MW clickable)", () => {
+  it("drives the top-right breadcrumb from the displayed tier (LG current, galaxy clickable)", () => {
     const onTierSelect = vi.fn();
     render(
       <ChromeOverlay
@@ -49,6 +49,7 @@ describe("ChromeOverlay — wires the tier-aware scale net (#112)", () => {
         palette="auroral"
         onPaletteChange={noop}
         tier="localGroup"
+        galaxyId={null}
         onTierSelect={onTierSelect}
       />,
     );
@@ -58,8 +59,26 @@ describe("ChromeOverlay — wires the tier-aware scale net (#112)", () => {
         .getAttribute("aria-current"),
     ).toBe("location");
     // The other reachable tier is the nav button, wired through the overlay.
-    screen.getByRole("button", { name: en.chrome.breadcrumb.galaxy }).click();
+    screen.getByRole("button", { name: en.lore.milkyWay.name }).click();
     expect(onTierSelect).toHaveBeenCalledWith("galaxy");
+  });
+
+  // BR21 (#199) — the overlay threads the live galaxyId to the breadcrumb, so a
+  // neighbour's trail shows its own lore name, not the home Milky Way.
+  it("threads galaxyId through to the node-aware breadcrumb galaxy name", () => {
+    render(
+      <ChromeOverlay
+        count={3}
+        palette="auroral"
+        onPaletteChange={noop}
+        tier="galaxy"
+        galaxyId="andromeda"
+      />,
+    );
+    expect(
+      screen.getByText(en.lore.andromeda.name).getAttribute("aria-current"),
+    ).toBe("location");
+    expect(screen.queryByText(en.lore.milkyWay.name)).toBeNull();
   });
 
   it("passes the tier-transition narration through to ASTRO's bubble (#125)", () => {
