@@ -234,6 +234,68 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
   });
 
+  // BR22-frame (#198): the node-aware scene swap. Entering a NEIGHBOUR renders THAT
+  // galaxy's disk + per-galaxy ASTRO lore — not the hardcoded home Milky Way — and an
+  // empty galaxy (zero memory figures, true for every neighbour at launch) enters cleanly.
+  const memStars = () => document.querySelectorAll(".mem-star");
+
+  it("entering Andromeda swaps to its disk + speaks Andromeda's lore — empty figure layer (AC1/AC3/AC5)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    // The home MW disk carries the seeded memory corpus; Andromeda carries none.
+    fireEvent.click(lgTarget("andromeda"));
+    // The galaxy tier is reached (scale net relabels)…
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    // …Andromeda has ZERO memory figures (the empty-galaxy first-class state)…
+    expect(memStars()).toHaveLength(0);
+    // …ASTRO speaks Andromeda's OWN lore line, not the MW-worded arrival string…
+    expect(screen.getByText(en.lore.andromeda.line)).toBeTruthy();
+    expect(screen.queryByText(en.astroNarration.onArrival.galaxy)).toBeNull();
+    // …and no crash / no card.
+    expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
+  });
+
+  it("entering LMC and Triangulum each speak their own lore + render an empty disk (AC2)", () => {
+    for (const key of ["lmc", "triangulum"] as const) {
+      stubReducedMotion(true);
+      const view = render(<GalaxyStage />);
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: `${en.lore[key].name} · ${en.lore[key].sublabel}`,
+        }),
+      );
+      expect(screen.getByText("100k ly")).toBeTruthy();
+      expect(document.querySelectorAll(".mem-star")).toHaveLength(0);
+      expect(screen.getByText(en.lore[key].line)).toBeTruthy();
+      view.unmount();
+    }
+  });
+
+  it("entering the home Milky Way keeps its seeded stars + the unchanged MW arrival line (AC5)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    fireEvent.click(lgTarget("milkyWay"));
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    // The MW keeps its seeded memory corpus (the empty-galaxy swap never strands it)…
+    expect(memStars().length).toBeGreaterThan(0);
+    // …and the entry narration is the existing MW-worded arrival line, not a lore line.
+    expect(screen.getByText(en.astroNarration.onArrival.galaxy)).toBeTruthy();
+  });
+
+  it("ascending back out of a neighbour returns to the quiet LG overview (no stranded disk)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.click(lgTarget("andromeda"));
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    // Scroll back out to the Local-Group overview…
+    fireEvent.wheel(stage, { deltaY: 12 });
+    expect(screen.getByText("2.5 Mly")).toBeTruthy();
+    expect(screen.queryByText("100k ly")).toBeNull();
+    // …the LG composition is back (neighbour titles re-mount).
+    expect(screen.getByText(en.lore.andromeda.name)).toBeTruthy();
+  });
+
   // #174: the in-DOM `data-lg-glow` wash (a boxy clipped "oreol") is gone. The
   // hover highlight is now the hovered galaxy's own point cloud blooming on a
   // dedicated backdrop canvas; the stage feeds the active id down as `highlight`

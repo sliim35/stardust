@@ -315,8 +315,16 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
     // between the two rests, not parked on either.
     expect(transforms[1]).not.toBe(REST_TRANSFORM);
     expect(transforms[1]).not.toBe(tierTransformOf("galaxy"));
-    expect(events[1]).toEqual({ kind: "threshold", tier: "galaxy" });
-    expect(events[2]).toEqual({ kind: "arrive", tier: "galaxy" });
+    expect(events[1]).toEqual({
+      kind: "threshold",
+      tier: "galaxy",
+      galaxyId: null,
+    });
+    expect(events[2]).toEqual({
+      kind: "arrive",
+      tier: "galaxy",
+      galaxyId: null,
+    });
   });
 
   it("reverses mid-flight (the breadcrumb case): swaps back, lands on the LG rest, no stale timeline", async () => {
@@ -342,12 +350,16 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
       to: "localGroup",
     });
     expect(events.filter((e) => e.kind === "threshold")).toEqual([
-      { kind: "threshold", tier: "galaxy" },
-      { kind: "threshold", tier: "localGroup" },
+      { kind: "threshold", tier: "galaxy", galaxyId: null },
+      { kind: "threshold", tier: "localGroup", galaxyId: null },
     ]);
     await waitFor(
       () =>
-        expect(events.at(-1)).toEqual({ kind: "arrive", tier: "localGroup" }),
+        expect(events.at(-1)).toEqual({
+          kind: "arrive",
+          tier: "localGroup",
+          galaxyId: null,
+        }),
       { timeout: TIMEOUT },
     );
     // …and STICKS: the reversed timeline never re-asserts itself.
@@ -409,7 +421,11 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
     // was heading toward, which is exactly where the nav already stepped
     // (code-style: terminal events on kill/cancel).
     act(() => focus.focusStar("a"));
-    expect(events.at(-1)).toEqual({ kind: "arrive", tier: "galaxy" });
+    expect(events.at(-1)).toEqual({
+      kind: "arrive",
+      tier: "galaxy",
+      galaxyId: null,
+    });
     await waitFor(() => expect(el.style.transform).toBe(framingOf("a")), {
       timeout: TIMEOUT,
     });
@@ -446,9 +462,13 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
         transitions.request("galaxy", "localGroup");
         focus.focusStar("a");
       });
-      expect(events.at(-1)).toEqual({ kind: "arrive", tier: "localGroup" });
+      expect(events.at(-1)).toEqual({
+        kind: "arrive",
+        tier: "localGroup",
+        galaxyId: null,
+      });
       expect(events.filter((e) => e.kind === "threshold")).toEqual([
-        { kind: "threshold", tier: "galaxy" },
+        { kind: "threshold", tier: "galaxy", galaxyId: null },
       ]);
       advance(0.2); // the focus tween (1.6 s ÷ 10) lands on the star
       expect(el.style.transform).toBe(framingOf("a"));
@@ -486,8 +506,37 @@ describe("useGalaxyCamera — tier transitions on gsap.timeline() (#125)", () =>
     act(() => transitions.request("localGroup", "galaxy"));
     expect(el.style.transform).toBe(tierTransformOf("galaxy")); // synchronous snap
     expect(events).toEqual([
-      { kind: "threshold", tier: "galaxy" },
-      { kind: "arrive", tier: "galaxy" },
+      { kind: "threshold", tier: "galaxy", galaxyId: null },
+      { kind: "arrive", tier: "galaxy", galaxyId: null },
     ]);
+  });
+
+  it("threads the focused galaxyId through threshold + arrive on a node entry (BR22-frame #198)", () => {
+    // The node-aware dive: entering a neighbour carries its id so the scene-swap renders
+    // that galaxy's disk + lore. Reduced-motion snap path so the events land synchronously.
+    stubReducedMotion(true);
+    const { transitions, events } = mountWithTransitions();
+    act(() => transitions.request("localGroup", "galaxy", "andromeda"));
+    expect(events).toEqual([
+      { kind: "threshold", tier: "galaxy", galaxyId: "andromeda" },
+      { kind: "arrive", tier: "galaxy", galaxyId: "andromeda" },
+    ]);
+  });
+
+  it("carries the entered galaxyId on the eased threshold + arrive too (BR22-frame #198)", async () => {
+    const { transitions, events, el } = mountWithTransitions();
+    await settled(el);
+    act(() => transitions.request("localGroup", "galaxy", "lmc"));
+    await waitFor(() => expect(events.map((e) => e.kind)).toContain("arrive"));
+    expect(events.find((e) => e.kind === "threshold")).toEqual({
+      kind: "threshold",
+      tier: "galaxy",
+      galaxyId: "lmc",
+    });
+    expect(events.find((e) => e.kind === "arrive")).toEqual({
+      kind: "arrive",
+      tier: "galaxy",
+      galaxyId: "lmc",
+    });
   });
 });

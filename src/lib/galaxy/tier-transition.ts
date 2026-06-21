@@ -26,6 +26,7 @@
 import type { Camera } from "#/lib/galaxy/camera";
 import { DEFAULT_FRAMING } from "#/lib/galaxy/focus";
 import { LG_FRAMING } from "#/lib/galaxy/lg-composition";
+import { HOME_MILKY_WAY_ID, loreKeyForGalaxy } from "#/lib/galaxy/realdata";
 import { TIER_ORDER } from "#/lib/galaxy/tier-nav";
 import type { Tier } from "#/lib/galaxy/types";
 import type { Messages } from "#/lib/i18n/types";
@@ -144,8 +145,31 @@ export const departNarration = (
 export const arrivalNarration = (n: AstroNarration, tier: Tier): string =>
   n.onArrival[tier];
 
-/** A tier-transition request crossing from the nav state to the camera hook. */
-export type TierTransitionRequest = { from: Tier; to: Tier };
+/**
+ * The ASTRO entry line keyed by the FOCUSED galaxy (BR22-frame #198): entering a
+ * neighbour speaks that galaxy's own `lore.<id>.line` (en+ru, already authored — no new
+ * keys), while the home Milky Way keeps its curated `onArrival.galaxy` line unchanged.
+ * `null`/unknown → the MW line (the home fallback). Pure over the catalog slices.
+ */
+export const entryNarration = (
+  n: AstroNarration,
+  lore: Messages["lore"],
+  galaxyId: string | null,
+): string =>
+  galaxyId === null || galaxyId === HOME_MILKY_WAY_ID
+    ? n.onArrival.galaxy
+    : lore[loreKeyForGalaxy(galaxyId)].line;
+
+/**
+ * A tier-transition request crossing from the nav state to the camera hook. `galaxyId`
+ * (BR22-frame #198) is the focused galaxy whose disk + lore the scene-swap renders at the
+ * threshold — `null` for a tier move that isn't a node entry (e.g. ascending to the LG).
+ */
+export type TierTransitionRequest = {
+  from: Tier;
+  to: Tier;
+  galaxyId: string | null;
+};
 
 /**
  * What the camera hook reports back as a transition plays — the seam React state
@@ -161,8 +185,10 @@ export type TierTransitionRequest = { from: Tier; to: Tier };
  */
 export type TierTransitionEvent =
   | { kind: "depart"; direction: TransitionDirection; from: Tier; to: Tier }
-  | { kind: "threshold"; tier: Tier }
-  | { kind: "arrive"; tier: Tier };
+  // `threshold`/`arrive` carry the focused galaxy (BR22-frame #198) so the scene-swap
+  // renders the right disk + lore at the swap moment; `null` for a non-entry tier move.
+  | { kind: "threshold"; tier: Tier; galaxyId: string | null }
+  | { kind: "arrive"; tier: Tier; galaxyId: string | null };
 
 /**
  * The tier-transition request channel (the `FocusController` pattern): the nav
@@ -170,8 +196,11 @@ export type TierTransitionEvent =
  * timeline. SSR-safe — no module-scope state.
  */
 export type TierTransitionController = {
-  /** Request an eased transition between two tiers. */
-  request(from: Tier, to: Tier): void;
+  /**
+   * Request an eased transition between two tiers. `galaxyId` (BR22-frame #198) is the
+   * focused galaxy the scene-swap renders; omit it (defaults `null`) for a non-entry move.
+   */
+  request(from: Tier, to: Tier, galaxyId?: string | null): void;
   /** Listen for requests; returns an unsubscribe. */
   subscribe(fn: (req: TierTransitionRequest) => void): () => void;
 };
@@ -179,8 +208,8 @@ export type TierTransitionController = {
 export const createTierTransitionController = (): TierTransitionController => {
   const subscribers = new Set<(req: TierTransitionRequest) => void>();
   return {
-    request: (from, to) => {
-      for (const fn of subscribers) fn({ from, to });
+    request: (from, to, galaxyId = null) => {
+      for (const fn of subscribers) fn({ from, to, galaxyId });
     },
     subscribe: (fn) => {
       subscribers.add(fn);
