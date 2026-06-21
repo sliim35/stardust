@@ -9,6 +9,7 @@ import {
 import {
   BLOOM_TUNING,
   bloomPointsFor,
+  buildEnteredGalaxyGeometry,
   buildGalaxyGeometry,
   type PlacedGalaxy,
 } from "#/lib/galaxy/galaxy-render";
@@ -20,7 +21,10 @@ import {
 } from "#/lib/galaxy/meteors";
 import { paletteFor } from "#/lib/galaxy/palette";
 import { STAGE_H, STAGE_W } from "#/lib/galaxy/place";
-import type { GalaxyBackdrop as Backdrop } from "#/lib/galaxy/types";
+import type {
+  GalaxyBackdrop as Backdrop,
+  RealObject,
+} from "#/lib/galaxy/types";
 
 /**
  * L2 — the spiral disk (no central bar). **Soft-glow direction** (owner-chosen 2026-06-03,
@@ -154,6 +158,7 @@ const drawBase = (
 export const GalaxyBackdrop = ({
   backdrop,
   homePlacement = MW_PLACEMENT,
+  enteredObject = null,
   neighbours = [],
   goldDust = [],
   highlight = null,
@@ -164,6 +169,12 @@ export const GalaxyBackdrop = ({
    * byte-identical; the LG tier passes the shrunk `LG_MW_PLACEMENT`.
    */
   homePlacement?: DiskPlacement;
+  /**
+   * The entered (tier-2) neighbour whose OWN morphology this disk must paint
+   * (#226); `null` = the home Milky Way → the untouched `buildBackdropGeometry`
+   * path (AC1). Set only when descended into a non-home galaxy.
+   */
+  enteredObject?: RealObject | null;
   /**
    * Layer-A real galaxies to paint alongside the home disk (ADR-0011 §1), each
    * at the placement its tier composition chose. Renders through the same
@@ -209,7 +220,11 @@ export const GalaxyBackdrop = ({
       makeGlowSprite(p.starWarm),
       makeGlowSprite(p.starHot),
     ];
-    const geom = buildBackdropGeometry(backdrop, homePlacement);
+    // #226: an entered neighbour paints ITS own shape-dispatched disk + deep field;
+    // the home Milky Way keeps the untouched grand-spiral path (AC1 byte-identical).
+    const geom = enteredObject
+      ? buildEnteredGalaxyGeometry(enteredObject, homePlacement)
+      : buildBackdropGeometry(backdrop, homePlacement);
     const neighbourGeoms = neighbours.map(({ object, place }) =>
       buildGalaxyGeometry(object, place),
     );
@@ -274,7 +289,7 @@ export const GalaxyBackdrop = ({
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [backdrop, homePlacement, neighbours, goldDust]);
+  }, [backdrop, homePlacement, enteredObject, neighbours, goldDust]);
 
   // The hover bloom (#174) in its OWN effect — deliberately NOT keyed on the base
   // deps, so a hover never repaints the base scene (AC6). It rebuilds just the one

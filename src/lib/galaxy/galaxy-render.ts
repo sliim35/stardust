@@ -18,17 +18,19 @@
  */
 
 import {
+  type ArmTuning,
   type BackdropGeometry,
   type BackdropPoint,
   BULGE_STREAM_XOR,
   buildArmsAndBulge,
   buildBackdropGeometry,
+  buildDeepField,
   type DiskPlacement,
   MW_PLACEMENT,
   pointAt,
 } from "#/lib/galaxy/backdrop";
 import { DISK_TILT, GALAXY_R, polarToXY } from "#/lib/galaxy/place";
-import { HOME_MILKY_WAY_ID } from "#/lib/galaxy/realdata";
+import { HOME_MILKY_WAY_ID, REAL_OBJECTS } from "#/lib/galaxy/realdata";
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import type { GalaxyBackdrop, RealObject } from "#/lib/galaxy/types";
 
@@ -78,18 +80,30 @@ export const tuningFor = (o: RealObject): GalaxyBackdrop => ({
 });
 
 /**
+ * Per-galaxy grand-spiral tuning (#226, AC4), keyed by object id. MW is ABSENT →
+ * the default (today's `ARM_WIND`/×1 spread) so its home path is byte-identical;
+ * M31 reads as a tighter, grander Sb pinwheel (more winding, slimmer arms) than
+ * the MW's SBbc. Hand-tuned, bake the values into the PR like the `FLOC` block.
+ */
+const GRAND_TUNING: Record<string, ArmTuning> = {
+  andromeda: { wind: 2.5, spreadScale: 0.7 }, // tighter wound + slimmer arms
+};
+
+/**
  * The spiral recipe (barred-spiral / spiral) — delegates to the shared
  * `buildArmsAndBulge` (the SAME arm + core generator as the home disk), placement-
  * aware, WITHOUT the full-stage `bgStars` deep field (the MW backdrop owns the one
  * deep field; a neighbour contributes only its own disk). One generator, no drift.
+ * `armTuning` (default `{}` = MW literals) is the per-galaxy grand differentiation.
  */
 const buildSpiralGeometry = (
   tuning: GalaxyBackdrop,
   place: DiskPlacement,
+  armTuning: ArmTuning = {},
 ): BackdropGeometry => {
   // Reuse the SAME arm+bulge generator as the home disk (one visual family); a
   // neighbour contributes no full-stage deep field, so bgStars stays empty.
-  const { arms, bulge } = buildArmsAndBulge(tuning, place);
+  const { arms, bulge } = buildArmsAndBulge(tuning, place, armTuning);
   return { bgStars: [], arms, bulge };
 };
 
@@ -284,6 +298,139 @@ const buildClumpyGeometry = (
 };
 
 /**
+ * Barred-irregular tuning (LMC = SBm, #226). The bar is authored along DISK-SPACE
+ * angle 0, so the placement's `pa` (= the authored `barAngle`) rotates it onto the
+ * sky exactly like the spiral arms. One ragged arm hangs off the +x bar end; the
+ * scatter is biased toward that side so the silhouette is lopsided (the Magellanic
+ * signature) — not the radially-symmetric blob the bar-less clumpy recipe gives.
+ */
+const BAR = {
+  count: 240, // points along the central stellar bar
+  halfLen: 0.5, // bar reaches ±0.5·r along the disk x-axis
+  thick: 0.07, // gaussian-ish half-thickness across the bar
+  armKnots: 3, // a single ragged arm = a few beaded knots off the +x bar end
+  armPointsPerKnot: 70,
+  armSpread: { min: 0.08, max: 0.16 },
+  scatterBias: 0.32, // shove the clump cloud toward +x so the disk reads lopsided
+} as const;
+
+/**
+ * The barred-irregular recipe (LMC / SBm) — a central stellar bar + ONE ragged
+ * asymmetric arm trailing off it + a lopsided clumpy scatter. The bar lives in
+ * disk space (angle 0) so `place.pa` turns it on the sky; the arm + the off-centre
+ * scatter break radial symmetry the way the real Magellanic Cloud does. Same
+ * `pointAt` projection as every recipe (soft glow, clamp, SSR-safe quantize).
+ */
+const buildBarredIrregularGeometry = (
+  tuning: GalaxyBackdrop,
+  place: DiskPlacement,
+): BackdropGeometry => {
+  const rng = mulberry32(tuning.seed);
+  const arms: BackdropPoint[] = [];
+
+  // The bar: points strung along the disk x-axis with gaussian cross-thickness.
+  for (let i = 0; i < BAR.count; i++) {
+    const along = (rng() * 2 - 1) * BAR.halfLen; // ±halfLen on the bar axis
+    const across = (rng() + rng() - 1) * BAR.thick; // triangular thickness
+    const rNorm = Math.min(Math.hypot(along, across), 1);
+    const theta = Math.atan2(across, along);
+    arms.push(
+      pointAt(
+        rNorm,
+        theta,
+        rng,
+        0.5 + rng() * 0.4,
+        0.4 + rng() * 0.5,
+        0.18,
+        place,
+      ),
+    );
+  }
+
+  // One ragged arm: a few beaded knots hung off the +x bar end, swept to one side.
+  const armRoot = { x: BAR.halfLen, y: 0 };
+  for (let k = 0; k < BAR.armKnots; k++) {
+    const t = (k + 1) / BAR.armKnots;
+    // The knots curl up-and-out from the bar end (one direction only = asymmetry).
+    const kx = armRoot.x + 0.18 * t;
+    const ky = armRoot.y + 0.42 * t;
+    const spread =
+      BAR.armSpread.min + rng() * (BAR.armSpread.max - BAR.armSpread.min);
+    for (let i = 0; i < BAR.armPointsPerKnot; i++) {
+      const px = kx + (rng() + rng() - 1) * spread;
+      const py = ky + (rng() + rng() - 1) * spread;
+      const rNorm = Math.min(Math.hypot(px, py), 1);
+      const theta = Math.atan2(py, px);
+      arms.push(
+        pointAt(
+          rNorm,
+          theta,
+          rng,
+          0.36 + rng() * 0.4,
+          0.35 + rng() * 0.5,
+          0.12,
+          place,
+        ),
+      );
+    }
+  }
+
+  // Lopsided scatter: the clump cloud, but shoved toward +x so the silhouette is
+  // weighted to the bar/arm side rather than radially symmetric.
+  const clumps = Array.from({ length: CLUMP_COUNT }, () => {
+    const r = rng() ** 1.2 * CLUMP_REACH;
+    const ang = rng() * TAU;
+    return {
+      x: Math.cos(ang) * r + BAR.scatterBias,
+      y: Math.sin(ang) * r,
+      spread: CLUMP_SPREAD.min + rng() * (CLUMP_SPREAD.max - CLUMP_SPREAD.min),
+    };
+  });
+  for (const c of clumps) {
+    for (let i = 0; i < CLUMP_POINTS; i++) {
+      const px = c.x + (rng() + rng() - 1) * c.spread;
+      const py = c.y + (rng() + rng() - 1) * c.spread;
+      const rNorm = Math.min(Math.hypot(px, py), 1);
+      const theta = Math.atan2(py, px);
+      arms.push(
+        pointAt(
+          rNorm,
+          theta,
+          rng,
+          0.34 + rng() * 0.36,
+          0.3 + rng() * 0.5,
+          0.12,
+          place,
+        ),
+      );
+    }
+  }
+
+  // A faint off-centre core — the LMC's centre of mass sits on the bar, not at 0.
+  const bulgeRng = mulberry32(tuning.seed ^ BULGE_STREAM_XOR);
+  const bulge: BackdropPoint[] = [];
+  for (let i = 0; i < 150; i++) {
+    const px = (bulgeRng() + bulgeRng() - 1) * 0.16 + 0.06;
+    const py = (bulgeRng() + bulgeRng() - 1) * 0.12;
+    const rNorm = Math.min(Math.hypot(px, py), 1);
+    const theta = Math.atan2(py, px);
+    bulge.push(
+      pointAt(
+        rNorm,
+        theta,
+        bulgeRng,
+        0.42 + bulgeRng() * 0.36,
+        0.45 + bulgeRng() * 0.4,
+        0.3,
+        place,
+      ),
+    );
+  }
+
+  return { bgStars: [], arms, bulge };
+};
+
+/**
  * One real galaxy placed somewhere on the stage — what a tier composition (the
  * Local-Group scene, `lg-composition.ts`) hands the renderer: the curated object
  * plus the `DiskPlacement` the active tier wants it painted at.
@@ -294,35 +441,79 @@ export type PlacedGalaxy = {
 };
 
 /**
- * Render-capability for ONE real object (ADR-0011 §1): pick the geometry recipe from
- * the object's `shape`, build it at `place` (default: the object's raw data
- * placement; a tier composition like the LG scene passes its own — the I-2 seam) +
- * tuning, and return the placed soft-glow point clouds the canvas paints with the
- * existing `paintGlow` + `paletteFor`. `bgStars` is always empty — the home MW
- * backdrop owns the one deep field; a neighbour contributes only its own disk.
+ * The `shape`→recipe dispatch (ADR-0011 §1, the #226 amendment): one source of
+ * truth shared by the LG-overview path (`buildGalaxyGeometry`, bgStars empty) and
+ * the entered-galaxy seam (`buildEnteredGalaxyGeometry`, with a deep field). Every
+ * recipe returns `bgStars:[]`; the caller decides whether to add the deep field.
  *
- * v1 recipe map: barred-spiral / spiral reuse the arm+core generator;
- * flocculent-spiral (M33, 2026-06-10) gets the beaded-knot builder; magellanic /
- * irregular use the clumpy variant; dwarf-spheroidal (M31's satellites) falls through
- * to the clumpy variant too (a small structureless blob). The map is the seam #155 /
- * #127 extend later.
+ * v1 recipe map: barred-spiral / spiral reuse the arm+core generator with a
+ * per-galaxy grand tuning (MW = today's literals → byte-identical; M31 = a tighter,
+ * grander pinwheel); flocculent-spiral (M33) gets the beaded-knot builder;
+ * magellanic (LMC = SBm) gets the barred-irregular builder (bar + ragged arm +
+ * lopsided scatter); irregular / dwarf-spheroidal (M31's satellites) fall through
+ * to the bar-less clumpy variant. The map is the seam #155 / #127 extend later.
  */
-export const buildGalaxyGeometry = (
+const dispatchDiskGeometry = (
   o: RealObject,
-  place: DiskPlacement = placementFor(o),
+  place: DiskPlacement,
 ): BackdropGeometry => {
   const tuning = tuningFor(o);
   switch (o.shape) {
     case "barred-spiral":
     case "spiral":
-      return buildSpiralGeometry(tuning, place);
+      return buildSpiralGeometry(tuning, place, GRAND_TUNING[o.id]);
     case "flocculent-spiral":
       // M33 (owner pass 2026-06-10): beaded patchy arms, not a MW twin.
       return buildFlocculentGeometry(tuning, place);
+    case "magellanic":
+      // LMC (#226): a barred-irregular SBm — bar + ragged arm + lopsided scatter.
+      return buildBarredIrregularGeometry(tuning, place);
     default:
-      // magellanic / irregular / dwarf-spheroidal (+ any non-disk fallthrough)
+      // irregular / dwarf-spheroidal (+ any non-disk fallthrough)
       return buildClumpyGeometry(tuning, place);
   }
+};
+
+/**
+ * Render-capability for ONE real object on the LG OVERVIEW (ADR-0011 §1): the
+ * `shape`-dispatched soft-glow disk at `place`, WITHOUT a deep field — the home MW
+ * backdrop owns the one full-stage stipple; a neighbour seen from outside adds only
+ * its own disk.
+ */
+export const buildGalaxyGeometry = (
+  o: RealObject,
+  place: DiskPlacement = placementFor(o),
+): BackdropGeometry => dispatchDiskGeometry(o, place);
+
+/**
+ * Render-capability for ONE real object on the ENTERED (tier-2) view (#226, the
+ * ADR-0011 §1 amendment). The fix for #225: when you DESCEND into a neighbour the
+ * home MW disk is gone, so this seam paints the galaxy's OWN `shape`-dispatched disk
+ * (M33 flocculent, LMC barred-irregular, M31 a grander spiral than the MW) PLUS its
+ * own full-stage deep field — instead of the shape-agnostic grand spiral the old
+ * `buildBackdropGeometry` path wore for every entered galaxy. Pure + SSR-safe; the
+ * home Milky Way keeps its untouched `buildBackdropGeometry(backdrop, MW_PLACEMENT)`.
+ */
+export const buildEnteredGalaxyGeometry = (
+  o: RealObject,
+  place: DiskPlacement = placementFor(o),
+): BackdropGeometry => {
+  const { arms, bulge } = dispatchDiskGeometry(o, place);
+  return { bgStars: buildDeepField(hashStr(o.id)), arms, bulge };
+};
+
+/**
+ * The entered-galaxy builder selection (#226): a displayed galaxy id → the real
+ * neighbour whose own morphology the entered backdrop must paint, or `null` for the
+ * home Milky Way (`HOME_MILKY_WAY_ID` / `null` / unknown) — which keeps its untouched
+ * `buildBackdropGeometry` path. The one place `GalaxyBackdrop` asks "am I inside a
+ * neighbour?" so the component stays declarative and the choice stays unit-tested.
+ */
+export const enteredObjectFor = (
+  galaxyId: string | null | undefined,
+): RealObject | null => {
+  if (!galaxyId || galaxyId === HOME_MILKY_WAY_ID) return null;
+  return REAL_OBJECTS.find((o) => o.id === galaxyId) ?? null;
 };
 
 /**

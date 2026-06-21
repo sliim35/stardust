@@ -17,7 +17,10 @@ import {
 } from "#/lib/galaxy/constellation";
 import { type DeepLinkSearch, resolveDeepLink } from "#/lib/galaxy/deep-link";
 import { createFocusController } from "#/lib/galaxy/focus";
-import type { PlacedGalaxy } from "#/lib/galaxy/galaxy-render";
+import {
+  enteredObjectFor,
+  type PlacedGalaxy,
+} from "#/lib/galaxy/galaxy-render";
 import {
   LG_MW_PLACEMENT,
   lgGalaxies,
@@ -318,6 +321,13 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     () => (lgView ? lgGoldAccents() : NO_GOLD),
     [lgView],
   );
+  // The entered (tier-2) galaxy whose OWN morphology the backdrop must paint (#226):
+  // a non-home neighbour at the galaxy tier; null at the LG overview or home MW (the
+  // untouched grand-spiral path). The disk swaps to its real shape, not the MW twin.
+  const enteredObject = useMemo(
+    () => (lgView ? null : enteredObjectFor(displayedGalaxyId)),
+    [lgView, displayedGalaxyId],
+  );
 
   // The hovered LG galaxy (#174): its id flows to `GalaxyBackdrop` as `highlight`,
   // blooming that galaxy's own point cloud (replacing the removed in-DOM `oreol`).
@@ -402,6 +412,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
               <GalaxyBackdrop
                 backdrop={backdrop}
                 homePlacement={lgView ? LG_MW_PLACEMENT : MW_PLACEMENT}
+                enteredObject={enteredObject}
                 neighbours={neighbours}
                 goldDust={goldDust}
                 highlight={lgHighlight}

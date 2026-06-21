@@ -85,6 +85,17 @@ const ARM_WIND = 1.8; // log-spiral winding: theta = base + ln(r/startR) * ARM_W
 const START_R = 0.12; // inner radius where the arms begin
 
 /**
+ * Per-galaxy grand-spiral tuning (#226): DEFAULTS are today's exact literals
+ * (`ARM_WIND`, ×1), so the home Milky Way call passes nothing and stays
+ * byte-identical (ADR-0011 §1); M31 overrides them to a tighter, grander pinwheel.
+ */
+export type ArmTuning = { wind?: number; spreadScale?: number };
+const ARM_TUNING_DEFAULT: Required<ArmTuning> = {
+  wind: ARM_WIND,
+  spreadScale: 1,
+};
+
+/**
  * Disk-polar (rNorm 0..1, theta rad) → stage pixels for one placement: scale by
  * `r`, foreshorten y by `tilt`, rotate the squashed point by `pa` (true position
  * angle — the ellipse itself turns), offset to `(cx, cy)`. At `MW_PLACEMENT`
@@ -189,8 +200,13 @@ export const BULGE_STREAM_XOR = 0xc2b2ae35;
 export const buildArmsAndBulge = (
   tuning: GalaxyBackdrop,
   place: DiskPlacement,
+  armTuning: ArmTuning = {},
 ): { arms: BackdropPoint[]; bulge: BackdropPoint[] } => {
   const { seed, branches, spin, randomnessPower } = tuning;
+  // MW-equal defaults → the home call is byte-identical (ADR-0011 §1); only an
+  // overriding caller (M31's grand tuning) shifts the winding / arm fuzz.
+  const wind = armTuning.wind ?? ARM_TUNING_DEFAULT.wind;
+  const spreadScale = armTuning.spreadScale ?? ARM_TUNING_DEFAULT.spreadScale;
   const armRng = mulberry32(seed);
   const bulgeRng = mulberry32(seed ^ BULGE_STREAM_XOR);
 
@@ -199,13 +215,13 @@ export const buildArmsAndBulge = (
     const primary = arm % 2 === 0; // alternate bright / faded arms
     const armBase = (arm / branches) * TAU;
     const count = primary ? 560 : 260;
-    const spread = primary ? 0.14 : 0.26; // tighter primaries read more clearly
+    const spread = (primary ? 0.14 : 0.26) * spreadScale; // tighter primaries read more clearly
     const fade = primary ? 1 : 0.62;
     for (let i = 0; i < count; i++) {
       const rNorm = START_R + (1 - START_R) * armRng() ** 0.85;
       const theta =
         armBase +
-        Math.log(rNorm / START_R) * ARM_WIND * spin +
+        Math.log(rNorm / START_R) * wind * spin +
         (armRng() - 0.5) * spread;
       arms.push(
         pointAt(
@@ -243,14 +259,17 @@ export const buildArmsAndBulge = (
   return { arms, bulge };
 };
 
-export const buildBackdropGeometry = (
-  backdrop: GalaxyBackdrop,
-  place: DiskPlacement = MW_PLACEMENT,
-): BackdropGeometry => {
-  // The full-stage deep field is the home backdrop's alone (a neighbour never adds
-  // its own stipple) — its own xor-folded stream. The disk body (arms + bulge) comes
-  // from the shared `buildArmsAndBulge`, so the home + neighbours never drift apart.
-  const bgRng = mulberry32(backdrop.seed ^ 0x9e3779b9);
+/** The xor fold that derives a backdrop's deep-field rng stream from its seed. */
+const BG_STREAM_XOR = 0x9e3779b9;
+
+/**
+ * The full-stage deep field — a faint seeded stipple over the whole stage. Owned by
+ * the home backdrop (a neighbour seen from outside never adds its own), and now also
+ * by the entered-galaxy seam (#226): once you're INSIDE a neighbour the home MW disk
+ * is gone, so that galaxy's sky needs its own deep field or the background goes empty.
+ */
+export const buildDeepField = (seed: number): BackdropPoint[] => {
+  const bgRng = mulberry32(seed ^ BG_STREAM_XOR);
   const bgStars: BackdropPoint[] = [];
   for (let i = 0; i < 560; i++) {
     bgStars.push({
@@ -262,7 +281,14 @@ export const buildBackdropGeometry = (
       warm: bgRng(),
     });
   }
+  return bgStars;
+};
 
+export const buildBackdropGeometry = (
+  backdrop: GalaxyBackdrop,
+  place: DiskPlacement = MW_PLACEMENT,
+): BackdropGeometry => {
+  // The home deep field + the shared arm/bulge body — one visual family, no drift.
   const { arms, bulge } = buildArmsAndBulge(backdrop, place);
-  return { bgStars, arms, bulge };
+  return { bgStars: buildDeepField(backdrop.seed), arms, bulge };
 };
