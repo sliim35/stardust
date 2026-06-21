@@ -9,10 +9,11 @@ import {
 import type { BackdropPoint } from "#/lib/galaxy/backdrop";
 import { MW_PLACEMENT } from "#/lib/galaxy/backdrop";
 import {
-  constellationNodes,
-  constellationSegments,
+  assignAnchors,
   figureColor,
   figureForGroup,
+  figureSegments,
+  ghostSegments,
   hoverAffordanceFor,
 } from "#/lib/galaxy/constellation";
 import { type DeepLinkSearch, resolveDeepLink } from "#/lib/galaxy/deep-link";
@@ -351,12 +352,17 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     if (affordance.kind !== "memory" || affordance.group === null) return null;
     const figure = figureForGroup(affordance.group);
     if (figure === null) return null;
-    const segments = constellationSegments(sky.stars, figure);
+    const segments = figureSegments(sky.stars, figure);
     if (segments.length === 0) return null; // a degenerate figure reads as solo
     return {
       segments,
+      // The full authored silhouette behind the real lines (BR27 forming-ghost).
+      ghost: ghostSegments(figure),
       color: figureColor(figure),
-      litIds: new Set(constellationNodes(sky.stars, figure).map((n) => n.id)),
+      // The bound members (anchor-filled) are the lit set — `assignAnchors` values.
+      litIds: new Set(
+        [...assignAnchors(sky.stars, figure.anchors).values()].map((n) => n.id),
+      ),
     };
   }, [lgView, hovered, sky.stars]);
   // The "dim everything else" cross-fade on the far layers (L1 + the disk) —
@@ -435,6 +441,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
               {constellation && (
                 <ConstellationOverlay
                   segments={constellation.segments}
+                  ghostSegments={constellation.ghost}
                   color={constellation.color}
                 />
               )}

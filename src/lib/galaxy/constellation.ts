@@ -249,20 +249,3 @@ export const slotBeyondCompletion = (
     angle: (a.angle + b.angle) / 2 + jitterAngle,
   };
 };
-
-// ── back-compat shims for the overlay host (GalaxyStage.tsx, #194-B owns rewiring) ──
-// `GalaxyStage.tsx` still imports `constellationNodes` / `constellationSegments`
-// (it is out of scope here — the overlay ghost-pass rewiring is story #194-B). With
-// `CONSTELLATIONS` now EMPTY, `figureForGroup` returns null there so these are dead
-// at runtime, but they must stay exported + type-compatible with the NEW figure
-// shape so the whole repo keeps compiling. They re-express the old semantics over the
-// anchor model: nodes = validated members bound to anchors; segments = `figureSegments`.
-
-/** @deprecated The bound members of a figure (validated, append-only order). */
-export const constellationNodes = (
-  stars: readonly MemoryStar[],
-  figure: ConstellationFigure,
-): MemoryStar[] => [...assignAnchors(stars, figure.anchors).values()];
-
-/** @deprecated The figure's real connect-lines — alias of {@link figureSegments}. */
-export const constellationSegments = figureSegments;
