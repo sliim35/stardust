@@ -458,6 +458,10 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           palette={palette}
           onPaletteChange={setPalette}
           tier={displayedTier}
+          // The breadcrumb reads the THRESHOLD-following galaxy id (BR21, #199), the
+          // same one driving the disk swap, so the trail shape + galaxy name flip in
+          // lockstep with the scene — not at nav-request time (the #125 hysteresis).
+          galaxyId={displayedGalaxyId}
           onTierSelect={onTierSelect}
           narration={narration}
           onNarrationDismiss={clearNarration}
