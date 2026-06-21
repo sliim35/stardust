@@ -135,8 +135,7 @@ describe("commitMemory (persist the confirmed proposal — server re-validates)"
     expect(insert).toHaveBeenCalledTimes(1);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // The persisted star is RE-DERIVED server-side — placement, colour, and
-      // group all come from the (re-validated) emotion, not the client payload.
+      // Re-derived server-side from the re-validated emotion, not the client payload.
       expect(result.star.text).toBe("the blue door");
       expect(result.star.mood).toBe("wistful");
       expect(result.star.color).toBe(MOODS.wistful.color);
