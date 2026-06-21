@@ -219,3 +219,46 @@ describe("mood-caption catalog widening 7→12 (#193-B, AC1–AC3)", () => {
     expect(ru.moods.wistful).not.toBe(ru.moods.longing);
   });
 });
+
+describe("card.trigger chip catalog (#219 AC4 — re-added with its consumer)", () => {
+  it("carries the en person/action labels (person/moment)", () => {
+    expect(en.card.trigger.person).toBe("person");
+    expect(en.card.trigger.action).toBe("moment");
+  });
+
+  it("carries the ru person/action labels (человек/событие)", () => {
+    expect(ru.card.trigger.person).toBe("человек");
+    expect(ru.card.trigger.action).toBe("событие");
+  });
+});
+
+describe("chat.confirm copy (#219 AC2 — confirm-first routing UX)", () => {
+  it("the en routing prompt interpolates {emotion} + {galaxy}", () => {
+    expect(
+      interpolate(en.chat.confirm.prompt, {
+        emotion: "WONDER",
+        galaxy: "Andromeda",
+      }),
+    ).toContain("WONDER");
+    expect(
+      interpolate(en.chat.confirm.prompt, {
+        emotion: "WONDER",
+        galaxy: "Andromeda",
+      }),
+    ).toContain("Andromeda");
+  });
+
+  it("ships the en confirm + back button labels", () => {
+    expect(en.chat.confirm.confirm.length).toBeGreaterThan(0);
+    expect(en.chat.confirm.back.length).toBeGreaterThan(0);
+  });
+
+  it("the ru routing prompt interpolates {emotion} + {galaxy} too (parity)", () => {
+    const ruPrompt = interpolate(ru.chat.confirm.prompt, {
+      emotion: "ВОСХИЩЕНИЕ",
+      galaxy: "Андромеда",
+    });
+    expect(ruPrompt).toContain("ВОСХИЩЕНИЕ");
+    expect(ruPrompt).toContain("Андромеда");
+  });
+});

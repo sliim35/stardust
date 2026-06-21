@@ -16,7 +16,13 @@
  */
 
 import { isRealObject } from "#/lib/galaxy/click-router";
-import type { LoreKey, MemoryStar, Mood, RealObject } from "#/lib/galaxy/types";
+import type {
+  LoreKey,
+  MemoryStar,
+  Mood,
+  RealObject,
+  Trigger,
+} from "#/lib/galaxy/types";
 
 /** What `openCard(target)` accepts — a real object (lore) or a memory star (memory). */
 export type CardTarget = RealObject | MemoryStar;
@@ -41,6 +47,8 @@ export type MemoryCardModel = {
   name?: string;
   /** Opt-in attribution; `null`/absent = anonymous. */
   who?: string | null;
+  /** What sparked the memory (BR28) — drives the trigger chip; absent = no chip. */
+  trigger?: Trigger;
   /** The agent-owned mood colour — drives the eyebrow tint (never recoloured). */
   color: string;
 };
@@ -68,6 +76,7 @@ export const resolveCardTarget = (target: CardTarget): CardModel =>
         mood: target.mood,
         name: target.name,
         who: target.who,
+        trigger: target.trigger,
         color: target.color,
       };
 

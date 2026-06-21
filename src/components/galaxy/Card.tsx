@@ -149,5 +149,14 @@ const MemoryBody = ({
     <p className="m-0 font-serif text-[16px] italic leading-[1.5] text-text">
       {model.text}
     </p>
+    {model.trigger && (
+      // The trigger chip (BR28) — a quiet pill below the memory, so "what sparked
+      // it" reads after the memory itself, never competing with the mood eyebrow.
+      <p className="mt-[14px] mb-0">
+        <span className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--card-accent)_30%,transparent)] px-[10px] py-[3px] font-mono text-[10px] uppercase tracking-[0.16em] text-dim-2">
+          {messages.card.trigger[model.trigger]}
+        </span>
+      </p>
+    )}
   </>
 );

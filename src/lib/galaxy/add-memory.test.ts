@@ -1,35 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AddMemoryDeps } from "#/lib/galaxy/add-memory";
-import { addMemory } from "#/lib/galaxy/add-memory";
-import { MOODS, placeStar } from "#/lib/galaxy/seed";
-import type { MemoryStar, Mood } from "#/lib/galaxy/types";
+import type { ProposeMemoryDeps } from "#/lib/galaxy/add-memory";
+import { commitMemory, proposeMemory } from "#/lib/galaxy/add-memory";
+import { hostGalaxyFor, MOODS, placeStar } from "#/lib/galaxy/seed";
+import type { MemoryStar, Mood, Trigger } from "#/lib/galaxy/types";
 
-/** Default deps: a fixed clock + id, a mood stub, and a spy insert. */
-const deps = (over: Partial<AddMemoryDeps> = {}) => {
+/** Default deps: a fixed clock + id, a mood/trigger stub. */
+const deps = (over: Partial<ProposeMemoryDeps> = {}) => {
   const detectMood = vi.fn<(d: string) => Promise<Mood | null>>(
-    async () => "joyful",
+    async () => "joyful" as Mood,
   );
-  const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
-    async (star) => star,
+  const detectTrigger = vi.fn<(d: string) => Promise<Trigger | null>>(
+    async () => "person" as Trigger,
   );
   return {
     detectMood,
-    insert,
+    detectTrigger,
     now: () => 1748100000000,
     newId: () => "u-fixed",
     ...over,
   };
 };
 
-describe("addMemory (the write-path orchestrator)", () => {
-  it("on a valid memory: classifies the mood, derives the star, and inserts it once", async () => {
+describe("proposeMemory (classify + route — NO persist, the confirm-first step)", () => {
+  it("on a valid memory: classifies emotion + trigger and derives the routed star", async () => {
     const d = deps();
-    const result = await addMemory("a quiet evening", d);
+    const result = await proposeMemory("a quiet evening", d);
 
     expect(result.ok).toBe(true);
     expect(d.detectMood).toHaveBeenCalledTimes(1);
     expect(d.detectMood).toHaveBeenCalledWith("a quiet evening");
-    expect(d.insert).toHaveBeenCalledTimes(1);
     if (result.ok) {
       expect(result.star.mood).toBe("joyful");
       expect(result.star.color).toBe(MOODS.joyful.color);
@@ -42,59 +41,178 @@ describe("addMemory (the write-path orchestrator)", () => {
     }
   });
 
-  it("AI sets ONLY the mood — egg/deep/placement are never on the produced star", async () => {
+  it("surfaces the host galaxy id so the UI can name the target before persist (AC2)", async () => {
+    const d = deps({ detectMood: vi.fn(async (): Promise<Mood> => "wonder") });
+    const result = await proposeMemory("the rings of saturn", d);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.hostGalaxyId).toBe("andromeda");
+      expect(result.hostGalaxyId).toBe(hostGalaxyFor("wonder"));
+      expect(result.star.placement?.parentId).toBe("andromeda");
+    }
+  });
+
+  it("captures the classified trigger onto the proposed star (AC1)", async () => {
+    const d = deps({
+      detectTrigger: vi.fn(async (): Promise<Trigger> => "action"),
+    });
+    const result = await proposeMemory("the snow-day morning", d);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.star.trigger).toBe("action");
+  });
+
+  it("an unclassifiable trigger is non-fatal — the star is proposed without one", async () => {
+    const d = deps({ detectTrigger: vi.fn(async () => null) });
+    const result = await proposeMemory("a memory", d);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect("trigger" in result.star).toBe(false);
+  });
+
+  it("AI sets ONLY emotion/trigger — egg/deep are never on the proposed star", async () => {
     const d = deps();
-    const result = await addMemory("a memory", d);
+    const result = await proposeMemory("a memory", d);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect("egg" in result.star).toBe(false);
       expect("deep" in result.star).toBe(false);
-      expect("placement" in result.star).toBe(false);
     }
   });
 
-  it("MODERATION GATE: an empty submission is rejected BEFORE the AI + insert", async () => {
+  it("MODERATION GATE: an empty submission is rejected BEFORE the AI", async () => {
     const d = deps();
-    const result = await addMemory("   ", d);
-
+    const result = await proposeMemory("   ", d);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errorKey).toBe("empty");
-    // never reaches the model or D1
     expect(d.detectMood).not.toHaveBeenCalled();
-    expect(d.insert).not.toHaveBeenCalled();
+    expect(d.detectTrigger).not.toHaveBeenCalled();
   });
 
-  it("MODERATION GATE: a flagged submission is rejected BEFORE the AI + insert", async () => {
+  it("MODERATION GATE: a flagged submission is rejected BEFORE the AI", async () => {
     const d = deps();
-    const result = await addMemory("free viagra here", d);
-
+    const result = await proposeMemory("free viagra here", d);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errorKey).toBe("flagged");
     expect(d.detectMood).not.toHaveBeenCalled();
-    expect(d.insert).not.toHaveBeenCalled();
   });
 
-  it("inserts the user's own trimmed text — never an AI-rewritten version", async () => {
+  it("proposes the user's own trimmed text — never an AI-rewritten version", async () => {
     const d = deps();
-    await addMemory("  the blue door  ", d);
-    expect(d.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "the blue door" }),
-    );
+    const result = await proposeMemory("  the blue door  ", d);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.star.text).toBe("the blue door");
   });
 
-  it("when the model returns an unclassifiable mood, rejects with the unclear error and never inserts", async () => {
+  it("an unclassifiable mood rejects with `unclear` (a wrong galaxy is permanent)", async () => {
     const d = deps({ detectMood: vi.fn(async () => null) });
-    const result = await addMemory("a memory the model cannot place", d);
-
+    const result = await proposeMemory("a memory the model cannot place", d);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errorKey).toBe("unclear");
-    expect(d.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe("commitMemory (persist the confirmed proposal — server re-validates)", () => {
+  /** A well-formed proposal whose derived fields match `deriveMemoryStar`. */
+  const validProposal = (): MemoryStar => ({
+    id: "u-1",
+    text: "the blue door",
+    mood: "wistful",
+    color: MOODS.wistful.color,
+    r: 0.5,
+    angle: 1.9,
+    brightness: 0.7,
+    createdAt: 1748100000000,
+    group: "wistful",
+    trigger: "action",
+    placement: { tier: "galaxy", parentId: "triangulum", r: 0.5, angle: 1.9 },
   });
 
-  it("returns the inserted star (so the server fn can ignite it in the live sky)", async () => {
-    const d = deps();
-    const result = await addMemory("a memory", d);
+  it("inserts a valid confirmed star exactly once and returns the saved row", async () => {
+    const star = validProposal();
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(star, { insert });
+    expect(insert).toHaveBeenCalledTimes(1);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(d.insert).toHaveBeenCalledWith(result.star);
+    if (result.ok) {
+      // Re-derived server-side from the re-validated emotion, not the client payload.
+      expect(result.star.text).toBe("the blue door");
+      expect(result.star.mood).toBe("wistful");
+      expect(result.star.color).toBe(MOODS.wistful.color);
+      expect(result.star.group).toBe("wistful");
+      expect(result.star.placement?.parentId).toBe(hostGalaxyFor("wistful"));
+      expect(result.star.trigger).toBe("action");
+    }
+  });
+
+  it("SECURITY: re-runs moderation — a flagged direct commit is REJECTED, never inserted", async () => {
+    const forged: MemoryStar = { ...validProposal(), text: "free viagra here" };
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errorKey).toBe("flagged");
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("SECURITY: an empty / whitespace-only direct commit is REJECTED before insert", async () => {
+    const forged: MemoryStar = { ...validProposal(), text: "   " };
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errorKey).toBe("empty");
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("SECURITY: a forged (out-of-enum) mood is REJECTED, never persisted as-is", async () => {
+    const forged = { ...validProposal(), mood: "evil" as unknown as Mood };
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errorKey).toBe("unclear");
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("SECURITY: a forged placement/colour/egg is OVERWRITTEN by server re-derivation", async () => {
+    // A caller forges a wrong host galaxy, a fake colour, and egg/deep flags.
+    const forged = {
+      ...validProposal(),
+      color: "#000000",
+      group: "joyful",
+      egg: true,
+      deep: true,
+      placement: { tier: "galaxy" as const, parentId: "home", r: 9, angle: 9 },
+    } as MemoryStar;
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Re-derived from the (valid) emotion — the forged values are discarded.
+      expect(result.star.color).toBe(MOODS.wistful.color);
+      expect(result.star.group).toBe("wistful");
+      expect(result.star.placement?.parentId).toBe(hostGalaxyFor("wistful"));
+      expect("egg" in result.star).toBe(false);
+      expect("deep" in result.star).toBe(false);
+    }
+  });
+
+  it("SECURITY: a forged (out-of-enum) trigger is dropped — never persisted", async () => {
+    const forged = {
+      ...validProposal(),
+      trigger: "malware" as unknown as Trigger,
+    };
+    const insert = vi.fn<(s: MemoryStar) => Promise<MemoryStar>>(
+      async (s) => s,
+    );
+    const result = await commitMemory(forged, { insert });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect("trigger" in result.star).toBe(false);
   });
 });

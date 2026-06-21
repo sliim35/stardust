@@ -212,6 +212,11 @@ export const en = {
   card: {
     fieldLog: "FIELD LOG",
     close: "Close",
+    // The trigger chip (BR28) — what sparked the memory; re-added with its render (#193-D).
+    trigger: {
+      person: "person",
+      action: "moment",
+    },
   },
   // Scale net (#112, spec §5.3) — the bottom-left range rings' accessible name;
   // the visible ring distances are formatted from values, not from the catalog.
@@ -227,6 +232,12 @@ export const en = {
     submitting: "Finding its place…",
     success:
       "Your star is in the sky now — I found it a place among the others. Thank you for sharing it.",
+    // Confirm-first routing (#219) — surfaced before persist so a misroute is caught.
+    confirm: {
+      prompt: "This reads as {emotion} — it belongs in {galaxy}. Add it there?",
+      confirm: "Add it there",
+      back: "Not quite — go back",
+    },
     error: {
       empty: "Write a few words first, and I'll find your star a place.",
       tooLong: "That's a long one — try trimming it to a sentence or two.",
