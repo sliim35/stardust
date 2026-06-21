@@ -170,11 +170,7 @@ export const placeStar = (
 // satisfy `anchors.length >= 10 && threshold >= 10 && hostGalaxyId ===
 // hostGalaxyFor(emotion)` (the structural gate, `figure-verification.test.ts`).
 
-// The Joy smile (home / Milky Way): a concave-up mouth arc (12 anchors, 11 edges) +
-// 2 standalone eye anchors for face legibility. Authored in screen space, inverted to
-// polar via the exact inverse of `polarToXY` so the smile reads after the disk tilt
-// (geometry spec docs/design/2026-06-21-joy-smile-figure.md). Re-deriving the formulas
-// reproduces these (r, angle) — SSR-safe, no `Math.random()`/`Date.now()`.
+// Joy smile authored in screen space, inverted to polar so it reads after the disk tilt (spec: docs/design/2026-06-21-joy-smile-figure.md).
 const JOY_SMILE = {
   group: "joyful",
   emotion: "joyful",
