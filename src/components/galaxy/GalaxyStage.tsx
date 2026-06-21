@@ -363,11 +363,11 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     const figure = figureForGroup(affordance.group);
     if (figure === null) return null;
     const segments = figureSegments(sky.stars, figure);
-    if (segments.length === 0) return null; // a degenerate figure reads as solo
+    const ghost = ghostSegments(figure); // BR27 forming-ghost: full silhouette behind the real lines
+    if (segments.length === 0 && ghost.length === 0) return null; // solo only when neither a real line nor a ghost
     return {
       segments,
-      // The full authored silhouette behind the real lines (BR27 forming-ghost).
-      ghost: ghostSegments(figure),
+      ghost,
       color: figureColor(figure),
       // The bound members (anchor-filled) are the lit set — `assignAnchors` values.
       litIds: new Set(
