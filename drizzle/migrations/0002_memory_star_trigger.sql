@@ -1,0 +1,1 @@
+ALTER TABLE `memory_stars` ADD `trigger` text;

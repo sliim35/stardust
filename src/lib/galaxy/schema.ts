@@ -5,10 +5,11 @@
  * `buildSeedSky()` (`store-d1.ts`). The seed-only flags `egg`/`deep` are therefore
  * deliberately NOT columns — no user star is an egg/deep star.
  *
- * `grp` renames `MemoryStar.group` (`group` is a SQL reserved word). The
- * `tier`/`parent_id`/`placement_r`/`placement_angle` quartet is the optional
- * `Placement` (all-or-none; a NULL quartet = the renderer's legacy home-galaxy
- * default). The row → `MemoryStar` mapper lives in `star-mapper.ts`.
+ * `grp` renames `MemoryStar.group` (`group` is a SQL reserved word). `trigger`
+ * (BR28) is nullable — NULL = absent. The `tier`/`parent_id`/`placement_r`/
+ * `placement_angle` quartet is the optional `Placement` (all-or-none; a NULL
+ * quartet routes via `hostGalaxyFor(mood)` in the mapper, not always `home`).
+ * The row → `MemoryStar` mapper lives in `star-mapper.ts`.
  *
  * This module is the single source of truth that BOTH the per-request query
  * (`store-d1` loader / `add-star` server fn) and `drizzle-kit generate` consume —
@@ -23,6 +24,19 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 import { EMOTION_VALUES } from "#/lib/galaxy/seed";
+import type { Trigger } from "#/lib/galaxy/types";
+
+/**
+ * The two `Trigger` literals (BR28, ADR-0014 §4) — what sparked a memory. Listed
+ * `as const satisfies readonly Trigger[]` so the Drizzle `{ enum }` stays
+ * compile-locked to `types.ts:Trigger`; adding/removing a literal there fails this
+ * to type-check. Like `EMOTION_VALUES`, this is a TS guard only — SQLite TEXT
+ * stores no enum constraint, so the column is a plain nullable `TEXT`.
+ */
+export const TRIGGER_VALUES = [
+  "person",
+  "action",
+] as const satisfies readonly Trigger[];
 
 export const memoryStars = sqliteTable(
   "memory_stars",
@@ -41,6 +55,12 @@ export const memoryStars = sqliteTable(
     brightness: real("brightness").notNull(),
     grp: text("grp"),
     who: text("who"),
+    // What sparked this memory (BR28, ADR-0014 §4) — `person | action`. Nullable,
+    // no default: NULL = absent (back-compat with seeded stars + pre-migration
+    // rows). Like `mood`, the union is enforced in TS via Drizzle `{ enum }` (not a
+    // DB CHECK — SQLite TEXT stores no constraint), so the row→`MemoryStar` map
+    // assigns `Trigger | null` without a cast (ADR-0012 amendment 2026-06-14).
+    trigger: text("trigger", { enum: TRIGGER_VALUES }),
     tier: text("tier"),
     parentId: text("parent_id"),
     placementR: real("placement_r"),
