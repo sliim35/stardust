@@ -26,7 +26,7 @@
  * tier (Sol-as-sun + planets-as-solo-stars) is deferred to #127.
  */
 
-import type { RealObject, Tier } from "#/lib/galaxy/types";
+import type { LoreKey, RealObject, Tier } from "#/lib/galaxy/types";
 
 /** The home Milky Way — the one descendable galaxy at the Local-Group tier. */
 export const HOME_MILKY_WAY_ID = "home";
@@ -255,6 +255,15 @@ const REAL_OBJECTS_DATA = [
  * access yields the full `RealObject` (optional fields visible), not a narrow member.
  */
 export const REAL_OBJECTS: readonly RealObject[] = REAL_OBJECTS_DATA;
+
+/**
+ * A galaxy's nav id → its i18n `loreKey` (BR22-frame #198). The nav state carries the
+ * real-object *id* (`home`/`andromeda`/…); per-galaxy lore + breadcrumb key by `loreKey`
+ * — they diverge only for the home MW (`home` → `milkyWay`). Falls back to the home MW
+ * key for `null` (the LG overview) or an unknown id, mirroring `skyFor`'s home-fallback.
+ */
+export const loreKeyForGalaxy = (galaxyId: string | null): LoreKey =>
+  REAL_OBJECTS.find((o) => o.id === galaxyId)?.loreKey ?? "milkyWay";
 
 /**
  * The 4 placed Local-Group neighbours (spec §5.1) — every `localGroup`-tier galaxy

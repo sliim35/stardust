@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FRAMING } from "#/lib/galaxy/focus";
 import { LG_FRAMING } from "#/lib/galaxy/lg-composition";
+import { ANDROMEDA_ID, HOME_MILKY_WAY_ID } from "#/lib/galaxy/realdata";
 import {
   arrivalNarration,
   createTierTransitionController,
   departNarration,
   directionOf,
+  entryNarration,
   framingForTier,
   planTierTransition,
   type TierTransitionRequest,
@@ -151,6 +153,41 @@ describe("arrivalNarration — the on-arrival line when a tier settles (en+ru)",
   });
 });
 
+describe("entryNarration — per-galaxy ASTRO entry line keyed by galaxyId (BR22-frame #198)", () => {
+  it("entering the home Milky Way keeps the existing MW-worded arrival line (unchanged)", () => {
+    // AC5: the MW entry is unchanged — the curated onArrival.galaxy line, not a lore line.
+    expect(entryNarration(en.astroNarration, en.lore, HOME_MILKY_WAY_ID)).toBe(
+      en.astroNarration.onArrival.galaxy,
+    );
+    expect(entryNarration(ru.astroNarration, ru.lore, HOME_MILKY_WAY_ID)).toBe(
+      ru.astroNarration.onArrival.galaxy,
+    );
+  });
+
+  it("null galaxyId (the LG overview / home fallback) speaks the MW arrival line", () => {
+    expect(entryNarration(en.astroNarration, en.lore, null)).toBe(
+      en.astroNarration.onArrival.galaxy,
+    );
+  });
+
+  it("entering a neighbour speaks THAT galaxy's lore line, not the MW string (en+ru)", () => {
+    // AC5: Andromeda entry → lore.andromeda.line ("a trillion stars drifting…"), reusing
+    // the authored catalog entry — no new i18n keys.
+    expect(entryNarration(en.astroNarration, en.lore, ANDROMEDA_ID)).toBe(
+      en.lore.andromeda.line,
+    );
+    expect(entryNarration(ru.astroNarration, ru.lore, ANDROMEDA_ID)).toBe(
+      ru.lore.andromeda.line,
+    );
+    expect(entryNarration(en.astroNarration, en.lore, "lmc")).toBe(
+      en.lore.lmc.line,
+    );
+    expect(entryNarration(en.astroNarration, en.lore, "triangulum")).toBe(
+      en.lore.triangulum.line,
+    );
+  });
+});
+
 describe("createTierTransitionController — the request channel to the camera hook", () => {
   it("fans a request out to every subscriber", () => {
     const ctl = createTierTransitionController();
@@ -159,8 +196,28 @@ describe("createTierTransitionController — the request channel to the camera h
     ctl.subscribe((r) => a.push(r));
     ctl.subscribe((r) => b.push(r));
     ctl.request("galaxy", "localGroup");
-    expect(a).toEqual([{ from: "galaxy", to: "localGroup" }]);
+    expect(a).toEqual([{ from: "galaxy", to: "localGroup", galaxyId: null }]);
     expect(b).toEqual(a);
+  });
+
+  it("carries the focused galaxyId through the request (BR22-frame #198)", () => {
+    const ctl = createTierTransitionController();
+    const seen: TierTransitionRequest[] = [];
+    ctl.subscribe((r) => seen.push(r));
+    // The node-aware dive: the request remembers WHICH galaxy so the scene-swap at the
+    // threshold renders the right disk + lore (identity, not geometry).
+    ctl.request("localGroup", "galaxy", ANDROMEDA_ID);
+    expect(seen).toEqual([
+      { from: "localGroup", to: "galaxy", galaxyId: ANDROMEDA_ID },
+    ]);
+  });
+
+  it("defaults galaxyId to null when the caller omits it (back-compat)", () => {
+    const ctl = createTierTransitionController();
+    const seen: TierTransitionRequest[] = [];
+    ctl.subscribe((r) => seen.push(r));
+    ctl.request("galaxy", "localGroup");
+    expect(seen[0].galaxyId).toBeNull();
   });
 
   it("stops delivering after unsubscribe", () => {

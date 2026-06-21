@@ -161,6 +161,9 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     let transition: {
       plan: TierTransitionPlan;
       tl: gsap.core.Timeline;
+      /** The focused galaxy of this dive (BR22-frame #198) — the disk + lore the
+       * scene-swap renders. `null` for a non-entry move (e.g. ascend to the LG). */
+      galaxyId: string | null;
       /** A threshold event committed the displayed tier (scene swap, scale-net
        * relabel) — the kill path must then resolve the lifecycle terminally
        * (code-style: terminal events on kill/cancel, #167 review). */
@@ -168,9 +171,13 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     } | null = null;
     const emit = (e: TierTransitionEvent) =>
       optsRef.current.onTransitionEvent?.(e);
+    // The displayed galaxy at a side of the threshold (BR22-frame #198): the dive's
+    // galaxy when that side is the `galaxy` tier, else `null` (the LG overview has none).
+    const galaxyAt = (tier: Tier, galaxyId: string | null): string | null =>
+      tier === "galaxy" ? galaxyId : null;
     const killTransition = () => {
       if (!transition) return;
-      const { plan, tl, thresholdFired } = transition;
+      const { plan, tl, thresholdFired, galaxyId } = transition;
       // The tier the timeline was heading toward — exactly where the nav state
       // (the logical source of truth) already stepped: a request steps the nav
       // first, a mid-flight reverse steps it back.
@@ -182,7 +189,12 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       // stay silent: nothing was committed, and an arrive here would force a
       // scene swap the camera never crossed (spec §1: the swap belongs to the
       // threshold).
-      if (thresholdFired) emit({ kind: "arrive", tier: heading });
+      if (thresholdFired)
+        emit({
+          kind: "arrive",
+          tier: heading,
+          galaxyId: galaxyAt(heading, galaxyId),
+        });
     };
 
     // One eased move toward `target`. `overwrite: "auto"` kills an in-flight
@@ -265,7 +277,11 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     // ADR-0009) — the threshold swap re-fires on the way back, so the scene
     // swaps back exactly where it swapped forward. Reduced motion is read
     // live: snap to rest, swap, announce arrival — no ease, no timeline.
-    const requestTransition = (from: Tier, to: Tier) => {
+    const requestTransition = (
+      from: Tier,
+      to: Tier,
+      galaxyId: string | null,
+    ) => {
       // `transition` is non-null exactly while a timeline is in flight (nulled
       // on complete / reverse-complete / kill) — deterministic, unlike
       // `isActive()`, which is still false on the tick the timeline is born.
@@ -276,6 +292,9 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
         if (to === (tl.reversed() ? plan.to : plan.from)) {
           // The opposite end → reverse in place: no jump, no second timeline.
           tl.reversed(!tl.reversed());
+          // The reverse re-keys the dive's galaxy (BR22-frame #198): ascending back
+          // to the LG leaves every galaxy → null; re-entering carries the new id.
+          transition.galaxyId = galaxyId;
           const direction = directionOf(heading, to);
           if (direction) emit({ kind: "depart", direction, from: heading, to });
           return;
@@ -288,8 +307,9 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       if (mq.matches) {
         Object.assign(camera, plan.rest);
         applyCamera();
-        emit({ kind: "threshold", tier: plan.to });
-        emit({ kind: "arrive", tier: plan.to });
+        const gid = galaxyAt(plan.to, galaxyId);
+        emit({ kind: "threshold", tier: plan.to, galaxyId: gid });
+        emit({ kind: "arrive", tier: plan.to, galaxyId: gid });
         return;
       }
       emit({
@@ -319,30 +339,44 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
       // can jump the playhead clear across the label to an end with no
       // intermediate onUpdate, which a per-update window check alone misses.
       const swapAt = tl.labels.threshold;
-      const live = { plan, tl, thresholdFired: false };
+      const live = { plan, tl, galaxyId, thresholdFired: false };
       let committed: Tier = plan.from; // the threshold side the scene shows
       const sync = () => {
         const side = tl.time() >= swapAt ? plan.to : plan.from;
         if (side === committed) return;
         committed = side;
         live.thresholdFired = true;
-        emit({ kind: "threshold", tier: side });
+        // The dive's galaxy may have been re-keyed by a mid-flight reverse — read it
+        // off the live transition so the swap-back announces the right side's galaxy.
+        emit({
+          kind: "threshold",
+          tier: side,
+          galaxyId: galaxyAt(side, live.galaxyId),
+        });
       };
       tl.eventCallback("onUpdate", sync);
       tl.eventCallback("onComplete", () => {
         sync();
         transition = null;
-        emit({ kind: "arrive", tier: plan.to });
+        emit({
+          kind: "arrive",
+          tier: plan.to,
+          galaxyId: galaxyAt(plan.to, live.galaxyId),
+        });
       });
       tl.eventCallback("onReverseComplete", () => {
         sync();
         transition = null;
-        emit({ kind: "arrive", tier: plan.from });
+        emit({
+          kind: "arrive",
+          tier: plan.from,
+          galaxyId: galaxyAt(plan.from, live.galaxyId),
+        });
       });
       transition = live;
     };
     const unsubscribeTransitions = optsRef.current.transitions?.subscribe(
-      (req) => requestTransition(req.from, req.to),
+      (req) => requestTransition(req.from, req.to, req.galaxyId),
     );
 
     // ESC / "back" — return to the prior framing (or zoomed-out default).

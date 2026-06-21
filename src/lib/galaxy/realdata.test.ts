@@ -3,6 +3,7 @@ import {
   ANDROMEDA_ID,
   HOME_MILKY_WAY_ID,
   localGroupNeighbours,
+  loreKeyForGalaxy,
   REAL_OBJECTS,
   realObjectsForView,
   SOL_ID,
@@ -78,6 +79,20 @@ describe("REAL_OBJECTS — the curated real-astronomy dataset (ADR-0010 §4)", (
       (o) => o.tier === "galaxy" && o.gateway === true,
     ).map((o) => o.id);
     expect(interiorGateways).toEqual([SOL_ID]);
+  });
+
+  it("maps a galaxy id → its loreKey (BR22-frame: id ≠ loreKey for the home MW)", () => {
+    // The nav `galaxyId` is the real-object *id*; per-galaxy lore/breadcrumb key
+    // by `loreKey`. They diverge only for the home MW (id `home` → `milkyWay`).
+    expect(loreKeyForGalaxy(HOME_MILKY_WAY_ID)).toBe("milkyWay");
+    expect(loreKeyForGalaxy(ANDROMEDA_ID)).toBe("andromeda");
+    expect(loreKeyForGalaxy("lmc")).toBe("lmc");
+    expect(loreKeyForGalaxy("triangulum")).toBe("triangulum");
+  });
+
+  it("falls back to the home MW loreKey for null / unknown galaxy ids", () => {
+    expect(loreKeyForGalaxy(null)).toBe("milkyWay");
+    expect(loreKeyForGalaxy("nope")).toBe("milkyWay");
   });
 
   it("reserves gold (#f5d6a0) for Sol only — neighbours stay cool", () => {

@@ -35,6 +35,7 @@ import {
   arrivalNarration,
   createTierTransitionController,
   departNarration,
+  entryNarration,
   type TierTransitionEvent,
 } from "#/lib/galaxy/tier-transition";
 import type { MemoryStar, Tier } from "#/lib/galaxy/types";
@@ -103,8 +104,14 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   const [store] = useState(() =>
     userStars ? createD1Store(userStars) : createInMemoryStore(),
   );
-  // The home galaxy IS the tier-2 view of the universe's `home` node (ADR-0008 §3):
-  // skyFor('home') ≡ getSky() byte-for-byte, so this is render-parity, not a redraw.
+  // Which galaxy the scene currently shows (BR22-frame #198): the home MW on landing,
+  // re-keyed at the tier-transition threshold so a neighbour entry swaps to ITS disk.
+  // `null` ≡ the home MW (skyFor('home') ≡ getSky() byte-for-byte) — the back-compat
+  // default. Drives both the disk projection and the store-subscribe re-read below.
+  const [displayedGalaxyId, setDisplayedGalaxyId] = useState<string | null>(
+    null,
+  );
+  const galaxyForSky = displayedGalaxyId ?? HOME_GALAXY_ID;
   const [sky, setSky] = useState(
     () => store.skyFor?.(HOME_GALAXY_ID) ?? store.getSky(),
   );
@@ -114,13 +121,27 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
 
   const skyRef = useRef(sky);
   skyRef.current = sky;
+  // The displayed galaxy in a ref so the long-lived store-subscribe closure re-reads
+  // the CURRENT projection on an ignite, never a stale capture.
+  const galaxyForSkyRef = useRef(galaxyForSky);
+  galaxyForSkyRef.current = galaxyForSky;
+
+  // Swap the disk to the focused galaxy's projection whenever the displayed galaxy
+  // changes (the threshold scene-swap). The neighbour disks are figure-empty at launch
+  // (the empty-galaxy first-class state, AC3); the home MW projects to its live sky.
+  useEffect(() => {
+    setSky(store.skyFor?.(galaxyForSky) ?? store.getSky());
+  }, [store, galaxyForSky]);
 
   useEffect(() => {
     // Track the per-star ignite timers so they're cleared on unmount / re-run —
     // otherwise an in-flight timer fires `setIgnitingIds` on an unmounted
     // component and leaks (latent until a live producer in epic #8).
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const unsubscribe = store.subscribe?.((next) => {
+    const unsubscribe = store.subscribe?.((_next) => {
+      // Re-project onto the displayed galaxy: an append targets the home sky, so a
+      // neighbour stays on its own (empty) disk rather than adopting the home stars.
+      const next = store.skyFor?.(galaxyForSkyRef.current) ?? store.getSky();
       const known = new Set(skyRef.current.stars.map((s) => s.id));
       const fresh = next.stars.filter((s) => !known.has(s.id)).map((s) => s.id);
       setSky(next);
@@ -179,14 +200,21 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
       return;
     }
     // Both `threshold` (the mid-flight scene swap) and `arrive` carry the
-    // authoritative displayed tier. `arrive` matters for the kill path: a
-    // focus move that kills a transition after its threshold fired resolves
-    // the displayed tier to the nav tier — the logical source of truth — via
-    // the terminal arrive (#167 review, code-style "terminal events on
-    // kill/cancel").
+    // authoritative displayed tier + galaxy (BR22-frame #198). `arrive` matters
+    // for the kill path: a focus move that kills a transition after its threshold
+    // fired resolves the displayed tier to the nav tier — the logical source of
+    // truth — via the terminal arrive (#167 review, code-style "terminal events
+    // on kill/cancel"). The galaxy id drives the disk swap (the re-key effect above).
     setDisplayedTier(e.tier);
+    setDisplayedGalaxyId(e.galaxyId);
     if (e.kind === "arrive") {
-      showNarration(arrivalNarration(m.astroNarration, e.tier));
+      // The galaxy tier speaks the FOCUSED galaxy's entry line (per-galaxy lore,
+      // BR22 slice 5); every other tier keeps its curated onArrival line.
+      showNarration(
+        e.tier === "galaxy"
+          ? entryNarration(m.astroNarration, m.lore, e.galaxyId)
+          : arrivalNarration(m.astroNarration, e.tier),
+      );
       const pendingStar = pendingDeepLinkStar.current;
       if (pendingStar) {
         pendingDeepLinkStar.current = null;
@@ -224,12 +252,18 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // routes through the SAME spine — LOCAL GROUP ascends, MILKY WAY dives home —
   // so the breadcrumb gets the #167 eased timelines + narration for free.
   const { ascend, diveTo } = nav;
+  // The galaxy crumb dives back into the CURRENTLY-focused galaxy (BR22-frame #198), not
+  // the hardcoded home MW — once you can be inside Andromeda, ascending solarSystem→galaxy
+  // must stay in Andromeda. Falls back to the home MW when no galaxy is focused (the
+  // crumb only shows under the MW in v1; the dynamic label lands in slice 4).
+  const navGalaxyId = nav.state.galaxyId;
   const onTierSelect = useCallback(
     (target: Tier) => {
       if (target === "localGroup") ascend();
-      else if (target === "galaxy") diveTo(HOME_MILKY_WAY_ID, "galaxy");
+      else if (target === "galaxy")
+        diveTo(navGalaxyId ?? HOME_MILKY_WAY_ID, "galaxy");
     },
-    [ascend, diveTo],
+    [ascend, diveTo, navGalaxyId],
   );
   const prevTier = useRef(nav.state.tier);
   useEffect(() => {
@@ -237,8 +271,10 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     const to = nav.state.tier;
     if (from === to) return;
     prevTier.current = to;
-    transitions.request(from, to);
-  }, [nav.state.tier, transitions]);
+    // Thread the focused galaxy so the scene-swap renders its disk + lore (the camera
+    // target stays the shared DEFAULT_FRAMING — identity, not geometry).
+    transitions.request(from, to, nav.state.galaxyId);
+  }, [nav.state.tier, nav.state.galaxyId, transitions]);
 
   // Wayfinding deep-links (#129): the ARRIVAL url (`?at=` / `?star=`) resolves
   // once on mount — a shared link is an arrival behavior, not a live
