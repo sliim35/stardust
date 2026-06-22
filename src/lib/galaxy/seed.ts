@@ -479,6 +479,8 @@ export const CONSTELLATIONS: Record<string, ConstellationFigure> = {
       { id: "dipR", r: 0.1297, angle: -0.1745 },
       { id: "rSpike", r: 0.3309, angle: -0.6883 },
       { id: "baseR", r: 0.3529, angle: 0.6648 },
+      // jL/jM/jR — the crown's jewels: edge-less BY DESIGN (decorative filled dots inside
+      // the outline, never part of the silhouette chain; pass the gate, isolated by intent).
       { id: "jL", r: 0.2045, angle: 2.3173 },
       { id: "jM", r: 0.1577, angle: 1.5708 },
       { id: "jR", r: 0.2045, angle: 0.8243 },
@@ -508,6 +510,8 @@ export const CONSTELLATIONS: Record<string, ConstellationFigure> = {
       { id: "a5", r: 0.3305, angle: -0.4716 },
       { id: "rTop", r: 0.4246, angle: -0.1063 },
       { id: "rBase", r: 0.4858, angle: 0.5173 },
+      // far — the distant star the bridge reaches toward: edge-less BY DESIGN (the lone far
+      // point across the span IS the "longing").
       { id: "far", r: 0.4955, angle: -1.5708 },
     ],
     edges: [

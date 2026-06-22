@@ -227,7 +227,7 @@ export const figuresInSky = (stars: readonly MemoryStar[]): FigureRender[] => {
       group,
       color: figureColor(figure),
       ghost: ghostSegments(figure),
-      realSegments: figureSegments(stars, figure),
+      realSegments: figureSegments(members, figure),
       openSlots: figure.anchors
         .filter((a) => !filled.has(a.id))
         .map((a) => polarToXY(a.r, a.angle)),
