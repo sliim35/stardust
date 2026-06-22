@@ -162,7 +162,7 @@ export const placeStar = (
 
 // The 12 emotion figures (owner's Claude Design) — corner-placed per host galaxy, anchors
 // inverted with the host's tilt → neighbours need per-host tilt at render (#234).
-export const CONSTELLATIONS = {
+const RAW_CONSTELLATIONS = {
   joyful: {
     group: "joyful",
     emotion: "joyful",
@@ -285,29 +285,30 @@ export const CONSTELLATIONS = {
     emotion: "nostalgic",
     hostGalaxyId: "andromeda",
     threshold: 10,
+    // Open spiral (Claude Design "Figure Reference Sheet", #239): wide outside winding
+    // inward, never closing — drawn tall so Andromeda's 0.42 tilt doesn't flatten it.
     anchors: [
-      { id: "o0", r: 2.3405, angle: -1.0976 },
-      { id: "o1", r: 2.1371, angle: -1.1532 },
-      { id: "o2", r: 1.7611, angle: -1.1299 },
-      { id: "o3", r: 1.2174, angle: -0.9055 },
-      { id: "o4", r: 1.0656, angle: -0.6112 },
-      { id: "o5", r: 1.1764, angle: -0.4353 },
-      { id: "i0", r: 1.4287, angle: -0.5814 },
-      { id: "i1", r: 1.6749, angle: -0.7297 },
-      { id: "i2", r: 1.9342, angle: -0.8691 },
-      { id: "i3", r: 2.1676, angle: -0.9875 },
+      { id: "n1", r: 2.3545, angle: -1.0838 },
+      { id: "n2", r: 1.6352, angle: -1.2611 },
+      { id: "n3", r: 1.128, angle: -0.9645 },
+      { id: "n4", r: 1.3951, angle: -0.6028 },
+      { id: "n5", r: 1.8115, angle: -0.6531 },
+      { id: "n6", r: 1.9479, angle: -0.8211 },
+      { id: "n7", r: 1.8074, angle: -0.9495 },
+      { id: "n8", r: 1.5822, angle: -0.9532 },
+      { id: "n9", r: 1.5002, angle: -0.8474 },
+      { id: "n10", r: 1.5959, angle: -0.7744 },
     ],
     edges: [
-      ["o0", "o1"],
-      ["o1", "o2"],
-      ["o2", "o3"],
-      ["o3", "o4"],
-      ["o4", "o5"],
-      ["o5", "i0"],
-      ["i0", "i1"],
-      ["i1", "i2"],
-      ["i2", "i3"],
-      ["i3", "o0"],
+      ["n1", "n2"],
+      ["n2", "n3"],
+      ["n3", "n4"],
+      ["n4", "n5"],
+      ["n5", "n6"],
+      ["n6", "n7"],
+      ["n7", "n8"],
+      ["n8", "n9"],
+      ["n9", "n10"],
     ],
   },
   hope: {
@@ -315,28 +316,30 @@ export const CONSTELLATIONS = {
     emotion: "hope",
     hostGalaxyId: "andromeda",
     threshold: 10,
+    // Sprout (Claude Design "Figure Reference Sheet", #239): a stem rising from a low base
+    // with two leaves curving UP — growth, not the anchor it used to read as.
     anchors: [
-      { id: "ring", r: 1.1163, angle: 2.6811 },
-      { id: "top", r: 1.2647, angle: 2.4828 },
-      { id: "sl", r: 1.5117, angle: 2.4723 },
-      { id: "sr", r: 1.2421, angle: 2.2859 },
-      { id: "mid", r: 1.5618, angle: 2.2657 },
-      { id: "crown", r: 2.3109, angle: 2.0183 },
-      { id: "lf", r: 2.2464, angle: 2.1706 },
-      { id: "lt", r: 2.0103, angle: 2.2914 },
-      { id: "rf", r: 1.9935, angle: 1.9468 },
-      { id: "rt", r: 1.654, angle: 1.9902 },
+      { id: "n1", r: 2.3582, angle: 2.0087 },
+      { id: "n2", r: 2.0428, angle: 2.0824 },
+      { id: "n3", r: 1.755, angle: 2.1771 },
+      { id: "n4", r: 1.5236, angle: 2.2868 },
+      { id: "n5", r: 1.8613, angle: 2.2935 },
+      { id: "n6", r: 1.7925, angle: 2.4677 },
+      { id: "n7", r: 1.5389, angle: 2.587 },
+      { id: "n8", r: 1.5937, angle: 2.0742 },
+      { id: "n9", r: 1.2691, angle: 2.0627 },
+      { id: "n10", r: 1.0656, angle: 2.2774 },
     ],
     edges: [
-      ["ring", "top"],
-      ["sl", "top"],
-      ["top", "sr"],
-      ["top", "mid"],
-      ["mid", "crown"],
-      ["crown", "lf"],
-      ["lf", "lt"],
-      ["crown", "rf"],
-      ["rf", "rt"],
+      ["n1", "n2"],
+      ["n2", "n3"],
+      ["n3", "n4"],
+      ["n3", "n5"],
+      ["n5", "n6"],
+      ["n6", "n7"],
+      ["n3", "n8"],
+      ["n8", "n9"],
+      ["n9", "n10"],
     ],
   },
   peaceful: {
@@ -344,30 +347,31 @@ export const CONSTELLATIONS = {
     emotion: "peaceful",
     hostGalaxyId: "triangulum",
     threshold: 10,
+    // Crescent moon (Claude Design "Figure Reference Sheet", #239): big outer rim + smaller
+    // inner bite, a clear C — not the symmetric leaf/eye it used to read as (no centre vein).
     anchors: [
-      { id: "tip", r: 1.3947, angle: -2.3703 },
-      { id: "ru", r: 1.1483, angle: -2.4094 },
-      { id: "rm", r: 0.9886, angle: -2.5529 },
-      { id: "rl", r: 0.9588, angle: -2.7663 },
-      { id: "base", r: 1.0264, angle: -2.9141 },
-      { id: "ll", r: 1.1623, angle: -2.8345 },
-      { id: "lm", r: 1.2994, angle: -2.7054 },
-      { id: "lu", r: 1.3794, angle: -2.5514 },
-      { id: "v1", r: 1.219, angle: -2.5328 },
-      { id: "v2", r: 1.0967, angle: -2.7186 },
+      { id: "n1", r: 1.2081, angle: -2.281 },
+      { id: "n2", r: 1.3431, angle: -2.4383 },
+      { id: "n3", r: 1.3851, angle: -2.616 },
+      { id: "n4", r: 1.3021, angle: -2.7885 },
+      { id: "n5", r: 1.1299, angle: -2.8942 },
+      { id: "n6", r: 0.8217, angle: -2.8887 },
+      { id: "n7", r: 0.965, angle: -2.7905 },
+      { id: "n8", r: 1.1426, angle: -2.6986 },
+      { id: "n9", r: 1.2271, angle: -2.5704 },
+      { id: "n10", r: 1.2019, angle: -2.4247 },
     ],
     edges: [
-      ["tip", "ru"],
-      ["ru", "rm"],
-      ["rm", "rl"],
-      ["rl", "base"],
-      ["base", "ll"],
-      ["ll", "lm"],
-      ["lm", "lu"],
-      ["lu", "tip"],
-      ["tip", "v1"],
-      ["v1", "v2"],
-      ["v2", "base"],
+      ["n1", "n2"],
+      ["n2", "n3"],
+      ["n3", "n4"],
+      ["n4", "n5"],
+      ["n5", "n6"],
+      ["n6", "n7"],
+      ["n7", "n8"],
+      ["n8", "n9"],
+      ["n9", "n10"],
+      ["n10", "n1"],
     ],
   },
   wistful: {
@@ -375,28 +379,30 @@ export const CONSTELLATIONS = {
     emotion: "wistful",
     hostGalaxyId: "triangulum",
     threshold: 10,
+    // Feather (Claude Design "Figure Reference Sheet", #239): a diagonal spine with barbs off
+    // BOTH sides for real vertical spread — not the flat horizontal wave it used to read as.
     anchors: [
-      { id: "w0", r: 0.761, angle: -0.6973 },
-      { id: "w1", r: 0.8684, angle: -0.6788 },
-      { id: "w2", r: 1.012, angle: -0.7084 },
-      { id: "w3", r: 1.1193, angle: -0.693 },
-      { id: "w4", r: 1.1589, angle: -0.6043 },
-      { id: "w5", r: 1.1799, angle: -0.4804 },
-      { id: "w6", r: 1.2393, angle: -0.4053 },
-      { id: "w7", r: 1.3468, angle: -0.4168 },
-      { id: "w8", r: 1.4788, angle: -0.4615 },
-      { id: "w9", r: 1.5869, angle: -0.4674 },
+      { id: "n1", r: 0.7933, angle: -0.3169 },
+      { id: "n2", r: 0.9889, angle: -0.4643 },
+      { id: "n3", r: 1.2058, angle: -0.5581 },
+      { id: "n4", r: 1.43, angle: -0.6229 },
+      { id: "n5", r: 0.9193, angle: -0.6398 },
+      { id: "n6", r: 1.1665, angle: -0.7105 },
+      { id: "n7", r: 1.4008, angle: -0.7437 },
+      { id: "n8", r: 1.0821, angle: -0.3086 },
+      { id: "n9", r: 1.2926, angle: -0.4247 },
+      { id: "n10", r: 1.5083, angle: -0.51 },
     ],
     edges: [
-      ["w0", "w1"],
-      ["w1", "w2"],
-      ["w2", "w3"],
-      ["w3", "w4"],
-      ["w4", "w5"],
-      ["w5", "w6"],
-      ["w6", "w7"],
-      ["w7", "w8"],
-      ["w8", "w9"],
+      ["n1", "n2"],
+      ["n2", "n3"],
+      ["n3", "n4"],
+      ["n2", "n5"],
+      ["n3", "n6"],
+      ["n4", "n7"],
+      ["n2", "n8"],
+      ["n3", "n9"],
+      ["n4", "n10"],
     ],
   },
   gratitude: {
@@ -518,6 +524,29 @@ export const CONSTELLATIONS = {
     ],
   },
 } as const satisfies Record<Emotion, ConstellationFigure>;
+
+/**
+ * Owner 2026-06-22 (#239): pull every figure toward the disk centre. `polarToXY` is linear
+ * in `r`, so scaling each anchor's `r` by a constant is a pure scale-about-centre — a figure
+ * moves inward (and shrinks proportionally) without changing its shape, angles, edges, or
+ * host galaxy, so the BR30 gate-1 structural test stays green.
+ */
+const FIGURE_CENTER_PULL = 0.62;
+const pullToCentre = (figure: ConstellationFigure): ConstellationFigure => ({
+  ...figure,
+  anchors: figure.anchors.map((a) => ({
+    ...a,
+    r: +(a.r * FIGURE_CENTER_PULL).toFixed(4),
+  })),
+});
+// `Object.fromEntries` is typed to a string index signature, so the Emotion-keyed shape is
+// re-asserted through `unknown` (RAW_CONSTELLATIONS already satisfies the same Record).
+export const CONSTELLATIONS = Object.fromEntries(
+  Object.entries(RAW_CONSTELLATIONS).map(([emotion, figure]) => [
+    emotion,
+    pullToCentre(figure),
+  ]),
+) as unknown as Record<Emotion, ConstellationFigure>;
 
 // ── Mom's lone gold star — the ONLY hardcoded star (everything else from D1) ────
 // Owner 2026-06-22: the seed carries ONLY Mom's dedication star; every other star is
