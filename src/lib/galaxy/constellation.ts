@@ -241,6 +241,39 @@ export const figuresInSky = (
 };
 
 /**
+ * Each figure MEMBER's id → the stage point of the anchor it binds to, at `tilt`. The
+ * figure is the source of truth for where its members sit — NOT their stored `(r, angle)`,
+ * which freezes at write time and goes stale if the silhouette is later re-placed (e.g.
+ * the corner composition moved every figure, orphaning stars written against the old
+ * geometry). Binding at render keeps every member ON its figure regardless of stored
+ * coords. Append-only is preserved: the Nth member (by `createdAt`) binds to the Nth
+ * anchor, so a later star never moves an earlier one. A member BEYOND completion
+ * (rank ≥ anchors.length) is absent here → the caller falls back to its stored densified
+ * slot; deep / cross-emotion stars are never bound (they keep their own scattered point).
+ * Pure; never mutates input.
+ */
+export const memberAnchorPoints = (
+  stars: readonly MemoryStar[],
+  tilt: number = DISK_TILT,
+): Record<string, Point> => {
+  const out: Record<string, Point> = {};
+  const groups = [
+    ...new Set(stars.map((s) => s.group).filter((g): g is string => !!g)),
+  ];
+  for (const group of groups) {
+    const figure = figureForGroup(group);
+    if (figure === null) continue;
+    const filled = assignAnchors(validMembers(stars, figure), figure.anchors);
+    const byId = new Map(figure.anchors.map((a) => [a.id, a]));
+    for (const [anchorId, member] of filled) {
+      const a = byId.get(anchorId);
+      if (a) out[member.id] = polarToXY(a.r, a.angle, tilt);
+    }
+  }
+  return out;
+};
+
+/**
  * The append-only WRITE-PATH placement (#222, ADR-0014 §3): the polar slot a NEW
  * `star` takes in its figure, derived from its stable rank among the figure's valid
  * members (existing + itself, same `assignAnchors` order). Rank < anchors.length →

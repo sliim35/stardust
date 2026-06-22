@@ -1,3 +1,4 @@
+import { memberAnchorPoints } from "#/lib/galaxy/constellation";
 import { DISK_TILT, layoutStars } from "#/lib/galaxy/place";
 import type { MemoryStar } from "#/lib/galaxy/types";
 import type { Messages } from "#/lib/i18n/types";
@@ -44,7 +45,12 @@ export const MemoryStarLayer = ({
   moodLabels,
   tilt = DISK_TILT,
 }: Props) => {
+  // A figure member renders ON its bound anchor (the figure is the source of truth for
+  // where it sits), not its stored (r,angle) — so a star written before the silhouette
+  // was re-placed still lands on its figure (#234 follow-up). Non-members + beyond-
+  // completion members fall back to their own `layoutStars` position.
   const positions = layoutStars(stars, tilt);
+  const memberAnchors = memberAnchorPoints(stars, tilt);
   const ordered = [...stars].sort((a, b) => a.createdAt - b.createdAt);
 
   return (
@@ -53,7 +59,7 @@ export const MemoryStarLayer = ({
         <MemoryStarView
           key={star.id}
           star={star}
-          position={positions[star.id]}
+          position={memberAnchors[star.id] ?? positions[star.id]}
           igniting={ignitingIds?.has(star.id)}
           onSelect={onSelect}
           a11yLabel={a11yLabel}
