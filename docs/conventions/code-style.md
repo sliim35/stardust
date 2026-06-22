@@ -302,10 +302,13 @@ hand-written one. A learned signal that contradicts a hand-written rule lands in
   `{ kind: 'arrive', tier: plan.from }` if true (PR #167 minor finding, 2026-06-06).
 - **Source:** PR #167 reviewer finding (kill-without-arrive gap), 2026-06-06.
 
-### Code comments — one short line, WHY not WHAT
-- **Rule:** Prefer a single short comment line stating the non-obvious WHY. Avoid multi-paragraph / multi-line comment blocks and docstrings in source; the code + test failure messages already show WHAT. Extended rationale (design notes, task/PR refs) belongs in the PR description or the story doc, not the source.
-- **Why:** Long comments restate the code (which then drifts) and bury the one load-bearing reason; terse WHY-comments age better (KISS).
-- **Source:** PR #217 review (comment-nit thrash, 4 rounds), learned 2026-06-21.
+### Code comments — judge by WHY-vs-WHAT, never by length
+- **Rule:** A comment earns its place by stating the non-obvious **WHY** — the rationale, the invariant it upholds (append-only, SSR-safety, purity, determinism), the edge case, the cross-reference a caller can't read off the code. Comments that do that are **good at any length**:
+  - **Doc comments** — a `/** … */` JSDoc on an **exported** function / type / constant, or a **module header** — are *expected* to be multi-line and may be as long as their contract needs. This is the established convention across `src/lib/**` (e.g. `placeOnFigure`, `slotBeyondCompletion`, `figuresInSky`, `memberAnchorPoints`, the module headers).
+  - **Inline comments** (between statements) — prefer concise, but a short multi-line WHY is fine when the rationale genuinely needs it.
+- **Flag a comment ONLY when** it (a) restates WHAT the code trivially does (redundant → drifts), (b) has gone **stale / inaccurate**, or (c) just duplicates the PR description without adding contract. **Line count is NEVER the trigger** — do not flag "N-line docstring / block"; a long WHY-comment is not a defect.
+- **Why:** The #217 lesson was real but mis-codified as a *length* rule ("one short line / no docstrings"), which contradicts this codebase's real convention — load-bearing JSDoc is a feature, not noise — and made the reviewer re-flag the same length nit on legitimate comments PR after PR. The signal is WHY-vs-WHAT, not characters.
+- **Source:** PR #217 review (inline comment-nit thrash, 4 rounds) learned 2026-06-21; **re-scoped from length to content** after the reviewer re-flagged legitimate WHY-comments by line count on #232 / #234 / #235 (owner: "it happens over and over again — update the guide so it doesn't repeat"), 2026-06-22.
 
 ## Conflicts to resolve (human)
 <!-- A learned signal that contradicts a hand-written rule lands here, not above. -->
