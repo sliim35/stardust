@@ -98,10 +98,10 @@ describe("CONSTELLATIONS — the 12 authored figures, anchor-model shape", () =>
     }
   });
 
-  it("every entry satisfies the structural floor: anchors >= 10 && threshold >= 10", () => {
+  it("every entry pins the BR27 contract: EXACTLY 10 anchors && threshold === anchor count", () => {
     for (const figure of Object.values(CONSTELLATIONS)) {
-      expect(figure.anchors.length).toBeGreaterThanOrEqual(10);
-      expect(figure.threshold).toBeGreaterThanOrEqual(10);
+      expect(figure.anchors.length).toBe(10);
+      expect(figure.threshold).toBe(figure.anchors.length);
     }
   });
 

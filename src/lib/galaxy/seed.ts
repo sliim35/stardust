@@ -160,17 +160,11 @@ export const placeStar = (
   return { r, angle };
 };
 
-// ── emotion constellations (Layer B — ADR-0014 §2; #187) ───────────────────────
-// The 12 figures are the owner's Claude Design "Twelve Figures.html" (2026-06-22):
-// one designed silhouette per emotion. Each = 10 anchors / threshold 10 / a single
-// emotion colour (BR27 — colour maps from emotion). The anchors were authored in
-// screen space and inverted to polar with the HOST galaxy's disk tilt (home & lmc
-// 0.74 · andromeda 0.42 · triangulum 0.90), so the renderer must later thread the
-// host tilt for the non-home galaxies — home (Milky Way) renders correctly today.
-// Each entry satisfies the structural gate: `anchors.length === 10 && threshold ===
-// 10 && hostGalaxyId === hostGalaxyFor(emotion)` (figure-verification.test.ts). The
-// `Record` type covers the shape — no per-entry `satisfies`.
-export const CONSTELLATIONS: Record<string, ConstellationFigure> = {
+// The 12 emotion silhouettes — owner's Claude Design "Twelve Figures.html" (2026-06-22),
+// one per emotion (10 anchors / threshold 10 / single colour; pinned by
+// figure-verification.test.ts). Anchors are inverted with each figure's HOST-galaxy tilt,
+// so the renderer must thread per-host tilt for the non-home galaxies (#234) — MW is correct.
+export const CONSTELLATIONS = {
   joyful: {
     group: "joyful",
     emotion: "joyful",
@@ -525,7 +519,7 @@ export const CONSTELLATIONS: Record<string, ConstellationFigure> = {
       ["rTop", "rBase"],
     ],
   },
-};
+} as const satisfies Record<Emotion, ConstellationFigure>;
 
 // ── Mom's lone gold star — the ONLY hardcoded star (everything else from D1) ────
 // Owner 2026-06-22: the seed carries ONLY Mom's dedication star; every other star is

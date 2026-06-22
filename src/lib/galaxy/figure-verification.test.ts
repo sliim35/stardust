@@ -32,15 +32,17 @@ const membersFor = (figure: ConstellationFigure, count: number): MemoryStar[] =>
 const assertFigureValid = (figure: ConstellationFigure): void => {
   const where = `figure "${figure.group}" (${figure.emotion})`;
 
+  // BR27 — a figure forms from EXACTLY 10 stars. Pinned to the value, NOT a `>= 10` floor:
+  // the floor is what let the Joy smile ship at 14 anchors (#232 retro / #233).
   expect(
     figure.anchors.length,
-    `${where}: needs >= 10 anchors, has ${figure.anchors.length}`,
-  ).toBeGreaterThanOrEqual(10);
+    `${where}: must have EXACTLY 10 anchors (BR27 — a figure forms from 10 stars), has ${figure.anchors.length}`,
+  ).toBe(10);
 
   expect(
     figure.threshold,
-    `${where}: threshold must be >= 10, is ${figure.threshold}`,
-  ).toBeGreaterThanOrEqual(10);
+    `${where}: threshold must equal the anchor count (${figure.anchors.length}), is ${figure.threshold}`,
+  ).toBe(figure.anchors.length);
 
   expect(
     figure.hostGalaxyId,
@@ -126,18 +128,19 @@ describe("assertFigureValid — self-test against a known-good 10-anchor figure"
     expect(polarToXY(baseAnchors[0].r, baseAnchors[0].angle)).toBeDefined();
   });
 
-  it("fails on 9 anchors (below the >= 10 floor)", () => {
+  it("fails on 9 anchors (not exactly 10)", () => {
     const nineAnchors = baseAnchors.slice(0, 9);
     const broken: ConstellationFigure = {
       ...validFigure,
       anchors: nineAnchors,
+      threshold: 9,
       // Keep edges valid against the surviving anchors so the FAILURE is the count.
       edges: Array.from(
         { length: 9 },
         (_, i) => [`a${i}`, `a${(i + 1) % 9}`] as const,
       ),
     };
-    expect(() => assertFigureValid(broken)).toThrow(/>= 10 anchors/);
+    expect(() => assertFigureValid(broken)).toThrow(/EXACTLY 10 anchors/);
   });
 
   it("fails on a dangling edge (endpoint is not a declared anchor)", () => {
@@ -172,13 +175,15 @@ describe("assertFigureValid — self-test against a known-good 10-anchor figure"
     );
   });
 
-  it("fails on threshold < 10 (the BR27 finished floor)", () => {
+  it("fails on threshold ≠ the anchor count (BR27: must equal 10)", () => {
     const broken: ConstellationFigure = { ...validFigure, threshold: 9 };
-    expect(() => assertFigureValid(broken)).toThrow(/threshold must be >= 10/);
+    expect(() => assertFigureValid(broken)).toThrow(
+      /threshold must equal the anchor count/,
+    );
   });
 
-  it("fails when a threshold-member fixture cannot fill every anchor", () => {
-    // threshold (10) < anchors.length (11) → assignAnchors leaves one anchor open.
+  it("fails on 11 anchors (not exactly 10)", () => {
+    // 11 > 10 → caught by the EXACTLY-10 pin, the gap that let the 14-anchor smile ship.
     const elevenAnchors: FigureAnchor[] = [
       ...baseAnchors,
       { id: "a10", r: 0.9, angle: 2 },
@@ -187,8 +192,8 @@ describe("assertFigureValid — self-test against a known-good 10-anchor figure"
       ...validFigure,
       anchors: elevenAnchors,
       edges: [...baseEdges, ["a10", "a0"] as const],
-      threshold: 10,
+      threshold: 11,
     };
-    expect(() => assertFigureValid(broken)).toThrow(/must fill all 11 anchors/);
+    expect(() => assertFigureValid(broken)).toThrow(/EXACTLY 10 anchors/);
   });
 });

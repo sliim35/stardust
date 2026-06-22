@@ -186,54 +186,48 @@ export const ghostSegments = (
   });
 };
 
-/**
- * A forming figure shows once it has at least this many valid members — a lone star
- * stays a lone star; the silhouette begins forming at 2 (owner 2026-06-22).
- */
+/** Silhouette starts forming at 2 — a lone star stays a lone star (owner 2026-06-22). */
 export const GHOST_MIN_MEMBERS = 2;
 
 /**
- * Every authored figure RENDERABLE in `stars`, resolved to the owner's Claude Design
- * render (2026-06-22). Members render on their anchors (real jewels, drawn by the star
- * layer — NOT here); this returns the overlay's three line/ring sets:
- *  - `ghost` — ALL authored edges (the dashed faint full silhouette);
- *  - `realSegments` — edges whose BOTH endpoints are filled (solid connect-lines);
- *  - `openSlots` — the still-unfilled anchor positions (hollow rings).
- * A figure appears only once it has `GHOST_MIN_MEMBERS` valid members; below that it is
- * omitted (the lone member just renders as a normal star). Finished (≥ `threshold`) →
- * every anchor filled, so `openSlots` is empty and `realSegments` is the whole figure.
- * Pure; never mutates input — the single source the stage renders every figure from.
+ * The overlay's three render sets for one figure. Omitted below `GHOST_MIN_MEMBERS`;
+ * finished (≥ `threshold`) leaves `openSlots` empty + `realSegments` the whole figure.
+ * (The member jewels render on their anchors elsewhere — the star layer, not here.)
  */
 export type FigureRender = {
   group: string;
   color: string;
+  /** ALL authored edges — the dashed faint silhouette. */
   ghost: ConstellationSegment[];
+  /** Edges whose BOTH endpoints are filled — the solid connect-lines. */
   realSegments: ConstellationSegment[];
+  /** Still-unfilled anchor positions — the hollow rings. */
   openSlots: Point[];
 };
 
+/** Every authored figure RENDERABLE in `stars` → its `FigureRender`. Pure; never mutates. */
 export const figuresInSky = (stars: readonly MemoryStar[]): FigureRender[] => {
   const groups = [
     ...new Set(stars.map((s) => s.group).filter((g): g is string => !!g)),
   ];
-  const out: FigureRender[] = [];
-  for (const group of groups) {
+  return groups.flatMap((group) => {
     const figure = figureForGroup(group);
-    if (figure === null) continue;
+    if (figure === null) return [];
     const members = validMembers(stars, figure);
-    if (members.length < GHOST_MIN_MEMBERS) continue;
+    if (members.length < GHOST_MIN_MEMBERS) return [];
     const filled = assignAnchors(members, figure.anchors);
-    out.push({
-      group,
-      color: figureColor(figure),
-      ghost: ghostSegments(figure),
-      realSegments: figureSegments(members, figure),
-      openSlots: figure.anchors
-        .filter((a) => !filled.has(a.id))
-        .map((a) => polarToXY(a.r, a.angle)),
-    });
-  }
-  return out;
+    return [
+      {
+        group,
+        color: figureColor(figure),
+        ghost: ghostSegments(figure),
+        realSegments: figureSegments(members, figure),
+        openSlots: figure.anchors
+          .filter((a) => !filled.has(a.id))
+          .map((a) => polarToXY(a.r, a.angle)),
+      },
+    ];
+  });
 };
 
 /**

@@ -78,9 +78,7 @@ type Row = {
   createdAt: number;
 };
 
-// Mode: default = the curated demo; `--all [n]` = n fake members (default 10, capped at
-// the 10-anchor figure size) of EVERY emotion → all 12 figures, to check every
-// constellation. The `fa` id prefix keeps the fill-all set independent of the demo set.
+// `--all [n]` = n fake members of every emotion → all 12 figures; `fa` ids keep it independent of the `pf` demo.
 const allFlag = process.argv.indexOf("--all");
 const fillAll = allFlag !== -1;
 const perEmotion = Math.min(
