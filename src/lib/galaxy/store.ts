@@ -105,9 +105,7 @@ export const createInMemoryStore = (initial?: GalaxySky): GalaxyStore => {
         (g) => g.id === nodeId,
       );
       if (!galaxy) return snapshot(); // unknown node → the flat sky (back-compat)
-      // Every galaxy shows ONLY its own stars (`parentId === nodeId`; unplaced seed stars
-      // default to home). Home keeps the live seeded backdrop; a neighbour uses its own.
-      // For the all-home back-compat seed this stays byte-identical to getSky().
+      // Home now filters to its own stars like any galaxy (was: returned the whole flat sky).
       return {
         backdrop:
           nodeId === HOME_GALAXY_ID

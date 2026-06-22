@@ -160,13 +160,8 @@ export const placeStar = (
   return { r, angle };
 };
 
-// The 12 emotion silhouettes — owner's Claude Design "Twelve Figures.html" (2026-06-22),
-// one per emotion (10 anchors / threshold 10 / single colour; pinned by
-// figure-verification.test.ts). COMPOSITION (owner 2026-06-22): centre = the galaxy disk,
-// CORNERS = the constellations — each host galaxy holds its 3 emotions in distinct corners
-// (0→TL · 1→TR · 2→BL), inverted with that galaxy's interior tilt (home & lmc 0.74 ·
-// andromeda 0.42 · triangulum 0.90), so the renderer must thread per-host tilt for the
-// neighbour galaxies (#234) — home/MW renders correctly today.
+// The 12 emotion figures (owner's Claude Design) — corner-placed per host galaxy, anchors
+// inverted with the host's tilt → neighbours need per-host tilt at render (#234).
 export const CONSTELLATIONS = {
   joyful: {
     group: "joyful",
