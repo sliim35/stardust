@@ -119,6 +119,9 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
 
   const skyRef = useRef(sky);
   skyRef.current = sky;
+  // The displayed galaxy's interior tilt, mirrored into a ref so a focus request
+  // (resolved live in the camera hook) targets the SAME tilt the star renders at (#234).
+  const displayTiltRef = useRef(DISK_TILT);
   // The displayed galaxy in a ref so the long-lived store-subscribe closure re-reads
   // the CURRENT projection on an ignite, never a stale capture.
   const galaxyForSkyRef = useRef(galaxyForSky);
@@ -238,6 +241,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   const cam = useGalaxyCamera({
     focus,
     getSky: () => skyRef.current,
+    getDisplayTilt: () => displayTiltRef.current,
     transitions,
     onTransitionEvent,
   });
@@ -323,13 +327,11 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     () => (lgView ? null : enteredObjectFor(displayedGalaxyId)),
     [lgView, displayedGalaxyId],
   );
-  // The displayed galaxy's interior disk tilt — the SAME foreshortening its disk
-  // point-cloud is painted with (the `enteredObject` morphology, #226). Member stars
-  // + figures are authored inverted with this tilt, so they must project with it, not
-  // the global home 0.74, or the neighbours land off-screen / squashed (#234). Home /
-  // LMC have no override → `DISK_TILT`; M31 → 0.42, M33 → 0.9. Derived from the same
-  // `enteredObject` as the disk so the stars can never drift off their painted disk.
+  // Stars + figures project at the displayed galaxy's own disk tilt (the same
+  // `enteredObject` the disk is painted from, #226) so they sit on it, not the global
+  // 0.74 — else the tilted neighbours render off-screen / squashed (#234).
   const displayTilt = enteredObject?.tilt ?? DISK_TILT;
+  displayTiltRef.current = displayTilt;
 
   // The hovered LG galaxy (#174): its id flows to `GalaxyBackdrop` as `highlight`,
   // blooming that galaxy's own point cloud (replacing the removed in-DOM `oreol`).

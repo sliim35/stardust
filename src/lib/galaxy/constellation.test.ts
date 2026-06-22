@@ -514,5 +514,9 @@ describe("figuresInSky — the ambient per-figure render (owner Claude Design #2
       .figuresInSky(joyMembers(3))
       .find((f) => f.group === "joyful");
     expect(home?.openSlots).toContainEqual(polarToXY(a3.r, a3.angle));
+    // ghost (all edges) + real connect-lines (filled pairs) are threaded too — the
+    // same edges project to different points at 0.42 vs the default 0.74.
+    expect(m31?.ghost[0]?.from).not.toEqual(home?.ghost[0]?.from);
+    expect(m31?.realSegments[0]?.from).not.toEqual(home?.realSegments[0]?.from);
   });
 });

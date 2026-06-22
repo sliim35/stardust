@@ -15,7 +15,7 @@
  */
 
 import { type Camera, focusOn } from "#/lib/galaxy/camera";
-import { GALAXY_CENTER, polarToXY } from "#/lib/galaxy/place";
+import { DISK_TILT, GALAXY_CENTER, polarToXY } from "#/lib/galaxy/place";
 import type { GalaxySky } from "#/lib/galaxy/types";
 
 /**
@@ -53,17 +53,21 @@ export const createFocus = (initial: Camera): FocusState => ({
 
 /**
  * Resolve a star id to an eased camera target via the sky's own placement
- * (`polarToXY` → `focusOn`). Returns `null` for an unknown id so callers (#5
- * `?star=`, #113 search) degrade gracefully without a throw.
+ * (`polarToXY` → `focusOn`). `tilt` MUST be the displayed galaxy's interior tilt —
+ * the same one the star is rendered with — or the camera frames a point offset from
+ * the visible star inside a tilted neighbour (M31 0.42 / M33 0.9); defaults to the
+ * home `DISK_TILT` (#234). Returns `null` for an unknown id so callers (#5 `?star=`,
+ * #113 search) degrade gracefully without a throw.
  */
 export const resolveFocusTarget = (
   sky: GalaxySky,
   id: string,
   zoom?: number,
+  tilt: number = DISK_TILT,
 ): Camera | null => {
   const star = sky.stars.find((s) => s.id === id);
   if (!star) return null;
-  return focusOn(polarToXY(star.r, star.angle), zoom);
+  return focusOn(polarToXY(star.r, star.angle, tilt), zoom);
 };
 
 /**
