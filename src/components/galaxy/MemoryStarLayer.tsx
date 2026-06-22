@@ -1,4 +1,4 @@
-import { layoutStars } from "#/lib/galaxy/place";
+import { DISK_TILT, layoutStars } from "#/lib/galaxy/place";
 import type { MemoryStar } from "#/lib/galaxy/types";
 import type { Messages } from "#/lib/i18n/types";
 import { MemoryStarView } from "./MemoryStarView";
@@ -29,6 +29,9 @@ type Props = {
   litIds?: ReadonlySet<string> | null;
   /** #154: localized MOOD eyebrow catalog for the hover labels. */
   moodLabels?: Messages["moods"];
+  /** #234: the displayed galaxy's interior disk tilt — stars project onto its own
+   * foreshortened disk, not the global home 0.74. Defaults to `DISK_TILT` (home / LMC). */
+  tilt?: number;
 };
 
 export const MemoryStarLayer = ({
@@ -39,8 +42,9 @@ export const MemoryStarLayer = ({
   onHoverChange,
   litIds = null,
   moodLabels,
+  tilt = DISK_TILT,
 }: Props) => {
-  const positions = layoutStars(stars);
+  const positions = layoutStars(stars, tilt);
   const ordered = [...stars].sort((a, b) => a.createdAt - b.createdAt);
 
   return (

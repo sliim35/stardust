@@ -14,7 +14,7 @@
  *   wrangler d1 execute STARS_DB --remote --file scripts/prefill-stars.sql   # deployed DB
  *
  * Modes:
- *   (default)   the curated demo — a forming Joy smile + a scatter; ids `pf###`.
+ *   (default)   the curated demo — forming figures in ALL FOUR galaxies (#234); ids `pf###`.
  *   --all [n]   n fake members (default 10 = finished) of EVERY one of the 12 emotions,
  *               so you can CHECK ALL constellations across the four galaxies; ids `fa###`.
  *               e.g. `pnpm tsx scripts/prefill-stars.ts --all` (or `--all 6` for forming).
@@ -32,9 +32,11 @@ import type { Emotion } from "../src/lib/galaxy/types";
 
 type Demo = { mood: Emotion; name: string; text: string; who?: string };
 
-// Curated demo memories. Joy is deliberately the richest (8 of 10 → a clearly-forming
-// smile in the home Milky Way); love/grief begin their figures; a handful of other
-// emotions scatter across the neighbour galaxies. Each emotion's count stays ≤ 10.
+// Curated demo memories — EVERY galaxy populates (#234): the home Milky Way (Joy
+// richest at 8/10 → a clearly-forming smile, plus Tender/Grief beginning), and each
+// neighbour gets ≥2 members on multiple emotions so its figures form too — Andromeda
+// (wonder/nostalgic/hope), Triangulum (peaceful/wistful/gratitude), LMC
+// (courage/pride/longing). Each emotion's count stays ≤ 10.
 const DEMO: Demo[] = [
   // joyful → home Milky Way (the forming smile)
   { mood: "joyful", name: "kitchen radio", text: "we danced in socks while the pasta water boiled over.", who: "marco" },
@@ -52,12 +54,29 @@ const DEMO: Demo[] = [
   // grieving → home Milky Way (the teardrop begins)
   { mood: "grieving", name: "the old number", text: "i still know the number by heart. i don't call it." },
   { mood: "grieving", name: "the empty chair", text: "we set the table for one too many out of habit." },
-  // a scatter across the neighbour galaxies
+  // ── Andromeda (M31, thin disk) — wonder · nostalgic · hope (≥2 each → forming) ──
   { mood: "wonder", name: "the deep field", text: "a thousand galaxies in a patch of sky the size of a grain of sand.", who: "ken" },
+  { mood: "wonder", name: "first telescope", text: "saturn had rings. actual rings. i ran inside to tell everyone." },
+  { mood: "wonder", name: "the whole eclipse", text: "the birds went quiet and the streetlights came on at noon." },
+  { mood: "nostalgic", name: "the cassette", text: "side B, the song that was ours, the exact hiss before it starts." },
+  { mood: "nostalgic", name: "grandmother's kitchen", text: "flour on the counter, the radio low, nowhere else to be." },
   { mood: "hope", name: "the first seedling", text: "green, against all the odds of the frost." },
+  { mood: "hope", name: "the letter back", text: "we are pleased to — i didn't need to read the rest." },
+  // ── Triangulum (M33, face-on) — peaceful · wistful · gratitude (≥2 each) ──
   { mood: "peaceful", name: "still water", text: "the lake held the mountains so calmly i forgot which was real.", who: "ana" },
+  { mood: "peaceful", name: "the morning fog", text: "the whole valley under a soft grey blanket, no hurry anywhere." },
+  { mood: "peaceful", name: "the slow breath", text: "in for four, out for six, the day finally letting go of me." },
+  { mood: "wistful", name: "the last summer", text: "we said see you soon and somehow never quite did." },
+  { mood: "wistful", name: "an old friend's laugh", text: "i heard it in a stranger on the train and missed you all day." },
+  { mood: "gratitude", name: "the warm meal", text: "they set a place for me before i knew i needed one." },
+  { mood: "gratitude", name: "the ride home", text: "two a.m., no questions, the heater on for me." },
+  // ── LMC (Large Magellanic Cloud) — courage · pride · longing (≥2 each) ──
   { mood: "courage", name: "the high board", text: "i climbed back up after the belly-flop and jumped again." },
+  { mood: "courage", name: "the hard conversation", text: "i said the true thing out loud and the room didn't end." },
+  { mood: "pride", name: "the finish line", text: "twenty-six miles on legs that swore they'd quit at six." },
+  { mood: "pride", name: "her first steps", text: "three wobbling, arms out — and then she just walked.", who: "mara" },
   { mood: "longing", name: "the far porch light", text: "a light left on in a window i no longer have the key to." },
+  { mood: "longing", name: "the unsent letter", text: "i still write to you. i just stopped addressing the envelope." },
 ];
 
 const EPOCH = 1748000000000; // fixed backdated epoch (clock-free)

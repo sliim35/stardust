@@ -32,7 +32,7 @@
  */
 
 import { isRealObject } from "#/lib/galaxy/click-router";
-import { type Point, polarToXY } from "#/lib/galaxy/place";
+import { DISK_TILT, type Point, polarToXY } from "#/lib/galaxy/place";
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import { CONSTELLATIONS, MOODS } from "#/lib/galaxy/seed";
 import type {
@@ -140,6 +140,7 @@ export const figureState = (
 export const figureSegments = (
   members: readonly MemoryStar[],
   figure: ConstellationFigure,
+  tilt: number = DISK_TILT,
 ): ConstellationSegment[] => {
   const filled = assignAnchors(validMembers(members, figure), figure.anchors);
   const byId = new Map(figure.anchors.map((a) => [a.id, a]));
@@ -153,8 +154,8 @@ export const figureSegments = (
       filled.has(b)
       ? [
           {
-            from: polarToXY(from.r, from.angle),
-            to: polarToXY(to.r, to.angle),
+            from: polarToXY(from.r, from.angle, tilt),
+            to: polarToXY(to.r, to.angle, tilt),
           },
         ]
       : [];
@@ -170,6 +171,7 @@ export const figureSegments = (
  */
 export const ghostSegments = (
   figure: ConstellationFigure,
+  tilt: number = DISK_TILT,
 ): ConstellationSegment[] => {
   const byId = new Map(figure.anchors.map((a) => [a.id, a]));
   return figure.edges.flatMap(([a, b]) => {
@@ -178,8 +180,8 @@ export const ghostSegments = (
     return from !== undefined && to !== undefined
       ? [
           {
-            from: polarToXY(from.r, from.angle),
-            to: polarToXY(to.r, to.angle),
+            from: polarToXY(from.r, from.angle, tilt),
+            to: polarToXY(to.r, to.angle, tilt),
           },
         ]
       : [];
@@ -205,8 +207,16 @@ export type FigureRender = {
   openSlots: Point[];
 };
 
-/** Every authored figure RENDERABLE in `stars` → its `FigureRender`. Pure; never mutates. */
-export const figuresInSky = (stars: readonly MemoryStar[]): FigureRender[] => {
+/**
+ * Every authored figure RENDERABLE in `stars` → its `FigureRender`, projected at the
+ * displayed galaxy's interior `tilt` (default the home MW's `DISK_TILT`; a neighbour
+ * passes its own so its figures sit on its own foreshortened disk — #234). Pure; never
+ * mutates.
+ */
+export const figuresInSky = (
+  stars: readonly MemoryStar[],
+  tilt: number = DISK_TILT,
+): FigureRender[] => {
   const groups = [
     ...new Set(stars.map((s) => s.group).filter((g): g is string => !!g)),
   ];
@@ -220,11 +230,11 @@ export const figuresInSky = (stars: readonly MemoryStar[]): FigureRender[] => {
       {
         group,
         color: figureColor(figure),
-        ghost: ghostSegments(figure),
-        realSegments: figureSegments(members, figure),
+        ghost: ghostSegments(figure, tilt),
+        realSegments: figureSegments(members, figure, tilt),
         openSlots: figure.anchors
           .filter((a) => !filled.has(a.id))
-          .map((a) => polarToXY(a.r, a.angle)),
+          .map((a) => polarToXY(a.r, a.angle, tilt)),
       },
     ];
   });

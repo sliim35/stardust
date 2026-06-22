@@ -497,4 +497,22 @@ describe("figuresInSky — the ambient per-figure render (owner Claude Design #2
       .find((f) => f.group === "joyful");
     expect(joy?.openSlots).toHaveLength(7); // still only 3 valid members filled
   });
+
+  it("threads a per-host tilt (#234): open slots project with the passed tilt", () => {
+    const a3 = CONSTELLATIONS.joyful.anchors[3]; // unfilled (only anchors 0..2 bound by 3 members)
+    // The same anchor projects to a genuinely different point at the neighbour tilt.
+    expect(polarToXY(a3.r, a3.angle, 0.42)).not.toEqual(
+      polarToXY(a3.r, a3.angle),
+    );
+    // Andromeda's thin disk (0.42): the open-slot ring sits on the foreshortened anchor.
+    const m31 = constellation
+      .figuresInSky(joyMembers(3), 0.42)
+      .find((f) => f.group === "joyful");
+    expect(m31?.openSlots).toContainEqual(polarToXY(a3.r, a3.angle, 0.42));
+    // The default-tilt path (home / LMC) is unchanged.
+    const home = constellation
+      .figuresInSky(joyMembers(3))
+      .find((f) => f.group === "joyful");
+    expect(home?.openSlots).toContainEqual(polarToXY(a3.r, a3.angle));
+  });
 });

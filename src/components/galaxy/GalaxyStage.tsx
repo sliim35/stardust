@@ -23,6 +23,7 @@ import {
   lgLabels,
 } from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
+import { DISK_TILT } from "#/lib/galaxy/place";
 import { HOME_MILKY_WAY_ID, REAL_OBJECTS } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
@@ -322,6 +323,13 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     () => (lgView ? null : enteredObjectFor(displayedGalaxyId)),
     [lgView, displayedGalaxyId],
   );
+  // The displayed galaxy's interior disk tilt — the SAME foreshortening its disk
+  // point-cloud is painted with (the `enteredObject` morphology, #226). Member stars
+  // + figures are authored inverted with this tilt, so they must project with it, not
+  // the global home 0.74, or the neighbours land off-screen / squashed (#234). Home /
+  // LMC have no override → `DISK_TILT`; M31 → 0.42, M33 → 0.9. Derived from the same
+  // `enteredObject` as the disk so the stars can never drift off their painted disk.
+  const displayTilt = enteredObject?.tilt ?? DISK_TILT;
 
   // The hovered LG galaxy (#174): its id flows to `GalaxyBackdrop` as `highlight`,
   // blooming that galaxy's own point cloud (replacing the removed in-DOM `oreol`).
@@ -347,8 +355,8 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // star layer draws them — placed on-anchor at write/seed time). `constellation.ts`
   // owns the rules. Gated off the Local-Group view (I-2): L3 hides there.
   const figures = useMemo(
-    () => (lgView ? [] : figuresInSky(sky.stars)),
-    [lgView, sky.stars],
+    () => (lgView ? [] : figuresInSky(sky.stars, displayTilt)),
+    [lgView, sky.stars, displayTilt],
   );
   // The far layers keep the reduced-motion-safe opacity transition; ambient figures
   // don't dim the sky (the old hover-reveal dim is retired with the redesign).
@@ -438,6 +446,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 diveTo={nav.diveTo}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
+                tilt={displayTilt}
               />
             </div>
           </div>
@@ -515,12 +524,15 @@ const InteractiveStars = ({
   diveTo,
   a11yLabel,
   moodLabels,
+  tilt,
 }: {
   stars: readonly MemoryStar[];
   ignitingIds: ReadonlySet<string>;
   diveTo: (id: string, tier: Tier) => void;
   a11yLabel: string;
   moodLabels: Messages["moods"];
+  /** #234: the displayed galaxy's interior disk tilt, threaded to the star projection. */
+  tilt: number;
 }) => {
   const onSelect = useObjectClick(diveTo);
   return (
@@ -530,6 +542,7 @@ const InteractiveStars = ({
       onSelect={onSelect}
       a11yLabel={a11yLabel}
       moodLabels={moodLabels}
+      tilt={tilt}
     />
   );
 };

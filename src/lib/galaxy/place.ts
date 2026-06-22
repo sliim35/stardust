@@ -27,12 +27,19 @@ export type Point = { x: number; y: number };
 
 /**
  * Polar memory coordinates → stage pixels. `r` is 0..1 from center, `angle` is
- * radians; the y axis is foreshortened by `DISK_TILT` so the disk reads as
- * tilted away from the viewer.
+ * radians; the y axis is foreshortened by `tilt` so the disk reads as tilted away
+ * from the viewer. `tilt` defaults to the home MW's `DISK_TILT`; a neighbour galaxy
+ * passes its own interior tilt (M31 0.42 · M33 0.9) so its figures + member stars —
+ * authored inverted with that tilt — project onto its own foreshortened disk instead
+ * of the global 0.74, which would land them off-screen / squashed (#234).
  */
-export const polarToXY = (r: number, angle: number): Point => ({
+export const polarToXY = (
+  r: number,
+  angle: number,
+  tilt: number = DISK_TILT,
+): Point => ({
   x: GALAXY_CENTER.x + Math.cos(angle) * r * GALAXY_R,
-  y: GALAXY_CENTER.y + Math.sin(angle) * r * GALAXY_R * DISK_TILT,
+  y: GALAXY_CENTER.y + Math.sin(angle) * r * GALAXY_R * tilt,
 });
 
 /** A star (or anything) carrying its own polar placement. */
@@ -45,8 +52,9 @@ type Placeable = { id: string; r: number; angle: number };
  */
 export const layoutStars = (
   items: readonly Placeable[],
+  tilt: number = DISK_TILT,
 ): Record<string, Point> => {
   const out: Record<string, Point> = {};
-  for (const it of items) out[it.id] = polarToXY(it.r, it.angle);
+  for (const it of items) out[it.id] = polarToXY(it.r, it.angle, tilt);
   return out;
 };
