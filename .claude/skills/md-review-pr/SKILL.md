@@ -47,6 +47,15 @@ which verifies the acceptance criteria actually pass with evidence.
    story has no spec/ADR link**, say so in one line and move on — don't invent contracts.
    This is a *contract* check (diff vs. the written spec), not an *AC* check — QA owns
    "does it actually pass."
+   - **Trace the spec back to its source requirement — the spec is not ground truth.**
+     The design spec / ADR is itself derived; verify its concrete numbers (counts,
+     thresholds, sizes, named constants) and contracts match the upstream **BR/PRD** they
+     implement, not merely that the diff matches the spec. A contract that is *looser* than
+     its requirement is a **conformance gap, not a pass**: a `>=`/floor gate standing in for
+     an exact value, a count/threshold that *exceeds* the BR's number, an "at least" where
+     the requirement said "exactly". The spec drifting from the BR is invisible to a
+     diff-vs-spec check — it is exactly how a **14-anchor figure passed a BR (BR27) that said
+     10** (#232 retro). When you spot it, flag it and name the BR.
 3. **Review the PR** (style/conventions). Delegate generic correctness / reuse /
    simplification to the built-in **`code-review`** skill (or
    `superpowers:requesting-code-review`). Then layer on guide-rule + best-practice

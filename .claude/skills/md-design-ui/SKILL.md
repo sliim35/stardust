@@ -55,6 +55,13 @@ Once the owner has generated, read the result back and complete a buildable `doc
    `get_variable_defs`; save previews under `docs/img/preview/` (never repo root). Write
    `docs/design/YYYY-MM-DD-<slug>.md` from the template — layout, components mapped to Radix/Tailwind
    v4, states, tokens, a11y, i18n. **Recreate the output** in React/TS — never copy generated code.
+   - **Pin every concrete number to its source requirement.** Counts, thresholds, sizes, and
+     named constants in the spec must *equal* what the product **BR/PRD** states — derive them,
+     never pick a "nicer" value behind a `>=` allowance. If a design reason pushes past the
+     requirement (e.g. extra anchors for legibility), call the deviation out **explicitly** in
+     the spec and flag it for owner sign-off — never silently exceed a stated value. The Joy
+     smile shipped **14 anchors against a BR of 10** this way (#232 retro): the gate read `>=10`,
+     so the drift was invisible until the owner caught it visually.
 5. **Log** the decision-log entry.
 
 ## Output
