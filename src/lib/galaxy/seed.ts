@@ -161,134 +161,376 @@ export const placeStar = (
 };
 
 // ── emotion constellations (Layer B — ADR-0014 §2; #187) ───────────────────────
-// The two prototype figures (`brightDays` joyful / `quietAche` wistful) are RETIRED
-// (spike #194 §5, AC8): they used member-id edges + 3-member thresholds, which the
-// designed-anchor model (anchor-id edges, `threshold >= 10`) supersedes. The
-// per-emotion silhouette geometries (`anchors`/`edges`/`threshold`) are a design-role
-// deliverable, authored + verified per emotion (BR30-gated). Joy is the FIRST authored
-// figure (#231); the remaining 11 land in their own design stories. Each entry must
-// satisfy `anchors.length >= 10 && threshold >= 10 && hostGalaxyId ===
-// hostGalaxyFor(emotion)` (the structural gate, `figure-verification.test.ts`).
-
-// Joy smile authored in screen space, inverted to polar so it reads after the disk tilt (spec: docs/design/2026-06-21-joy-smile-figure.md).
-const JOY_SMILE = {
-  group: "joyful",
-  emotion: "joyful",
-  hostGalaxyId: "home", // === hostGalaxyFor("joyful")
-  threshold: 14, // === anchors.length
-  anchors: [
-    // mouth — concave-up arc, left end → bottom → right end (createdAt fills this order)
-    { id: "mouth-0", r: 0.7933, angle: -2.2587 },
-    { id: "mouth-1", r: 0.6526, angle: -2.3271 },
-    { id: "mouth-2", r: 0.5141, angle: -2.3788 },
-    { id: "mouth-3", r: 0.3815, angle: -2.3885 },
-    { id: "mouth-4", r: 0.2604, angle: -2.2924 },
-    { id: "mouth-5", r: 0.1721, angle: -1.9164 },
-    { id: "mouth-6", r: 0.1721, angle: -1.2252 },
-    { id: "mouth-7", r: 0.2604, angle: -0.8492 },
-    { id: "mouth-8", r: 0.3815, angle: -0.7531 },
-    { id: "mouth-9", r: 0.5141, angle: -0.7628 },
-    { id: "mouth-10", r: 0.6526, angle: -0.8145 },
-    { id: "mouth-11", r: 0.7933, angle: -0.8829 },
-    // eyes — standalone glow anchors (no edges); above the mouth ends, inboard
-    { id: "eye-l", r: 0.7685, angle: -1.9255 },
-    { id: "eye-r", r: 0.7685, angle: -1.2161 },
-  ],
-  edges: [
-    ["mouth-0", "mouth-1"],
-    ["mouth-1", "mouth-2"],
-    ["mouth-2", "mouth-3"],
-    ["mouth-3", "mouth-4"],
-    ["mouth-4", "mouth-5"],
-    ["mouth-5", "mouth-6"],
-    ["mouth-6", "mouth-7"],
-    ["mouth-7", "mouth-8"],
-    ["mouth-8", "mouth-9"],
-    ["mouth-9", "mouth-10"],
-    ["mouth-10", "mouth-11"],
-  ],
-} as const satisfies ConstellationFigure;
-
+// The 12 figures are the owner's Claude Design "Twelve Figures.html" (2026-06-22):
+// one designed silhouette per emotion. Each = 10 anchors / threshold 10 / a single
+// emotion colour (BR27 — colour maps from emotion). The anchors were authored in
+// screen space and inverted to polar with the HOST galaxy's disk tilt (home & lmc
+// 0.74 · andromeda 0.42 · triangulum 0.90), so the renderer must later thread the
+// host tilt for the non-home galaxies — home (Milky Way) renders correctly today.
+// Each entry satisfies the structural gate: `anchors.length === 10 && threshold ===
+// 10 && hostGalaxyId === hostGalaxyFor(emotion)` (figure-verification.test.ts). The
+// `Record` type covers the shape — no per-entry `satisfies`.
 export const CONSTELLATIONS: Record<string, ConstellationFigure> = {
-  joyful: JOY_SMILE,
+  joyful: {
+    group: "joyful",
+    emotion: "joyful",
+    hostGalaxyId: "home",
+    threshold: 10,
+    anchors: [
+      { id: "m0", r: 0.5486, angle: -2.3236 },
+      { id: "m1", r: 0.3918, angle: -2.4385 },
+      { id: "m2", r: 0.2417, angle: -2.4918 },
+      { id: "m3", r: 0.1117, angle: -2.2075 },
+      { id: "m4", r: 0.1117, angle: -0.9341 },
+      { id: "m5", r: 0.2417, angle: -0.6498 },
+      { id: "m6", r: 0.3918, angle: -0.7031 },
+      { id: "m7", r: 0.5486, angle: -0.818 },
+      { id: "eye-l", r: 0.5922, angle: -1.8856 },
+      { id: "eye-r", r: 0.5922, angle: -1.256 },
+    ],
+    edges: [
+      ["m0", "m1"],
+      ["m1", "m2"],
+      ["m2", "m3"],
+      ["m3", "m4"],
+      ["m4", "m5"],
+      ["m5", "m6"],
+      ["m6", "m7"],
+    ],
+  },
+  tender: {
+    group: "tender",
+    emotion: "tender",
+    hostGalaxyId: "home",
+    threshold: 10,
+    anchors: [
+      { id: "t", r: 0.2177, angle: -1.5708 },
+      { id: "ru", r: 0.3882, angle: -1.1896 },
+      { id: "ro", r: 0.366, angle: -0.7435 },
+      { id: "rm", r: 0.2859, angle: -0.2386 },
+      { id: "rl", r: 0.2202, angle: 0.7502 },
+      { id: "b", r: 0.3904, angle: 1.5708 },
+      { id: "ll", r: 0.2202, angle: 2.3914 },
+      { id: "lm", r: 0.2859, angle: -2.903 },
+      { id: "lo", r: 0.366, angle: -2.3981 },
+      { id: "lu", r: 0.3882, angle: -1.952 },
+    ],
+    edges: [
+      ["t", "ru"],
+      ["ru", "ro"],
+      ["ro", "rm"],
+      ["rm", "rl"],
+      ["rl", "b"],
+      ["b", "ll"],
+      ["ll", "lm"],
+      ["lm", "lo"],
+      ["lo", "lu"],
+      ["lu", "t"],
+    ],
+  },
+  grieving: {
+    group: "grieving",
+    emotion: "grieving",
+    hostGalaxyId: "home",
+    threshold: 10,
+    anchors: [
+      { id: "tip", r: 0.4204, angle: -1.5708 },
+      { id: "r1", r: 0.1995, angle: -1.0459 },
+      { id: "r2", r: 0.1824, angle: 0.3355 },
+      { id: "r3", r: 0.2933, angle: 1.0558 },
+      { id: "rb", r: 0.376, angle: 1.3624 },
+      { id: "b", r: 0.4054, angle: 1.5708 },
+      { id: "lb", r: 0.376, angle: 1.7792 },
+      { id: "l3", r: 0.2933, angle: 2.0858 },
+      { id: "l2", r: 0.1824, angle: 2.806 },
+      { id: "l1", r: 0.1995, angle: -2.0957 },
+    ],
+    edges: [
+      ["tip", "r1"],
+      ["r1", "r2"],
+      ["r2", "r3"],
+      ["r3", "rb"],
+      ["rb", "b"],
+      ["b", "lb"],
+      ["lb", "l3"],
+      ["l3", "l2"],
+      ["l2", "l1"],
+      ["l1", "tip"],
+    ],
+  },
+  wonder: {
+    group: "wonder",
+    emotion: "wonder",
+    hostGalaxyId: "andromeda",
+    threshold: 10,
+    anchors: [
+      { id: "o0", r: 0.7407, angle: -1.5708 },
+      { id: "i0", r: 0.2461, angle: -1.2746 },
+      { id: "o1", r: 0.3741, angle: -0.6584 },
+      { id: "i1", r: 0.147, angle: 0.6584 },
+      { id: "o2", r: 0.6266, angle: 1.2746 },
+      { id: "i2", r: 0.291, angle: 1.5708 },
+      { id: "o3", r: 0.6266, angle: 1.867 },
+      { id: "i3", r: 0.147, angle: 2.4831 },
+      { id: "o4", r: 0.3741, angle: -2.4831 },
+      { id: "i4", r: 0.2461, angle: -1.867 },
+    ],
+    edges: [
+      ["o0", "i0"],
+      ["i0", "o1"],
+      ["o1", "i1"],
+      ["i1", "o2"],
+      ["o2", "i2"],
+      ["i2", "o3"],
+      ["o3", "i3"],
+      ["i3", "o4"],
+      ["o4", "i4"],
+      ["i4", "o0"],
+    ],
+  },
+  nostalgic: {
+    group: "nostalgic",
+    emotion: "nostalgic",
+    hostGalaxyId: "andromeda",
+    threshold: 10,
+    anchors: [
+      { id: "o0", r: 0.7275, angle: -1.5708 },
+      { id: "o1", r: 0.6355, angle: -1.8634 },
+      { id: "o2", r: 0.4008, angle: -2.3758 },
+      { id: "o3", r: 0.4195, angle: 2.3303 },
+      { id: "o4", r: 0.6466, angle: 1.8493 },
+      { id: "o5", r: 0.7275, angle: 1.5708 },
+      { id: "i0", r: 0.4774, angle: 1.3239 },
+      { id: "i1", r: 0.2302, angle: 0.761 },
+      { id: "i2", r: 0.2395, angle: -0.801 },
+      { id: "i3", r: 0.4903, angle: -1.3305 },
+    ],
+    edges: [
+      ["o0", "o1"],
+      ["o1", "o2"],
+      ["o2", "o3"],
+      ["o3", "o4"],
+      ["o4", "o5"],
+      ["o5", "i0"],
+      ["i0", "i1"],
+      ["i1", "i2"],
+      ["i2", "i3"],
+      ["i3", "o0"],
+    ],
+  },
+  hope: {
+    group: "hope",
+    emotion: "hope",
+    hostGalaxyId: "andromeda",
+    threshold: 10,
+    anchors: [
+      { id: "ring", r: 0.7407, angle: -1.5708 },
+      { id: "top", r: 0.5159, angle: -1.5708 },
+      { id: "sl", r: 0.4119, angle: -1.9435 },
+      { id: "sr", r: 0.4119, angle: -1.198 },
+      { id: "mid", r: 0.172, angle: -1.5708 },
+      { id: "crown", r: 0.5423, angle: 1.5708 },
+      { id: "lf", r: 0.4177, angle: 2.1161 },
+      { id: "lt", r: 0.2756, angle: 2.8494 },
+      { id: "rf", r: 0.4177, angle: 1.0255 },
+      { id: "rt", r: 0.2756, angle: 0.2921 },
+    ],
+    edges: [
+      ["ring", "top"],
+      ["sl", "top"],
+      ["top", "sr"],
+      ["top", "mid"],
+      ["mid", "crown"],
+      ["crown", "lf"],
+      ["lf", "lt"],
+      ["crown", "rf"],
+      ["rf", "rt"],
+    ],
+  },
+  peaceful: {
+    group: "peaceful",
+    emotion: "peaceful",
+    hostGalaxyId: "triangulum",
+    threshold: 10,
+    anchors: [
+      { id: "tip", r: 0.3457, angle: -1.5708 },
+      { id: "ru", r: 0.21, angle: -0.9167 },
+      { id: "rm", r: 0.1575, angle: 0.1574 },
+      { id: "rl", r: 0.2189, angle: 1.1248 },
+      { id: "base", r: 0.3025, angle: 1.5708 },
+      { id: "ll", r: 0.2189, angle: 2.0168 },
+      { id: "lm", r: 0.1575, angle: 2.9842 },
+      { id: "lu", r: 0.21, angle: -2.2249 },
+      { id: "v1", r: 0.1049, angle: -1.5708 },
+      { id: "v2", r: 0.1111, angle: 1.5708 },
+    ],
+    edges: [
+      ["tip", "ru"],
+      ["ru", "rm"],
+      ["rm", "rl"],
+      ["rl", "base"],
+      ["base", "ll"],
+      ["ll", "lm"],
+      ["lm", "lu"],
+      ["lu", "tip"],
+      ["tip", "v1"],
+      ["v1", "v2"],
+      ["v2", "base"],
+    ],
+  },
+  wistful: {
+    group: "wistful",
+    emotion: "wistful",
+    hostGalaxyId: "triangulum",
+    threshold: 10,
+    anchors: [
+      { id: "w0", r: 0.5181, angle: 2.8764 },
+      { id: "w1", r: 0.3948, angle: 2.9687 },
+      { id: "w2", r: 0.286, angle: -2.9018 },
+      { id: "w3", r: 0.215, angle: -2.4579 },
+      { id: "w4", r: 0.0877, angle: -2.2565 },
+      { id: "w5", r: 0.0877, angle: 0.8851 },
+      { id: "w6", r: 0.215, angle: 0.6837 },
+      { id: "w7", r: 0.286, angle: 0.2397 },
+      { id: "w8", r: 0.3948, angle: -0.1729 },
+      { id: "w9", r: 0.5181, angle: -0.2652 },
+    ],
+    edges: [
+      ["w0", "w1"],
+      ["w1", "w2"],
+      ["w2", "w3"],
+      ["w3", "w4"],
+      ["w4", "w5"],
+      ["w5", "w6"],
+      ["w6", "w7"],
+      ["w7", "w8"],
+      ["w8", "w9"],
+    ],
+  },
+  gratitude: {
+    group: "gratitude",
+    emotion: "gratitude",
+    hostGalaxyId: "triangulum",
+    threshold: 10,
+    anchors: [
+      { id: "rl", r: 0.2718, angle: -2.6444 },
+      { id: "b1", r: 0.1953, angle: 3.0466 },
+      { id: "b2", r: 0.1707, angle: 2.2794 },
+      { id: "b3", r: 0.1667, angle: 1.5708 },
+      { id: "b4", r: 0.1707, angle: 0.8622 },
+      { id: "b5", r: 0.1953, angle: 0.095 },
+      { id: "rr", r: 0.2718, angle: -0.4972 },
+      { id: "stem", r: 0.284, angle: 1.5708 },
+      { id: "baseL", r: 0.3397, angle: 1.904 },
+      { id: "baseR", r: 0.3397, angle: 1.2376 },
+    ],
+    edges: [
+      ["rl", "b1"],
+      ["b1", "b2"],
+      ["b2", "b3"],
+      ["b3", "b4"],
+      ["b4", "b5"],
+      ["b5", "rr"],
+      ["b3", "stem"],
+      ["stem", "baseL"],
+      ["stem", "baseR"],
+    ],
+  },
+  courage: {
+    group: "courage",
+    emotion: "courage",
+    hostGalaxyId: "lmc",
+    threshold: 10,
+    anchors: [
+      { id: "bL", r: 0.5188, angle: 2.5594 },
+      { id: "s1", r: 0.2803, angle: 3.0073 },
+      { id: "v1", r: 0.2346, angle: 2.3607 },
+      { id: "summit", r: 0.3605, angle: -1.6016 },
+      { id: "v2", r: 0.1169, angle: 0.0643 },
+      { id: "s2", r: 0.2775, angle: 0.5718 },
+      { id: "p2", r: 0.3465, angle: -0.1086 },
+      { id: "bR", r: 0.5194, angle: 0.5643 },
+      { id: "capL", r: 0.2032, angle: -1.9637 },
+      { id: "capR", r: 0.1992, angle: -1.2295 },
+    ],
+    edges: [
+      ["bL", "s1"],
+      ["s1", "v1"],
+      ["v1", "summit"],
+      ["summit", "v2"],
+      ["v2", "s2"],
+      ["s2", "p2"],
+      ["p2", "bR"],
+      ["summit", "capL"],
+      ["summit", "capR"],
+      ["capL", "capR"],
+    ],
+  },
+  pride: {
+    group: "pride",
+    emotion: "pride",
+    hostGalaxyId: "lmc",
+    threshold: 10,
+    anchors: [
+      { id: "baseL", r: 0.3529, angle: 2.4768 },
+      { id: "lSpike", r: 0.3309, angle: -2.4532 },
+      { id: "dipL", r: 0.1297, angle: -2.9671 },
+      { id: "mSpike", r: 0.3754, angle: -1.5708 },
+      { id: "dipR", r: 0.1297, angle: -0.1745 },
+      { id: "rSpike", r: 0.3309, angle: -0.6883 },
+      { id: "baseR", r: 0.3529, angle: 0.6648 },
+      { id: "jL", r: 0.2045, angle: 2.3173 },
+      { id: "jM", r: 0.1577, angle: 1.5708 },
+      { id: "jR", r: 0.2045, angle: 0.8243 },
+    ],
+    edges: [
+      ["baseL", "lSpike"],
+      ["lSpike", "dipL"],
+      ["dipL", "mSpike"],
+      ["mSpike", "dipR"],
+      ["dipR", "rSpike"],
+      ["rSpike", "baseR"],
+      ["baseR", "baseL"],
+    ],
+  },
+  longing: {
+    group: "longing",
+    emotion: "longing",
+    hostGalaxyId: "lmc",
+    threshold: 10,
+    anchors: [
+      { id: "lBase", r: 0.4858, angle: 2.6243 },
+      { id: "lTop", r: 0.4246, angle: -3.0353 },
+      { id: "a1", r: 0.3305, angle: -2.67 },
+      { id: "a2", r: 0.2737, angle: -2.1752 },
+      { id: "apex", r: 0.2553, angle: -1.5708 },
+      { id: "a4", r: 0.2737, angle: -0.9664 },
+      { id: "a5", r: 0.3305, angle: -0.4716 },
+      { id: "rTop", r: 0.4246, angle: -0.1063 },
+      { id: "rBase", r: 0.4858, angle: 0.5173 },
+      { id: "far", r: 0.4955, angle: -1.5708 },
+    ],
+    edges: [
+      ["lBase", "lTop"],
+      ["lTop", "a1"],
+      ["a1", "a2"],
+      ["a2", "apex"],
+      ["apex", "a4"],
+      ["a4", "a5"],
+      ["a5", "rTop"],
+      ["rTop", "rBase"],
+    ],
+  },
 };
 
-// ── the curated seed corpus (subset of the prototype's 36) ─────────────────────
-// `copyKey` indexes the i18n `memoryStars` catalog — no inline name/text here
-// (ADR-0010 §4). `group` assigns the star into a mood constellation (or none).
-type SeedSpec = {
-  mood: Mood;
-  copyKey: keyof typeof COPY;
-  who?: string;
-  group?: string;
-};
-
-// The 3 joyful stars join the Joy figure's `"joyful"` group so the smile renders
-// FORMING in the seed sky (#231); every other mood stays SOLO until its own designed
-// silhouette lands (BR30-gated). Mom's deep star is figure-exempt (DEEP_STAR below).
-const SEED = [
-  {
-    mood: "joyful",
-    copyKey: "s01",
-    who: "marco",
-    group: "joyful",
-  },
-  {
-    mood: "tender",
-    copyKey: "s02",
-    who: "lena",
-  },
-  {
-    mood: "grieving",
-    copyKey: "s03",
-  },
-  {
-    mood: "wistful",
-    copyKey: "s04",
-  },
-  {
-    mood: "peaceful",
-    copyKey: "s05",
-    who: "ana",
-  },
-  {
-    mood: "wonder",
-    copyKey: "s06",
-    who: "ken",
-  },
-  {
-    mood: "joyful",
-    copyKey: "s07",
-    group: "joyful",
-  },
-  {
-    mood: "joyful",
-    copyKey: "s08",
-    who: "noor",
-    group: "joyful",
-  },
-  {
-    mood: "wistful",
-    copyKey: "s09",
-  },
-  {
-    mood: "wistful",
-    copyKey: "s10",
-    who: "tomas",
-  },
-] as const satisfies readonly SeedSpec[];
-
-// Fixed backdated epoch so seed order is stable and clock-free.
-const SEED_EPOCH = 1748000000000;
-
-// ── Mom's lone gold star (fixed home; not derived from the SEED loop) ──────────
-// Stays UNGROUPED (standalone) per ADR-0010 §1 + the Mom's-star treatment
-// (2026-06-06) — the gold dedication star never joins a mood constellation. Its
-// `name`/`text` resolve from the i18n catalog by id (no inline copy). Irina is the
-// biggest + brightest of the whole sky (brightness 1, the unique max — #146), sits
-// near bottom-centre (r 0.92, angle ≈ π/2), and reserves the pale gold `#f5d6a0`
-// (no regular mood color sits near it). The hidden `egg` star is retired — its
-// dedication merged into Mom's copy (treatment §1/§2).
+// ── Mom's lone gold star — the ONLY hardcoded star (everything else from D1) ────
+// Owner 2026-06-22: the seed carries ONLY Mom's dedication star; every other star is
+// a real memory persisted in D1 (ADR-0012), merged in by `createD1Store`. For dev/demo,
+// `scripts/prefill-stars.ts` seeds D1 with a handful of memories. Mom stays UNGROUPED
+// (ADR-0010 §1 + the Mom's-star treatment 2026-06-06) — the gold dedication star never
+// joins a mood constellation; her `name`/`text` resolve from the i18n catalog (no inline
+// copy). Irina is the brightest of the whole sky (brightness 1, the unique max — #146),
+// sits near bottom-centre (r 0.92, angle ≈ π/2), reserving the pale gold `#f5d6a0`.
 const DEEP_STAR = {
   id: "irina",
   copyKey: "irina",
@@ -302,35 +544,17 @@ const DEEP_STAR = {
   createdAt: 1700000000000,
 } as const;
 
-/** Build the initial sky from the seed corpus. Stable ids → stable positions forever. */
+/**
+ * The seed sky a stranger inherits: ONLY Mom's lone gold dedication star. There is no
+ * hardcoded corpus — every other star is a real memory from D1 (owner 2026-06-22),
+ * merged in by `createD1Store`. SSR-safe + clock-free.
+ */
 export const buildSeedSky = (): GalaxySky => {
-  const stars: MemoryStar[] = SEED.map((s: SeedSpec, i) => {
-    const id = `s${String(i + 1).padStart(2, "0")}`;
-    const { r, angle } = placeStar(id, s.mood);
-    const rng = mulberry32(hashStr(id) ^ 0x9e3779b9);
-    return {
-      id,
-      text: COPY[s.copyKey].text,
-      name: COPY[s.copyKey].name,
-      mood: s.mood,
-      who: s.who ?? null,
-      color: MOODS[s.mood].color,
-      r,
-      angle,
-      // Cap below 1 so Mom's star (brightness 1) is the unique brightest (#146).
-      brightness: 0.55 + rng() * 0.4,
-      createdAt: SEED_EPOCH + i * 3600000,
-      group: s.group,
-    };
-  });
-  // Mom's lone gold star resolves its copy from the catalog and stays ungrouped.
-  for (const spec of [DEEP_STAR] as const) {
-    const { copyKey, ...rest } = spec;
-    stars.push({
-      ...rest,
-      name: COPY[copyKey].name,
-      text: COPY[copyKey].text,
-    });
-  }
-  return { backdrop: { ...DEFAULT_BACKDROP }, stars };
+  const { copyKey, ...rest } = DEEP_STAR;
+  const mom: MemoryStar = {
+    ...rest,
+    name: COPY[copyKey].name,
+    text: COPY[copyKey].text,
+  };
+  return { backdrop: { ...DEFAULT_BACKDROP }, stars: [mom] };
 };

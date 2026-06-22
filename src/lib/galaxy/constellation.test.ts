@@ -12,7 +12,7 @@ import {
   slotBeyondCompletion,
 } from "#/lib/galaxy/constellation";
 import { polarToXY } from "#/lib/galaxy/place";
-import { MOODS } from "#/lib/galaxy/seed";
+import { CONSTELLATIONS, MOODS } from "#/lib/galaxy/seed";
 import type {
   ConstellationFigure,
   FigureAnchor,
@@ -450,5 +450,51 @@ describe("retired #200 back-compat shims (#227 AC3)", () => {
     // rewired to figureSegments + assignAnchors, the dead exports are removed.
     expect("constellationNodes" in constellation).toBe(false);
     expect("constellationSegments" in constellation).toBe(false);
+  });
+});
+
+describe("figuresInSky — the ambient per-figure render (owner Claude Design #232)", () => {
+  const joyEdges = CONSTELLATIONS.joyful.edges.length; // 7 mouth edges
+  const joyMembers = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      mkStar({ id: `j${i}`, mood: "joyful", group: "joyful", createdAt: i }),
+    );
+
+  it("forming (2 ≤ n < 10): full ghost + open-slot rings + filled-pair real lines", () => {
+    const joy = constellation
+      .figuresInSky(joyMembers(3))
+      .find((f) => f.group === "joyful");
+    expect(joy).toBeDefined();
+    expect(joy?.ghost).toHaveLength(joyEdges); // the whole dashed silhouette
+    expect(joy?.openSlots).toHaveLength(7); // 10 anchors − 3 filled
+    expect(joy?.realSegments.length).toBeGreaterThan(0); // m0–m1, m1–m2
+  });
+
+  it("finished (n ≥ 10): no open slots, real lines span the whole figure", () => {
+    const joy = constellation
+      .figuresInSky(joyMembers(10))
+      .find((f) => f.group === "joyful");
+    expect(joy?.openSlots).toHaveLength(0);
+    expect(joy?.realSegments).toHaveLength(joyEdges);
+  });
+
+  it("below GHOST_MIN_MEMBERS (1 member): the figure is omitted entirely", () => {
+    expect(
+      constellation
+        .figuresInSky(joyMembers(1))
+        .find((f) => f.group === "joyful"),
+    ).toBeUndefined();
+  });
+
+  it("a deep or cross-emotion star never counts toward the figure", () => {
+    const stars = [
+      ...joyMembers(3),
+      mkStar({ id: "deep", mood: "joyful", group: "joyful", deep: true }),
+      mkStar({ id: "x", mood: "tender", group: "joyful" }),
+    ];
+    const joy = constellation
+      .figuresInSky(stars)
+      .find((f) => f.group === "joyful");
+    expect(joy?.openSlots).toHaveLength(7); // still only 3 valid members filled
   });
 });

@@ -665,15 +665,20 @@ body {
   color: var(--star-color);
 }
 
-/* The mood-constellation overlay (#154, interaction spec §3) — thin SVG connect-
-   lines over L3 (ConstellationOverlay.tsx; layout/stroke are Tailwind/props).
-   Only the animation side lives here (the card/loader precedent): the lines fade
-   up on hover; prefers-reduced-motion snaps them instant (the gate below). The
-   BR27 forming-ghost (#227) shares the same fade-up so the silhouette + real lines
-   arrive together. */
+/* The emotion-figure overlay (#231, owner Claude Design render) — the dashed ghost
+   silhouette, the hollow open-slot rings, and the solid filled-pair connect-lines
+   (ConstellationOverlay.tsx; layout/stroke are Tailwind/props). Only the animation +
+   the finished-lines glow live here (the card/loader precedent): all three groups
+   fade up; prefers-reduced-motion snaps them instant (the gate below). The ghost is
+   a STATIC dashed silhouette (no breathing) and the open slots stay clean — only the
+   finished lines carry a subtle lit glow. */
 .constellation-lines,
-.constellation-ghost {
+.constellation-ghost,
+.constellation-slots {
   animation: constellation-in 0.3s ease-out both;
+}
+.constellation-lines {
+  filter: drop-shadow(0 0 2px var(--cg));
 }
 @keyframes constellation-in {
   from {
@@ -800,10 +805,11 @@ body {
   .galaxy-l2__hover {
     transition: none;
   }
-  /* #154/#227 — the hover affordance cross-fades instantly: the constellation
-     lines + forming-ghost skip their fade-up (dims use motion-reduce: utilities). */
+  /* #231 — the figure overlay appears instantly: the ghost, open slots, and finished
+     lines skip their fade-up (the star/layer dims use motion-reduce: utilities). */
   .constellation-lines,
-  .constellation-ghost {
+  .constellation-ghost,
+  .constellation-slots {
     animation: none;
   }
   /* ASTRO holds a single static idle frame at rest — bob + drift disabled.

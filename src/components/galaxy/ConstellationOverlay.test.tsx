@@ -3,122 +3,88 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ConstellationOverlay } from "#/components/galaxy/ConstellationOverlay";
 import type { ConstellationSegment } from "#/lib/galaxy/constellation";
+import type { Point } from "#/lib/galaxy/place";
 
-const seg = (
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-): ConstellationSegment => ({
-  from: { x: fromX, y: fromY },
-  to: { x: toX, y: toY },
-});
+const COLOR = "#ffd166";
 
-const REAL: readonly ConstellationSegment[] = [seg(10, 10, 20, 20)];
-const GHOST: readonly ConstellationSegment[] = [
-  seg(10, 10, 20, 20),
-  seg(20, 20, 30, 30),
-  seg(30, 30, 40, 40),
+const ghost: ConstellationSegment[] = [
+  { from: { x: 10, y: 20 }, to: { x: 30, y: 40 } },
+  { from: { x: 30, y: 40 }, to: { x: 50, y: 60 } },
 ];
 
-describe("ConstellationOverlay — forming-ghost render (BR27, #227)", () => {
-  it("draws the ghost silhouette at ~0.12 opacity (the 2026-06-20 proof value) — AC1", () => {
-    const { container } = render(
-      <ConstellationOverlay
-        segments={[]}
-        ghostSegments={GHOST}
-        color="#b8c4e0"
-      />,
-    );
-    const ghostLines = container.querySelectorAll(".constellation-ghost line");
-    expect(ghostLines).toHaveLength(GHOST.length);
-    for (const line of ghostLines) {
-      expect(line.getAttribute("stroke-opacity")).toBe("0.12");
-    }
-  });
+const real: ConstellationSegment[] = [
+  { from: { x: 10, y: 20 }, to: { x: 30, y: 40 } },
+];
 
-  it("draws the ghost BEHIND the real-star jewel segments (ghost group first) — AC1", () => {
-    const { container } = render(
-      <ConstellationOverlay
-        segments={REAL}
-        ghostSegments={GHOST}
-        color="#b8c4e0"
-      />,
-    );
-    const ghost = container.querySelector(".constellation-ghost");
-    const real = container.querySelector(".constellation-lines");
-    expect(ghost).not.toBeNull();
-    expect(real).not.toBeNull();
-    // The ghost group precedes the real-lines group in document order, so SVG paints
-    // it underneath the jewels' bright connect-lines (BR27 — full silhouette behind).
-    expect(
-      ghost &&
-        real &&
-        ghost.compareDocumentPosition(real) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
+const slots: Point[] = [
+  { x: 50, y: 60 },
+  { x: 70, y: 80 },
+];
 
-  it("renders NO phantom star at an empty anchor — ghost is lines-only, no node markers — AC2", () => {
-    const { container } = render(
-      <ConstellationOverlay
-        segments={[]}
-        ghostSegments={GHOST}
-        color="#b8c4e0"
-      />,
-    );
-    // No <circle>/<rect>/<image> node drawn for the unfilled anchors — only edges.
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
-    expect(container.querySelectorAll("rect")).toHaveLength(0);
-    expect(container.querySelectorAll("image")).toHaveLength(0);
-    // Every ghost edge still draws (ghost-only) even with zero filled members.
-    expect(
-      container.querySelectorAll(".constellation-ghost line"),
-    ).toHaveLength(GHOST.length);
-  });
-
-  it("renders the SVG when only the ghost is present (no real segments yet) — AC2", () => {
-    const { container } = render(
-      <ConstellationOverlay
-        segments={[]}
-        ghostSegments={GHOST}
-        color="#b8c4e0"
-      />,
-    );
-    expect(container.querySelector("svg.galaxy-constellation")).not.toBeNull();
-    expect(
-      container.querySelectorAll(".constellation-lines line"),
-    ).toHaveLength(0);
-  });
-
-  it("renders nothing when both real and ghost segments are empty (back-compat)", () => {
-    const { container } = render(
-      <ConstellationOverlay segments={[]} ghostSegments={[]} color="#b8c4e0" />,
-    );
+describe("ConstellationOverlay", () => {
+  it("renders nothing when ghost, realSegments, and openSlots are all empty", () => {
+    const { container } = render(<ConstellationOverlay color={COLOR} />);
     expect(container.querySelector("svg")).toBeNull();
   });
 
-  it("ghostSegments is optional — omitting it keeps today's real-only behaviour", () => {
+  it("draws ghost edges as dashed lines at stroke-opacity 0.13", () => {
     const { container } = render(
-      <ConstellationOverlay segments={REAL} color="#b8c4e0" />,
+      <ConstellationOverlay color={COLOR} ghost={ghost} />,
     );
-    expect(
-      container.querySelectorAll(".constellation-lines line"),
-    ).toHaveLength(REAL.length);
-    expect(container.querySelector(".constellation-ghost")).toBeNull();
+    const lines = container.querySelectorAll(".constellation-ghost line");
+    expect(lines).toHaveLength(ghost.length);
+    for (const line of lines) {
+      expect(line.getAttribute("stroke-dasharray")).toBe("3 7");
+      expect(line.getAttribute("stroke-opacity")).toBe("0.13");
+    }
   });
 
-  it("strokes the ghost in the figure's ONE mood colour, verbatim (rule 2)", () => {
+  it("draws one hollow circle per open slot (fill none)", () => {
+    const { container } = render(
+      <ConstellationOverlay color={COLOR} openSlots={slots} />,
+    );
+    const circles = container.querySelectorAll(".constellation-slots circle");
+    expect(circles).toHaveLength(slots.length);
+    for (const circle of circles) {
+      expect(circle.getAttribute("fill")).toBe("none");
+    }
+  });
+
+  it("draws two stacked lines (underlay + crisp) per real segment", () => {
+    const { container } = render(
+      <ConstellationOverlay color={COLOR} realSegments={real} />,
+    );
+    const lines = container.querySelectorAll(".constellation-lines line");
+    expect(lines).toHaveLength(real.length * 2);
+    const opacities = [...lines].map((l) => l.getAttribute("stroke-opacity"));
+    expect(opacities).toContain("0.16");
+    expect(opacities).toContain("0.62");
+  });
+
+  it("paints the ghost group before the lines group in document order", () => {
     const { container } = render(
       <ConstellationOverlay
-        segments={[]}
-        ghostSegments={GHOST}
-        color="#abcdef"
+        color={COLOR}
+        ghost={ghost}
+        realSegments={real}
+        openSlots={slots}
       />,
     );
-    for (const line of container.querySelectorAll(
-      ".constellation-ghost line",
-    )) {
-      expect(line.getAttribute("stroke")).toBe("#abcdef");
-    }
+    const groups = [...container.querySelectorAll("svg > g")].map((g) =>
+      g.getAttribute("class"),
+    );
+    const ghostIdx = groups.indexOf("constellation-ghost");
+    const linesIdx = groups.indexOf("constellation-lines");
+    expect(ghostIdx).toBeGreaterThanOrEqual(0);
+    expect(linesIdx).toBeGreaterThanOrEqual(0);
+    expect(ghostIdx).toBeLessThan(linesIdx);
+  });
+
+  it("renders the color verbatim on a ghost line's stroke", () => {
+    const { container } = render(
+      <ConstellationOverlay color={COLOR} ghost={ghost} />,
+    );
+    const line = container.querySelector(".constellation-ghost line");
+    expect(line?.getAttribute("stroke")).toBe(COLOR);
   });
 });
