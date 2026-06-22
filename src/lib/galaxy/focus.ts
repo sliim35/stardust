@@ -15,6 +15,7 @@
  */
 
 import { type Camera, focusOn } from "#/lib/galaxy/camera";
+import { memberAnchorPoints } from "#/lib/galaxy/constellation";
 import { DISK_TILT, GALAXY_CENTER, polarToXY } from "#/lib/galaxy/place";
 import type { GalaxySky } from "#/lib/galaxy/types";
 
@@ -52,11 +53,12 @@ export const createFocus = (initial: Camera): FocusState => ({
 });
 
 /**
- * Resolve a star id to an eased camera target via the sky's own placement
- * (`polarToXY` → `focusOn`). `tilt` MUST be the displayed galaxy's interior tilt —
- * the same one the star is rendered with — or the camera frames a point offset from
- * the visible star inside a tilted neighbour (M31 0.42 / M33 0.9); defaults to the
- * home `DISK_TILT` (#234). Returns `null` for an unknown id so callers (#5 `?star=`,
+ * Resolve a star id to an eased camera target that frames it where it RENDERS: a figure
+ * member at its bound anchor (`memberAnchorPoints`, #236), any other star at its own
+ * `(r, angle)` (`polarToXY`), then `focusOn`. `tilt` MUST be the displayed galaxy's
+ * interior tilt — the same one the star is rendered with — or the camera frames a point
+ * offset from the visible star inside a tilted neighbour (M31 0.42 / M33 0.9); defaults
+ * to the home `DISK_TILT` (#234). Returns `null` for an unknown id so callers (#5 `?star=`,
  * #113 search) degrade gracefully without a throw.
  */
 export const resolveFocusTarget = (
@@ -67,7 +69,14 @@ export const resolveFocusTarget = (
 ): Camera | null => {
   const star = sky.stars.find((s) => s.id === id);
   if (!star) return null;
-  return focusOn(polarToXY(star.r, star.angle, tilt), zoom);
+  // Frame a figure member at its bound ANCHOR — the exact point the star renders at
+  // (`memberAnchorPoints`, the same source the star layer uses) — so the camera lands on
+  // the visible star, not its stored `(r, angle)` which can be stale after a silhouette
+  // is re-placed (#236). Non-members + beyond-completion fall back to their own placement.
+  const point =
+    memberAnchorPoints(sky.stars, tilt)[id] ??
+    polarToXY(star.r, star.angle, tilt);
+  return focusOn(point, zoom);
 };
 
 /**
