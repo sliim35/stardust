@@ -12,6 +12,7 @@ import {
   resolveFocusTarget,
 } from "#/lib/galaxy/focus";
 import { polarToXY } from "#/lib/galaxy/place";
+import { CONSTELLATIONS } from "#/lib/galaxy/seed";
 import type { GalaxySky, MemoryStar } from "#/lib/galaxy/types";
 
 const cam = (cx: number, cy: number, zoom: number): Camera => ({
@@ -81,6 +82,36 @@ describe("resolveFocusTarget (focus by star id → eased camera target)", () => 
       resolveFocusTarget(sky, "s1")?.cy ?? -1,
       1,
     );
+  });
+
+  it("frames a figure member at its ANCHOR, not its stale stored coords (#236)", () => {
+    // A joyful member carrying stale centre coords — the render binds it to joyful
+    // anchor[0] (memberAnchorPoints), so focus must frame the anchor too, not the centre.
+    const a0 = CONSTELLATIONS.joyful.anchors[0];
+    const sky = skyOf([
+      star({ id: "j0", mood: "joyful", group: "joyful", r: 0.05, angle: 0 }),
+    ]);
+    const anchor = polarToXY(a0.r, a0.angle);
+    expect(resolveFocusTarget(sky, "j0")).toEqual({
+      cx: anchor.x,
+      cy: anchor.y,
+      zoom: 1.8,
+    });
+    // and decidedly NOT the stored centre
+    expect(resolveFocusTarget(sky, "j0")?.cx).not.toBeCloseTo(
+      polarToXY(0.05, 0).x,
+      1,
+    );
+  });
+
+  it("frames a non-member at its own stored position (unchanged)", () => {
+    const sky = skyOf([star({ id: "s1", group: undefined, r: 0.6, angle: 1 })]);
+    const p = polarToXY(0.6, 1);
+    expect(resolveFocusTarget(sky, "s1")).toEqual({
+      cx: p.x,
+      cy: p.y,
+      zoom: 1.8,
+    });
   });
 
   it("returns null for an unknown id (graceful — no throw)", () => {
