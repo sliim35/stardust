@@ -13,10 +13,21 @@
  *   wrangler d1 execute STARS_DB --local  --file scripts/prefill-stars.sql   # local dev DB
  *   wrangler d1 execute STARS_DB --remote --file scripts/prefill-stars.sql   # deployed DB
  *
+ * Modes:
+ *   (default)   the curated demo — a forming Joy smile + a scatter; ids `pf###`.
+ *   --all [n]   n fake members (default 10 = finished) of EVERY one of the 12 emotions,
+ *               so you can CHECK ALL constellations across the four galaxies; ids `fa###`.
+ *               e.g. `pnpm tsx scripts/prefill-stars.ts --all` (or `--all 6` for forming).
+ *
  * Pure + deterministic (no Date.now / Math.random) — same output every run.
  */
 import { hashStr, mulberry32 } from "../src/lib/galaxy/rng";
-import { CONSTELLATIONS, hostGalaxyFor, MOODS } from "../src/lib/galaxy/seed";
+import {
+  CONSTELLATIONS,
+  EMOTION_VALUES,
+  hostGalaxyFor,
+  MOODS,
+} from "../src/lib/galaxy/seed";
 import type { Emotion } from "../src/lib/galaxy/types";
 
 type Demo = { mood: Emotion; name: string; text: string; who?: string };
@@ -67,9 +78,29 @@ type Row = {
   createdAt: number;
 };
 
+// Mode: default = the curated demo; `--all [n]` = n fake members (default 10, capped at
+// the 10-anchor figure size) of EVERY emotion → all 12 figures, to check every
+// constellation. The `fa` id prefix keeps the fill-all set independent of the demo set.
+const allFlag = process.argv.indexOf("--all");
+const fillAll = allFlag !== -1;
+const perEmotion = Math.min(
+  10,
+  Math.max(1, Number(process.argv[allFlag + 1]) || 10),
+);
+const SOURCE: Demo[] = fillAll
+  ? EMOTION_VALUES.flatMap((mood) =>
+      Array.from({ length: perEmotion }, (_, i) => ({
+        mood,
+        name: `fake ${mood} ${i + 1}`,
+        text: `fake ${mood} memory #${i + 1} — placeholder to check the ${mood} constellation`,
+      })),
+    )
+  : DEMO;
+const ID_PREFIX = fillAll ? "fa" : "pf";
+
 const perGroup = new Map<string, number>();
-const rows: Row[] = DEMO.map((d, i) => {
-  const id = `pf${String(i + 1).padStart(3, "0")}`;
+const rows: Row[] = SOURCE.map((d, i) => {
+  const id = `${ID_PREFIX}${String(i + 1).padStart(3, "0")}`;
   const rng = mulberry32(hashStr(id) ^ 0x9e3779b9);
   // Bind to the emotion figure's Nth open anchor (the live placeOnFigure order). Every
   // emotion has an authored figure, so a demo memory always snaps onto its silhouette.
