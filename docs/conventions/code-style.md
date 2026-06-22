@@ -1,7 +1,7 @@
 ---
 title: Code-style & conventions guide
 updated: 2026-06-14
-last_learned: "#217 (2026-06-21)"  # watermark — guide promoted to a tracked/public file for the CI auto-reviewer (PR #203); PRs #202–#203 reviewed, zero human inline threads, no new rules. PR #217: codified the code-comments (one-line WHY) rule that the CI reviewer kept flagging un-codified.
+last_learned: "#234 (2026-06-22)"  # watermark — guide is a tracked/public file for the CI auto-reviewer (PR #203). #217: codified the code-comments rule. #232/#234: code-comments rule re-scoped from length → content (it was mass-false-flagging WHY-comments by line count); rescued the stranded #232 dev/ops-script i18n exemption.
 maintained_by: reviewer (md-review-pr)
 ---
 
@@ -309,6 +309,12 @@ hand-written one. A learned signal that contradicts a hand-written rule lands in
 - **Flag a comment ONLY when** it (a) restates WHAT the code trivially does (redundant → drifts), (b) has gone **stale / inaccurate**, or (c) just duplicates the PR description without adding contract. **Line count is NEVER the trigger** — do not flag "N-line docstring / block"; a long WHY-comment is not a defect.
 - **Why:** The #217 lesson was real but mis-codified as a *length* rule ("one short line / no docstrings"), which contradicts this codebase's real convention — load-bearing JSDoc is a feature, not noise — and made the reviewer re-flag the same length nit on legitimate comments PR after PR. The signal is WHY-vs-WHAT, not characters.
 - **Source:** PR #217 review (inline comment-nit thrash, 4 rounds) learned 2026-06-21; **re-scoped from length to content** after the reviewer re-flagged legitimate WHY-comments by line count on #232 / #234 / #235 (owner: "it happens over and over again — update the guide so it doesn't repeat"), 2026-06-22.
+
+### i18n exemption — dev/ops scripts are out of scope for the catalog rule
+- **Rule:** The typed i18n catalog rule (all user-facing strings in `src/lib/i18n/messages/{en,ru}.ts`) applies only to **app UI code** (`src/components/**`, `src/routes/**`). A dev/ops script under `scripts/` (or `tools/`) that emits SQL, JSON, or CLI output is exempt — its strings (fixture names, fake text, log messages) are not user-visible product copy and do not need catalog entries. Inline strings in scripts are fine.
+- **Why:** The i18n rule targets the hydration-safe, locale-switching UI surface. A CLI/Node script has no locale, no hydration, and no SSR constraint; requiring catalog entries for fixture text would inflate the typed contract with dead keys (YAGNI) and violate the dead-i18n-keys rule.
+- **Example:** `scripts/prefill-stars.ts` embeds English fixture memory text inline — that is correct and should NOT be moved to the catalog.
+- **Source:** PR #232 review analysis, 2026-06-22 (stranded uncommitted in the #232 retro; rescued into #235).
 
 ## Conflicts to resolve (human)
 <!-- A learned signal that contradicts a hand-written rule lands here, not above. -->
