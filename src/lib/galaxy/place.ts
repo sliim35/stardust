@@ -4,10 +4,11 @@
  * constants") so the disk, the deep-space features, and the memory stars all
  * agree on one coordinate space.
  *
- * Everything here is a pure function of a star's own `(r, angle)`. That is what
- * makes the renderer's append-only invariant hold: a star's screen position is
- * derived from its own data, never from where it sits in the array — so adding a
- * star can never move an existing one (#4 AC, mirrors the #2 store seam).
+ * A star's screen position is a pure function of its own `(r, angle)` plus the view's
+ * disk `tilt` — a uniform display parameter, not a per-star value (#234) — never of
+ * where it sits in the array. That is what makes the renderer's append-only invariant
+ * hold: for a fixed view, adding a star can never move an existing one (same inputs →
+ * same position; #4 AC, mirrors the #2 store seam).
  */
 
 /** The fixed logical stage; the scene letterboxes (`contain`) into any viewport. */
@@ -26,27 +27,32 @@ export const EARTH_POS = { x: 640, y: 400 } as const;
 export type Point = { x: number; y: number };
 
 /**
- * Polar memory coordinates → stage pixels. `r` is 0..1 from center, `angle` is
- * radians; the y axis is foreshortened by `DISK_TILT` so the disk reads as
- * tilted away from the viewer.
+ * Polar memory coordinates → stage pixels: `r` is 0..1 from center, `angle` radians;
+ * the y axis is foreshortened by `tilt` (defaults to the home `DISK_TILT`; a neighbour
+ * passes its own so its figures/stars sit on its tilted disk, not the global 0.74 — #234).
  */
-export const polarToXY = (r: number, angle: number): Point => ({
+export const polarToXY = (
+  r: number,
+  angle: number,
+  tilt: number = DISK_TILT,
+): Point => ({
   x: GALAXY_CENTER.x + Math.cos(angle) * r * GALAXY_R,
-  y: GALAXY_CENTER.y + Math.sin(angle) * r * GALAXY_R * DISK_TILT,
+  y: GALAXY_CENTER.y + Math.sin(angle) * r * GALAXY_R * tilt,
 });
 
 /** A star (or anything) carrying its own polar placement. */
 type Placeable = { id: string; r: number; angle: number };
 
 /**
- * Resolve a list of placeables to an `id → {x, y}` map. Each position depends
- * only on that item's own `(r, angle)`, so the result for a given id is stable
- * no matter what else is in the list (the append-only invariant).
+ * Resolve a list of placeables to an `id → {x, y}` map at the view `tilt`. A given
+ * id's position depends only on its own `(r, angle)` plus the uniform `tilt`, so it
+ * is stable no matter what else is in the list (the append-only invariant).
  */
 export const layoutStars = (
   items: readonly Placeable[],
+  tilt: number = DISK_TILT,
 ): Record<string, Point> => {
   const out: Record<string, Point> = {};
-  for (const it of items) out[it.id] = polarToXY(it.r, it.angle);
+  for (const it of items) out[it.id] = polarToXY(it.r, it.angle, tilt);
   return out;
 };

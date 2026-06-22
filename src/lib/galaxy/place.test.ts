@@ -51,4 +51,25 @@ describe("layoutStars", () => {
     const after = layoutStars([a, b]);
     expect(after.a).toEqual(before.a);
   });
+
+  it("threads a per-host tilt to every star (defaults to DISK_TILT) (#234)", () => {
+    expect(layoutStars([a], 0.42)).toEqual({
+      a: polarToXY(a.r, a.angle, 0.42),
+    });
+    expect(layoutStars([a])).toEqual({ a: polarToXY(a.r, a.angle, DISK_TILT) });
+  });
+});
+
+describe("polarToXY — per-host disk tilt (#234)", () => {
+  it("defaults to DISK_TILT (home / LMC project unchanged)", () => {
+    expect(polarToXY(0.7, 1.2, DISK_TILT)).toEqual(polarToXY(0.7, 1.2));
+  });
+
+  it("foreshortens y by the passed tilt; x stays tilt-independent", () => {
+    const home = polarToXY(1, Math.PI / 2); // global 0.74
+    const m31 = polarToXY(1, Math.PI / 2, 0.42); // Andromeda's thin tilted disk
+    expect(m31.x).toBeCloseTo(home.x, 6); // x never depends on tilt
+    expect(m31.y).toBeCloseTo(GALAXY_CENTER.y + GALAXY_R * 0.42, 6);
+    expect(m31.y).not.toBeCloseTo(home.y, 1); // a real, visible difference
+  });
 });

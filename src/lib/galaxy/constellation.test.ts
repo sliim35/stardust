@@ -497,4 +497,72 @@ describe("figuresInSky — the ambient per-figure render (owner Claude Design #2
       .find((f) => f.group === "joyful");
     expect(joy?.openSlots).toHaveLength(7); // still only 3 valid members filled
   });
+
+  it("threads a per-host tilt (#234): open slots project with the passed tilt", () => {
+    const a3 = CONSTELLATIONS.joyful.anchors[3]; // unfilled (only anchors 0..2 bound by 3 members)
+    // The same anchor projects to a genuinely different point at the neighbour tilt.
+    expect(polarToXY(a3.r, a3.angle, 0.42)).not.toEqual(
+      polarToXY(a3.r, a3.angle),
+    );
+    // Andromeda's thin disk (0.42): the open-slot ring sits on the foreshortened anchor.
+    const m31 = constellation
+      .figuresInSky(joyMembers(3), 0.42)
+      .find((f) => f.group === "joyful");
+    expect(m31?.openSlots).toContainEqual(polarToXY(a3.r, a3.angle, 0.42));
+    // The default-tilt path (home / LMC) is unchanged.
+    const home = constellation
+      .figuresInSky(joyMembers(3))
+      .find((f) => f.group === "joyful");
+    expect(home?.openSlots).toContainEqual(polarToXY(a3.r, a3.angle));
+    // ghost (all edges) + real connect-lines (filled pairs) are threaded too — the
+    // same edges project to different points at 0.42 vs the default 0.74.
+    expect(m31?.ghost[0]?.from).not.toEqual(home?.ghost[0]?.from);
+    expect(m31?.realSegments[0]?.from).not.toEqual(home?.realSegments[0]?.from);
+  });
+});
+
+describe("memberAnchorPoints — members render ON their figure anchor, not stored coords (#234)", () => {
+  // Members deliberately carry STALE center coords (r≈0) — the bug is they'd render in
+  // the center, detached from the corner figure. The map must override that to the anchor.
+  const staleJoy = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      mkStar({
+        id: `j${i}`,
+        mood: "joyful",
+        group: "joyful",
+        r: 0.05,
+        angle: 0,
+        createdAt: i,
+      }),
+    );
+
+  it("binds each member to its anchor point regardless of its stale stored (r,angle)", () => {
+    const map = constellation.memberAnchorPoints(staleJoy(3));
+    const a0 = CONSTELLATIONS.joyful.anchors[0];
+    expect(map.j0).toEqual(polarToXY(a0.r, a0.angle)); // j0 (earliest) → anchor[0]
+    expect(map.j0).not.toEqual(polarToXY(0.05, 0)); // NOT its stored center
+  });
+
+  it("threads the tilt, binds even a lone member, and never binds a deep star", () => {
+    const a0 = CONSTELLATIONS.joyful.anchors[0];
+    // a lone member still snaps to anchor[0] (matches write-time placeOnFigure), at the tilt
+    expect(constellation.memberAnchorPoints(staleJoy(1), 0.42).j0).toEqual(
+      polarToXY(a0.r, a0.angle, 0.42),
+    );
+    // a deep star (Mom) is never bound — it keeps its own scattered point
+    const deep = mkStar({
+      id: "mom",
+      mood: "joyful",
+      group: "joyful",
+      deep: true,
+    });
+    expect(constellation.memberAnchorPoints([deep]).mom).toBeUndefined();
+  });
+
+  it("omits beyond-completion members (rank ≥ anchors) → caller uses their densified slot", () => {
+    // 11 joyful members, 10 anchors → only the first 10 bind; the 11th falls through.
+    expect(
+      Object.keys(constellation.memberAnchorPoints(staleJoy(11))),
+    ).toHaveLength(10);
+  });
 });

@@ -23,6 +23,7 @@ import {
   lgLabels,
 } from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
+import { DISK_TILT } from "#/lib/galaxy/place";
 import { HOME_MILKY_WAY_ID, REAL_OBJECTS } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
@@ -118,6 +119,9 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
 
   const skyRef = useRef(sky);
   skyRef.current = sky;
+  // The displayed galaxy's interior tilt, mirrored into a ref so a focus request
+  // (resolved live in the camera hook) targets the SAME tilt the star renders at (#234).
+  const displayTiltRef = useRef(DISK_TILT);
   // The displayed galaxy in a ref so the long-lived store-subscribe closure re-reads
   // the CURRENT projection on an ignite, never a stale capture.
   const galaxyForSkyRef = useRef(galaxyForSky);
@@ -237,6 +241,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   const cam = useGalaxyCamera({
     focus,
     getSky: () => skyRef.current,
+    getDisplayTilt: () => displayTiltRef.current,
     transitions,
     onTransitionEvent,
   });
@@ -322,6 +327,11 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     () => (lgView ? null : enteredObjectFor(displayedGalaxyId)),
     [lgView, displayedGalaxyId],
   );
+  // Stars + figures project at the displayed galaxy's own disk tilt (the same
+  // `enteredObject` the disk is painted from, #226) so they sit on it, not the global
+  // 0.74 — else the tilted neighbours render off-screen / squashed (#234).
+  const displayTilt = enteredObject?.tilt ?? DISK_TILT;
+  displayTiltRef.current = displayTilt;
 
   // The hovered LG galaxy (#174): its id flows to `GalaxyBackdrop` as `highlight`,
   // blooming that galaxy's own point cloud (replacing the removed in-DOM `oreol`).
@@ -347,8 +357,8 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // star layer draws them — placed on-anchor at write/seed time). `constellation.ts`
   // owns the rules. Gated off the Local-Group view (I-2): L3 hides there.
   const figures = useMemo(
-    () => (lgView ? [] : figuresInSky(sky.stars)),
-    [lgView, sky.stars],
+    () => (lgView ? [] : figuresInSky(sky.stars, displayTilt)),
+    [lgView, sky.stars, displayTilt],
   );
   // The far layers keep the reduced-motion-safe opacity transition; ambient figures
   // don't dim the sky (the old hover-reveal dim is retired with the redesign).
@@ -438,6 +448,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 diveTo={nav.diveTo}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
+                tilt={displayTilt}
               />
             </div>
           </div>
@@ -515,12 +526,15 @@ const InteractiveStars = ({
   diveTo,
   a11yLabel,
   moodLabels,
+  tilt,
 }: {
   stars: readonly MemoryStar[];
   ignitingIds: ReadonlySet<string>;
   diveTo: (id: string, tier: Tier) => void;
   a11yLabel: string;
   moodLabels: Messages["moods"];
+  /** #234: the displayed galaxy's interior disk tilt, threaded to the star projection. */
+  tilt: number;
 }) => {
   const onSelect = useObjectClick(diveTo);
   return (
@@ -530,6 +544,7 @@ const InteractiveStars = ({
       onSelect={onSelect}
       a11yLabel={a11yLabel}
       moodLabels={moodLabels}
+      tilt={tilt}
     />
   );
 };

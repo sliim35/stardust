@@ -13,6 +13,7 @@ import {
   focusCamera,
   resolveFocusTarget,
 } from "#/lib/galaxy/focus";
+import { DISK_TILT } from "#/lib/galaxy/place";
 import { HOME_TIER } from "#/lib/galaxy/tier-nav";
 import {
   directionOf,
@@ -112,6 +113,9 @@ type Options = {
   focus?: FocusController;
   /** Reads the current sky so a focus request resolves its star's position live. */
   getSky?: () => GalaxySky;
+  /** Reads the displayed galaxy's interior tilt so a focus target projects with the
+   * SAME foreshortening the star is rendered at (neighbour galaxies, #234). */
+  getDisplayTilt?: () => number;
   /** The tier-transition request channel the nav state drives (#125). */
   transitions?: TierTransitionController;
   /**
@@ -244,7 +248,8 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     // keep deciding *where* back() returns to.
     const requestFocus = (id: string, zoom?: number) => {
       const sky = optsRef.current.getSky?.();
-      const target = sky ? resolveFocusTarget(sky, id, zoom) : null;
+      const tilt = optsRef.current.getDisplayTilt?.() ?? DISK_TILT;
+      const target = sky ? resolveFocusTarget(sky, id, zoom, tilt) : null;
       if (!target) return; // unknown id degrades gracefully (no throw, no move)
       focusState.current = focusCamera(
         { ...focusState.current, current: { ...camera } },

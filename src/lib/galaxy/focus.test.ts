@@ -66,6 +66,23 @@ describe("resolveFocusTarget (focus by star id → eased camera target)", () => 
     expect(resolveFocusTarget(sky, "s1", 2.5)?.zoom).toBe(2.5);
   });
 
+  it("projects the target at the displayed galaxy's tilt so it frames the rendered star (#234)", () => {
+    const sky = skyOf([star({ id: "s1", r: 0.6, angle: 1 })]);
+    // A neighbour tilt (M31 0.42) must frame the SAME point the star renders at, not
+    // the global 0.74 — cx is tilt-independent, cy follows the tilt.
+    const m31 = polarToXY(0.6, 1, 0.42);
+    expect(resolveFocusTarget(sky, "s1", undefined, 0.42)).toEqual({
+      cx: m31.x,
+      cy: m31.y,
+      zoom: 1.8,
+    });
+    // and it genuinely differs from the default-tilt target (the off-center bug #234 fixes).
+    expect(resolveFocusTarget(sky, "s1", undefined, 0.42)?.cy).not.toBeCloseTo(
+      resolveFocusTarget(sky, "s1")?.cy ?? -1,
+      1,
+    );
+  });
+
   it("returns null for an unknown id (graceful — no throw)", () => {
     const sky = skyOf([star({ id: "s1" })]);
     expect(resolveFocusTarget(sky, "nope")).toBeNull();
