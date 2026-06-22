@@ -479,58 +479,29 @@ describe("GalaxyStage — node-aware breadcrumb derived from the live galaxyId (
   });
 });
 
-describe("GalaxyStage — hover lights the mood constellation + dims the rest (#154)", () => {
-  // The two prototype seed figures (brightDays / quietAche) are RETIRED (#200 AC8,
-  // spike #194 §5): `CONSTELLATIONS` is now empty, so EVERY seed star is solo until
-  // the designed per-emotion figures land (BR30-gated). The "grouped star lights its
-  // authored edges" case therefore moves to the per-emotion figure stories (the
-  // pure overlay math is pinned in constellation.test.ts); here we assert the solo +
-  // Mom's-star behaviour the empty-figure seed sky guarantees. Every case dives into
-  // the MW first: the LG landing hides the memory layer, so hover is a post-first-
-  // dive affordance.
-  it("every seed star is solo now — focusing one lights no constellation and dims nothing", () => {
+describe("GalaxyStage — emotion figures render ambiently (owner Claude Design #232)", () => {
+  // Figures are AMBIENT (no hover reveal): an authored figure with ≥2 members of an
+  // emotion shows a dashed ghost + hollow open-slot rings + solid lines between filled
+  // pairs, members rendering as jewels on their anchors. That forming/finished render is
+  // unit-tested (constellation.test + ConstellationOverlay.test). The seed is now
+  // Mom-only, so the seed sky shows NO figure — Mom's deep star is never a member. Each
+  // case dives into the MW first (the LG landing hides the memory layer).
+  it("the Mom-only seed shows no figure (figures need ≥2 members of an emotion)", () => {
     renderDivedIntoMilkyWay();
-    // s04 "the old number" was a quiet-ache member; post-retirement it is solo.
-    const button = screen.getByRole("button", { name: "the old number" });
-    fireEvent.focus(button);
-    expect(
-      document.querySelectorAll(".galaxy-constellation line"),
-    ).toHaveLength(0);
-    expect(document.querySelectorAll(".mem-star[data-dimmed]")).toHaveLength(0);
-    expect(document.querySelector(".galaxy-l2-wrap")?.className).not.toContain(
-      "opacity-40",
+    expect(document.querySelectorAll(".constellation-ghost line")).toHaveLength(
+      0,
     );
-    fireEvent.blur(button);
-    expect(document.querySelectorAll(".mem-star[data-dimmed]")).toHaveLength(0);
+    expect(
+      document.querySelectorAll(".constellation-slots circle"),
+    ).toHaveLength(0);
+    expect(document.querySelector(".galaxy-constellation")).toBeNull();
   });
 
-  it("a solo-mood star (no figure) lights no constellation and dims nothing — short-desc only, like Mom's", () => {
+  it("Mom's deep star renders as a lone jewel, never part of a figure", () => {
     renderDivedIntoMilkyWay();
-    // s02 "his steady hands" (tender) lost its group in the mood-pure redesign
-    // (owner rules, 2026-06-06) — solo moods behave like Mom's star on hover.
-    const button = screen.getByRole("button", { name: "his steady hands" });
-    fireEvent.focus(button);
     expect(
-      document.querySelectorAll(".galaxy-constellation line"),
-    ).toHaveLength(0);
-    expect(document.querySelectorAll(".mem-star[data-dimmed]")).toHaveLength(0);
-    expect(document.querySelector(".galaxy-l2-wrap")?.className).not.toContain(
-      "opacity-40",
-    );
-  });
-
-  it("Mom's star (deep, ungrouped) lights no constellation and dims nothing — short-desc only", () => {
-    renderDivedIntoMilkyWay();
-    // irina is the only nostalgic star in the seed sky.
-    const button = document.querySelector<HTMLButtonElement>(
-      '.mem-star[data-mood="nostalgic"] button',
-    );
-    expect(button).not.toBeNull();
-    fireEvent.focus(button as HTMLElement);
-    expect(
-      document.querySelectorAll(".galaxy-constellation line"),
-    ).toHaveLength(0);
-    expect(document.querySelectorAll(".mem-star[data-dimmed]")).toHaveLength(0);
+      document.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
+    ).toHaveLength(1);
   });
 });
 
@@ -546,13 +517,9 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
     if (!target) throw new Error(`seed star missing: ${id}`);
     return cameraTransform(target);
   };
-  /** A regular memory star — not Mom's deep/egg pair (any seeded star works;
-   * the deep exclusions are hover-affordance rules, not focus rules). */
-  const starId = (() => {
-    const s = seeded.stars.find((x) => !x.deep && !x.egg);
-    if (!s) throw new Error("seed sky has no regular star");
-    return s.id;
-  })();
+  /** The seed sky is Mom-only now — focus her star (the deep exclusions are
+   * hover-affordance rules, not focus rules, so Mom is a valid focus target). */
+  const starId = seeded.stars[0].id;
 
   // AC1 — `?at=galaxy:home` focuses + ENTERS the node on load.
   it("?at=galaxy:home enters the Milky Way on load and ASTRO narrates the arrival", () => {
@@ -637,15 +604,13 @@ describe("GalaxyStage — discovery search → focus-on-star (#113)", () => {
   it("selecting a result frames that star — the camera lands on its focus-on-star framing", async () => {
     renderDivedIntoMilkyWay();
     const input = screen.getByRole("combobox", { name: en.search.label });
-    // s01 "kitchen radio" is a seeded memory star.
-    fireEvent.change(input, { target: { value: "kitchen radio" } });
-    fireEvent.click(
-      screen.getByRole("option", { name: "Go to kitchen radio" }),
-    );
+    // Mom's "for mom" star is the only seeded memory star now.
+    fireEvent.change(input, { target: { value: "for mom" } });
+    fireEvent.click(screen.getByRole("option", { name: "Go to for mom" }));
     const camEl = document.querySelector(
       ".galaxy-stage__camera",
     ) as HTMLElement;
     expect(camEl).not.toBeNull();
-    await waitFor(() => expect(camEl.style.transform).toBe(framingOf("s01")));
+    await waitFor(() => expect(camEl.style.transform).toBe(framingOf("irina")));
   });
 });

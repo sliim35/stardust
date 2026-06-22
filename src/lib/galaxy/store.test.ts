@@ -29,13 +29,11 @@ describe("createInMemoryStore", () => {
     expect(typeof store.addStar).toBe("function");
   });
 
-  it("seeds a backdrop and >=3 stars spanning >=2 moods", () => {
+  it("seeds a backdrop and ONLY Mom's star (the rest comes from D1)", () => {
     const sky = createInMemoryStore().getSky();
     expect(sky.backdrop).toBeDefined();
-    expect(sky.stars.length).toBeGreaterThanOrEqual(3);
-    expect(new Set(sky.stars.map((s) => s.mood)).size).toBeGreaterThanOrEqual(
-      2,
-    );
+    expect(sky.stars).toHaveLength(1);
+    expect(sky.stars[0]?.deep).toBe(true);
   });
 
   it("appends a star: length grows by one and the new star is present", () => {

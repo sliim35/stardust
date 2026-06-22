@@ -186,6 +186,50 @@ export const ghostSegments = (
   });
 };
 
+/** Silhouette starts forming at 2 — a lone star stays a lone star (owner 2026-06-22). */
+export const GHOST_MIN_MEMBERS = 2;
+
+/**
+ * The overlay's three render sets for one figure. Omitted below `GHOST_MIN_MEMBERS`;
+ * finished (≥ `threshold`) leaves `openSlots` empty + `realSegments` the whole figure.
+ * (The member jewels render on their anchors elsewhere — the star layer, not here.)
+ */
+export type FigureRender = {
+  group: string;
+  color: string;
+  /** ALL authored edges — the dashed faint silhouette. */
+  ghost: ConstellationSegment[];
+  /** Edges whose BOTH endpoints are filled — the solid connect-lines. */
+  realSegments: ConstellationSegment[];
+  /** Still-unfilled anchor positions — the hollow rings. */
+  openSlots: Point[];
+};
+
+/** Every authored figure RENDERABLE in `stars` → its `FigureRender`. Pure; never mutates. */
+export const figuresInSky = (stars: readonly MemoryStar[]): FigureRender[] => {
+  const groups = [
+    ...new Set(stars.map((s) => s.group).filter((g): g is string => !!g)),
+  ];
+  return groups.flatMap((group) => {
+    const figure = figureForGroup(group);
+    if (figure === null) return [];
+    const members = validMembers(stars, figure);
+    if (members.length < GHOST_MIN_MEMBERS) return [];
+    const filled = assignAnchors(members, figure.anchors);
+    return [
+      {
+        group,
+        color: figureColor(figure),
+        ghost: ghostSegments(figure),
+        realSegments: figureSegments(members, figure),
+        openSlots: figure.anchors
+          .filter((a) => !filled.has(a.id))
+          .map((a) => polarToXY(a.r, a.angle)),
+      },
+    ];
+  });
+};
+
 /**
  * The append-only WRITE-PATH placement (#222, ADR-0014 §3): the polar slot a NEW
  * `star` takes in its figure, derived from its stable rank among the figure's valid

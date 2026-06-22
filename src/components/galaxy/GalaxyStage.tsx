@@ -8,14 +8,7 @@ import {
 } from "react";
 import type { BackdropPoint } from "#/lib/galaxy/backdrop";
 import { MW_PLACEMENT } from "#/lib/galaxy/backdrop";
-import {
-  assignAnchors,
-  figureColor,
-  figureForGroup,
-  figureSegments,
-  ghostSegments,
-  hoverAffordanceFor,
-} from "#/lib/galaxy/constellation";
+import { figuresInSky, hoverAffordanceFor } from "#/lib/galaxy/constellation";
 import { type DeepLinkSearch, resolveDeepLink } from "#/lib/galaxy/deep-link";
 import { createFocusController } from "#/lib/galaxy/focus";
 import {
@@ -347,39 +340,20 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     if (!lgView) setLgHovered(null);
   }, [lgView]);
 
-  // Hover (#154, spec §3 + owner rules 2026-06-06): the star under the pointer/
-  // keyboard-focus. When it belongs to an AUTHORED mood-pure figure, the overlay
-  // draws the figure's designed edges in the figure's ONE mood colour and
-  // everything else dims; a solo star (Mom's, the figure-less moods) fades up
-  // only its short description. Pure derivation — `constellation.ts` owns the
-  // rules (mood-validated membership, never `deep`, authored edges only).
-  // Gated off the Local-Group view (I-2): L3 hides there, and a hover that was
-  // live when the ascend started must not strand the dim/overlay on Layer A.
-  const [hovered, setHovered] = useState<MemoryStar | null>(null);
-  const constellation = useMemo(() => {
-    if (lgView || hovered === null) return null;
-    const affordance = hoverAffordanceFor(hovered);
-    if (affordance.kind !== "memory" || affordance.group === null) return null;
-    const figure = figureForGroup(affordance.group);
-    if (figure === null) return null;
-    const segments = figureSegments(sky.stars, figure);
-    const ghost = ghostSegments(figure); // BR27 forming-ghost: full silhouette behind the real lines
-    if (segments.length === 0 && ghost.length === 0) return null; // solo only when neither a real line nor a ghost
-    return {
-      segments,
-      ghost,
-      color: figureColor(figure),
-      // The bound members (anchor-filled) are the lit set — `assignAnchors` values.
-      litIds: new Set(
-        [...assignAnchors(sky.stars, figure.anchors).values()].map((n) => n.id),
-      ),
-    };
-  }, [lgView, hovered, sky.stars]);
-  // The "dim everything else" cross-fade on the far layers (L1 + the disk) —
-  // instant under prefers-reduced-motion (AC7).
-  const dimClass = `transition-opacity duration-300 motion-reduce:transition-none ${
-    constellation ? "opacity-40" : "opacity-100"
-  }`;
+  // Emotion figures (owner Claude Design 2026-06-22) are AMBIENT, not hover-revealed:
+  // every authored figure with ≥2 members in the sky is always present in its host sky —
+  // a dashed ghost silhouette + hollow open-slot rings while forming, igniting to the
+  // solid figure at its threshold. Members render as real jewels ON their anchors (the
+  // star layer draws them — placed on-anchor at write/seed time). `constellation.ts`
+  // owns the rules. Gated off the Local-Group view (I-2): L3 hides there.
+  const figures = useMemo(
+    () => (lgView ? [] : figuresInSky(sky.stars)),
+    [lgView, sky.stars],
+  );
+  // The far layers keep the reduced-motion-safe opacity transition; ambient figures
+  // don't dim the sky (the old hover-reveal dim is retired with the redesign).
+  const dimClass =
+    "transition-opacity duration-300 motion-reduce:transition-none";
 
   return (
     <div
@@ -449,21 +423,21 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
               }`}
               ref={cam.l3}
             >
-              {constellation && (
+              {figures.map((f) => (
                 <ConstellationOverlay
-                  segments={constellation.segments}
-                  ghostSegments={constellation.ghost}
-                  color={constellation.color}
+                  key={f.group}
+                  color={f.color}
+                  ghost={f.ghost}
+                  realSegments={f.realSegments}
+                  openSlots={f.openSlots}
                 />
-              )}
+              ))}
               <InteractiveStars
                 stars={sky.stars}
                 ignitingIds={ignitingIds}
                 diveTo={nav.diveTo}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
-                onHoverChange={setHovered}
-                litIds={constellation?.litIds ?? null}
               />
             </div>
           </div>
@@ -541,16 +515,12 @@ const InteractiveStars = ({
   diveTo,
   a11yLabel,
   moodLabels,
-  onHoverChange,
-  litIds,
 }: {
   stars: readonly MemoryStar[];
   ignitingIds: ReadonlySet<string>;
   diveTo: (id: string, tier: Tier) => void;
   a11yLabel: string;
   moodLabels: Messages["moods"];
-  onHoverChange: (star: MemoryStar | null) => void;
-  litIds: ReadonlySet<string> | null;
 }) => {
   const onSelect = useObjectClick(diveTo);
   return (
@@ -560,8 +530,6 @@ const InteractiveStars = ({
       onSelect={onSelect}
       a11yLabel={a11yLabel}
       moodLabels={moodLabels}
-      onHoverChange={onHoverChange}
-      litIds={litIds}
     />
   );
 };

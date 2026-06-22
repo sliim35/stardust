@@ -104,10 +104,13 @@ export const createInMemoryStore = (initial?: GalaxySky): GalaxyStore => {
       const galaxy = buildLocalGroup(universeSeed).galaxies.find(
         (g) => g.id === nodeId,
       );
-      // The home galaxy projects to the live flat sky (the back-compat contract).
-      if (nodeId === HOME_GALAXY_ID || !galaxy) return snapshot();
+      if (!galaxy) return snapshot(); // unknown node → the flat sky (back-compat)
+      // Home now filters to its own stars like any galaxy (was: returned the whole flat sky).
       return {
-        backdrop: { ...galaxy.backdrop },
+        backdrop:
+          nodeId === HOME_GALAXY_ID
+            ? snapshot().backdrop
+            : { ...galaxy.backdrop },
         stars: filterStarsForView(snapshot().stars, "galaxy", nodeId),
       };
     },

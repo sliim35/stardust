@@ -82,28 +82,43 @@ describe("EMOTION_GALAXY — the emotion→host-galaxy partition (BR26)", () => 
   });
 });
 
-describe("CONSTELLATIONS — retired prototypes, anchor-model shape (AC8)", () => {
+describe("CONSTELLATIONS — the 12 authored figures, anchor-model shape", () => {
   it("retires the prototype figures (brightDays / quietAche removed)", () => {
     expect("brightDays" in CONSTELLATIONS).toBe(false);
     expect("quietAche" in CONSTELLATIONS).toBe(false);
   });
 
-  it("every entry (if any) satisfies the structural floor: anchors >= 10 && threshold >= 10", () => {
+  it("authors exactly one figure per emotion (all 12)", () => {
+    expect(Object.keys(CONSTELLATIONS).sort()).toEqual(
+      [...EMOTION_VALUES].sort(),
+    );
+    for (const e of EMOTION_VALUES) {
+      expect(CONSTELLATIONS[e].emotion).toBe(e);
+      expect(CONSTELLATIONS[e].group).toBe(e);
+    }
+  });
+
+  it("every entry pins the BR27 contract: EXACTLY 10 anchors && threshold === anchor count", () => {
     for (const figure of Object.values(CONSTELLATIONS)) {
-      expect(figure.anchors.length).toBeGreaterThanOrEqual(10);
-      expect(figure.threshold).toBeGreaterThanOrEqual(10);
+      expect(figure.anchors.length).toBe(10);
+      expect(figure.threshold).toBe(figure.anchors.length);
+    }
+  });
+
+  it("hosts each figure in the emotion's partition galaxy (BR26)", () => {
+    for (const figure of Object.values(CONSTELLATIONS)) {
+      expect(figure.hostGalaxyId).toBe(hostGalaxyFor(figure.emotion));
     }
   });
 });
 
 describe("buildSeedSky", () => {
-  it("seeds a backdrop and at least 3 stars spanning at least 2 moods", () => {
+  it("seeds a backdrop and ONLY Mom's lone star (the rest comes from D1)", () => {
     const sky = buildSeedSky();
     expect(sky.backdrop).toBeDefined();
-    expect(sky.stars.length).toBeGreaterThanOrEqual(3);
-    expect(new Set(sky.stars.map((s) => s.mood)).size).toBeGreaterThanOrEqual(
-      2,
-    );
+    expect(sky.stars).toHaveLength(1);
+    expect(sky.stars[0]?.id).toBe("irina");
+    expect(sky.stars[0]?.deep).toBe(true);
   });
 
   it("defaults the backdrop palette to ember", () => {
@@ -149,10 +164,9 @@ describe("buildSeedSky", () => {
     }
   });
 
-  // ── Figure retirement (AC8 / spike #194 §5) ───────────────────────────────
-  // The two prototype figures are retired; their member stars' `group` is
-  // cleared so they render as SOLO stars until designed figures claim them.
-  it("clears the group of every seed star (prototype figures retired)", () => {
+  // ── Figure membership (ADR-0014 §2) ───────────────────────────────────────
+  // The seed carries no grouped stars now — figures form only from D1 memories.
+  it("seeds NO grouped stars — figures form only from D1 memories (Mom stays solo)", () => {
     for (const s of buildSeedSky().stars) {
       expect(s.group).toBeUndefined();
     }
