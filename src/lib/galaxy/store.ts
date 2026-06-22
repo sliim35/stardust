@@ -104,10 +104,15 @@ export const createInMemoryStore = (initial?: GalaxySky): GalaxyStore => {
       const galaxy = buildLocalGroup(universeSeed).galaxies.find(
         (g) => g.id === nodeId,
       );
-      // The home galaxy projects to the live flat sky (the back-compat contract).
-      if (nodeId === HOME_GALAXY_ID || !galaxy) return snapshot();
+      if (!galaxy) return snapshot(); // unknown node → the flat sky (back-compat)
+      // Every galaxy shows ONLY its own stars (`parentId === nodeId`; unplaced seed stars
+      // default to home). Home keeps the live seeded backdrop; a neighbour uses its own.
+      // For the all-home back-compat seed this stays byte-identical to getSky().
       return {
-        backdrop: { ...galaxy.backdrop },
+        backdrop:
+          nodeId === HOME_GALAXY_ID
+            ? snapshot().backdrop
+            : { ...galaxy.backdrop },
         stars: filterStarsForView(snapshot().stars, "galaxy", nodeId),
       };
     },
