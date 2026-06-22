@@ -55,6 +55,16 @@ applies when qa would otherwise need to switch branches.
      AGENTS.md § Conventions; `docs/` is gitignored, so it stays a local artifact).
 2. **Check each AC** explicitly — tick the boxes that genuinely pass; for any that fail,
    say so with the failing output.
+   - **Verify the rendered result against the intended shape *and its underlying data*,
+     not the math or "a shape is visible."** For a figure/overlay, confirm the relationship
+     holds — e.g. do the member stars actually sit *on* the figure that connects them? —
+     by comparing the render to the reference, never a label or a geometry proof
+     (`memory: galaxy-visual-qa-by-shape`).
+   - **Never rationalize an observed anomaly into a pass.** If you notice something off (a
+     faint/partial/offset/"below the stars" render) and cannot cite the spec/AC rule that
+     makes it *correct*, it is a **finding**, not "expected forming". A QA verdict that
+     literally noted "center below the stars" and called it expected is how the Joy figure
+     shipped detached from its stars (#232 retro). When in doubt, surface it to the owner.
 3. **Review the diff** for **correctness** using the superpowers `requesting-code-review`
    skill. (Conventions/style + the learning loop are the `reviewer` phase — `md-review-pr`
    runs before you; don't re-litigate them here.)
