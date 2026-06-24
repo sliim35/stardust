@@ -504,9 +504,17 @@ describe("figureMemberIds — the set of stars promoted to the L4 figure plane (
     expect(drawn).toEqual(["joyful"]); // the lone tender group is not drawn
   });
 
-  it("is a ReadonlySet (no mutation contract leak)", () => {
+  it("promotes a figure at exactly GHOST_MIN_MEMBERS (n=2 boundary) — both ride L4", () => {
     const ids = constellation.figureMemberIds(joyMembers(2));
-    expect(ids).toBeInstanceOf(Set);
+    expect(ids.has("j0")).toBe(true);
+    expect(ids.has("j1")).toBe(true);
+    expect(ids.size).toBe(2);
+  });
+
+  it("returns a Set", () => {
+    // `figureMemberIds` is typed `ReadonlySet<string>` (TS enforces immutability at
+    // compile time); at runtime it is a plain Set.
+    expect(constellation.figureMemberIds(joyMembers(2))).toBeInstanceOf(Set);
   });
 });
 

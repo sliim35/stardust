@@ -644,6 +644,20 @@ describe("GalaxyStage — figures ride the L4 foreground parallax plane (#243)",
     fireEvent.click(member as HTMLElement);
     expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
   });
+
+  it("clicking Mom's star on L5 opens her card (the unclickable-regression guard #243)", () => {
+    // The whole point of the pointer-events fix: the full-bleed L4/L5 wrappers must NOT
+    // swallow the click. Mom rides L5 as the topmost plane, so this is the strongest guard
+    // that a foreground plane stays click-through to its own star.
+    renderWithFigure();
+    const l5 = document.querySelector(".galaxy-l5-wrap") as HTMLElement;
+    const mom = l5.querySelector<HTMLButtonElement>(
+      '.mem-star[data-mood="nostalgic"] button',
+    );
+    expect(mom).not.toBeNull();
+    fireEvent.click(mom as HTMLElement);
+    expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
+  });
 });
 
 describe("GalaxyStage — wayfinding deep-links (#129)", () => {

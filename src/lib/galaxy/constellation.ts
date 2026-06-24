@@ -86,11 +86,11 @@ export type ConstellationSegment = { from: Point; to: Point };
  * broken by `id`) so the order is total + stable — the Nth member always binds to
  * the same open anchor regardless of input array order. Pure; never mutates input.
  *
- * Exported (#243) so the L4 partition (`figureMemberIds`) shares the EXACT same
- * validation as the render path — the set of promoted stars can never disagree with
- * which members `figuresInSky` actually draws.
+ * Module-private, but the single source of membership truth: the L4 partition
+ * (`figureMemberIds`) reuses it in-module so the set of promoted stars can never
+ * disagree with which members `figuresInSky` actually draws (#243).
  */
-export const validMembers = (
+const validMembers = (
   members: readonly MemoryStar[],
   figure: ConstellationFigure,
 ): MemoryStar[] =>
