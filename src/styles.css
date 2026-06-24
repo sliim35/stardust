@@ -628,6 +628,27 @@ body {
   image-rendering: pixelated;
 }
 
+/* Mom's star (deep) — owner-picked "variant B" (#243 follow-up, 2026-06-24): a larger,
+   warmer soft glow so the lodestar reads as the brightest, nearest point in the galaxy
+   (it also rides the L5 dedication plane), plus a more pronounced slow breathe — the
+   halo scales gently while the body keeps its opacity breathe. Pure soft-radial scale,
+   no box-shadow (a corona ring reads as a dark eclipse disk — rejected on review). */
+.mem-star[data-kind="deep"] .mem-star__halo {
+  width: calc(var(--bloom) * 1.6);
+  height: calc(var(--bloom) * 1.6);
+  filter: brightness(1.3) saturate(1.1);
+  animation: memDeepHaloBreath 4.8s ease-in-out infinite;
+}
+.mem-star[data-kind="deep"] .mem-star__hot {
+  width: calc(var(--hot) * 1.4);
+  height: calc(var(--hot) * 1.4);
+}
+.mem-star[data-kind="deep"]:hover .mem-star__halo,
+.mem-star[data-kind="deep"]:focus-within .mem-star__halo {
+  width: calc(var(--bloom) * 2);
+  height: calc(var(--bloom) * 2);
+}
+
 /* Hover bloom + flare brighten. Keyboard focus on the hit-button drives the
    same affordance (#154 — :focus-within is the parity selector). Selection
    rings + the read panel are #5. */
@@ -756,6 +777,17 @@ body {
     opacity: 1;
   }
 }
+/* Mom's halo breathe (variant B, 2026-06-24): a gentle size pulse on the glow that
+   pairs with the body's opacity breathe for a more pronounced, alive lodestar. */
+@keyframes memDeepHaloBreath {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+}
 @keyframes memIgnite {
   0% {
     opacity: 0;
@@ -809,6 +841,10 @@ body {
   .mem-star[data-kind="egg"] .mem-star__body,
   .mem-star[data-kind="deep"] .mem-star__body,
   .mem-star[data-igniting] .mem-star__body {
+    animation: none;
+  }
+  /* Mom's halo breathe snaps off under reduced motion (the glow stays steady). */
+  .mem-star[data-kind="deep"] .mem-star__halo {
     animation: none;
   }
   .mem-star__halo,
