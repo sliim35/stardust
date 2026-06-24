@@ -31,16 +31,20 @@ describe("parallaxOffsets", () => {
       l2: { x: 0, y: 0 },
       l3: { x: 0, y: 0 },
       l4: { x: 0, y: 0 },
+      l5: { x: 0, y: 0 },
     });
   });
 
   it("shifts layers opposite the pointer, nearest layer moving most", () => {
     const o = parallaxOffsets({ x: 1280, y: 400 }, vp); // far right edge
-    expect(o.l4.x).toBe(-PARALLAX_MAX.l4); // opposite + max at the edge
+    expect(o.l5.x).toBe(-PARALLAX_MAX.l5); // opposite + max at the edge
+    expect(o.l4.x).toBe(-PARALLAX_MAX.l4);
     expect(o.l3.x).toBe(-PARALLAX_MAX.l3);
     expect(o.l2.x).toBe(-PARALLAX_MAX.l2);
     expect(o.l1.x).toBe(-PARALLAX_MAX.l1);
-    // L4 is the new nearest plane → it moves MOST under parallax (#243).
+    // L5 (Mom's dedication plane) is the new nearest → it moves MOST (#243 follow-up),
+    // then the figure plane L4, then the loose stars L3, the disk L2, the deep field L1.
+    expect(Math.abs(o.l5.x)).toBeGreaterThan(Math.abs(o.l4.x));
     expect(Math.abs(o.l4.x)).toBeGreaterThan(Math.abs(o.l3.x));
     expect(Math.abs(o.l3.x)).toBeGreaterThan(Math.abs(o.l2.x));
     expect(Math.abs(o.l2.x)).toBeGreaterThan(Math.abs(o.l1.x));
@@ -52,12 +56,14 @@ describe("parallaxOffsets", () => {
       l2: { x: 0, y: 0 },
       l3: { x: 0, y: 0 },
       l4: { x: 0, y: 0 },
+      l5: { x: 0, y: 0 },
     });
   });
 });
 
-describe("PARALLAX_MAX — the nearest plane (L4, #243) moves most", () => {
-  it("carries an l4 magnitude greater than l3", () => {
+describe("PARALLAX_MAX — the nearest plane (L5, Mom #243) moves most", () => {
+  it("orders the planes l5 > l4 > l3 > l2 > l1", () => {
+    expect(PARALLAX_MAX.l5).toBeGreaterThan(PARALLAX_MAX.l4);
     expect(PARALLAX_MAX.l4).toBeGreaterThan(PARALLAX_MAX.l3);
     expect(PARALLAX_MAX.l3).toBeGreaterThan(PARALLAX_MAX.l2);
     expect(PARALLAX_MAX.l2).toBeGreaterThan(PARALLAX_MAX.l1);

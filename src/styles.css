@@ -503,8 +503,16 @@ body {
 }
 /* L4 — the foreground figure plane (#243): the emotion figures + their member stars,
    stacked above L3 (later in source order, same inset-0 footprint → it paints on top)
-   and parallaxing the MOST (PARALLAX_MAX.l4) so the figures read as the nearest tier. */
+   and parallaxing more (PARALLAX_MAX.l4) so the figures read as a near tier. */
 .galaxy-l4-wrap {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+/* L5 — the dedication plane (#243 follow-up): Mom's singular gold `deep` star rides
+   it ALONE, stacked above L4 (same inset-0 footprint, paints on top) and parallaxing
+   the MOST (PARALLAX_MAX.l5) so it reads as the nearest, most prominent point. */
+.galaxy-l5-wrap {
   position: absolute;
   inset: 0;
   will-change: transform;

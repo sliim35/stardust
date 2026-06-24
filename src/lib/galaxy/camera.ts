@@ -17,16 +17,18 @@ import { clamp } from "#/lib/galaxy/rng";
 
 export type Vec = { x: number; y: number };
 export type Camera = { cx: number; cy: number; zoom: number };
-export type ParallaxOffsets = { l1: Vec; l2: Vec; l3: Vec; l4: Vec };
+export type ParallaxOffsets = { l1: Vec; l2: Vec; l3: Vec; l4: Vec; l5: Vec };
 
 /**
  * Max parallax offset (px) at the viewport edge — nearest layer moves most. L4 is
  * the foreground figure plane (#243): the emotion figures + their member stars ride
- * it, so it parallaxes the MOST and reads as the nearest thing to the viewer. The
- * `l4` magnitude is the one tunable knob — `30` is a default; the final value is an
- * owner show-variants pick at QA.
+ * it. L5 is the **dedication plane** (#243 follow-up, owner 2026-06-24): Mom's
+ * singular gold `deep` star (ADR-0010 §1) rides it ALONE, the very nearest tier, so
+ * it parallaxes the MOST and reads as the closest, most prominent point in the
+ * galaxy. The `l4`/`l5` magnitudes are the tunable knobs — `30`/`38` are defaults;
+ * the final values are an owner show-variants pick at QA.
  */
-export const PARALLAX_MAX = { l1: 6, l2: 14, l3: 22, l4: 30 } as const;
+export const PARALLAX_MAX = { l1: 6, l2: 14, l3: 22, l4: 30, l5: 38 } as const;
 
 /** Zoom clamps — you can never lose the disk. */
 export const ZOOM_MIN = 0.8;
@@ -56,8 +58,9 @@ export const focusOn = (pos: Point, zoom = 1.8): Camera => ({
 /**
  * Per-layer parallax offsets for a pointer position. The scene shifts *opposite*
  * the pointer; magnitude grows to `PARALLAX_MAX` at the viewport edge, with the
- * nearest layer (L4 — the figure plane, #243) moving most so the emotion figures
- * read as floating above the loose memory stars (L3) and the disk.
+ * nearest layer (L5 — Mom's dedication plane, then L4 — the figure plane, #243)
+ * moving most so Mom's star and the emotion figures read as floating above the loose
+ * memory stars (L3) and the disk.
  */
 export const parallaxOffsets = (
   pointer: Vec,
@@ -71,6 +74,7 @@ export const parallaxOffsets = (
       l2: { ...zero },
       l3: { ...zero },
       l4: { ...zero },
+      l5: { ...zero },
     };
   const nx = clamp((pointer.x / viewport.w) * 2 - 1, -1, 1);
   const ny = clamp((pointer.y / viewport.h) * 2 - 1, -1, 1);
@@ -81,6 +85,7 @@ export const parallaxOffsets = (
     l2: at(PARALLAX_MAX.l2),
     l3: at(PARALLAX_MAX.l3),
     l4: at(PARALLAX_MAX.l4),
+    l5: at(PARALLAX_MAX.l5),
   };
 };
 
