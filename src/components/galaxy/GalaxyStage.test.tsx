@@ -505,6 +505,106 @@ describe("GalaxyStage — emotion figures render ambiently (owner Claude Design 
   });
 });
 
+describe("GalaxyStage — figures ride the L4 foreground parallax plane (#243)", () => {
+  // A renderable joyful figure (3 same-emotion members) injected as user stars so
+  // the MW disk has real figure members; Mom's deep star stays free. The two-layer
+  // split must put figure members + the ConstellationOverlay on L4, free stars on L3.
+  const joyMembers = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `j${i}`,
+      text: `joy ${i}`,
+      mood: "joyful" as const,
+      color: "#f6d36b",
+      r: 0.5,
+      angle: i,
+      brightness: 0.7,
+      createdAt: 100 + i,
+      group: "joyful",
+    }));
+
+  const renderWithFigure = (n = 3) => {
+    stubReducedMotion(true);
+    render(<GalaxyStage userStars={joyMembers(n)} />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // dive into the MW
+    return stage;
+  };
+
+  it("renders an L4 wrapper inside the camera, stacked above L3", () => {
+    renderWithFigure();
+    const camera = document.querySelector(
+      ".galaxy-stage__camera",
+    ) as HTMLElement;
+    const l3 = camera.querySelector(".galaxy-l3-wrap") as HTMLElement;
+    const l4 = camera.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    expect(l3).not.toBeNull();
+    expect(l4).not.toBeNull();
+    // L4 is a sibling of L3 inside the camera, ordered AFTER it (stacked above).
+    expect(l4.parentElement).toBe(camera);
+    expect(
+      l3.compareDocumentPosition(l4) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("renders two memory-star layers — free stars on L3, figure members on L4", () => {
+    renderWithFigure();
+    const l3 = document.querySelector(".galaxy-l3-wrap") as HTMLElement;
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    // Two distinct MemoryStarLayer instances (one per plane).
+    expect(document.querySelectorAll(".galaxy-l3")).toHaveLength(2);
+    expect(l3.querySelector(".galaxy-l3")).not.toBeNull();
+    expect(l4.querySelector(".galaxy-l3")).not.toBeNull();
+    // The 3 joyful figure members ride L4 (none leak onto L3)…
+    expect(l4.querySelectorAll('.mem-star[data-mood="joyful"]')).toHaveLength(
+      3,
+    );
+    expect(l3.querySelectorAll('.mem-star[data-mood="joyful"]')).toHaveLength(
+      0,
+    );
+    // …and Mom's deep star (never a member) stays free on L3, off L4.
+    expect(
+      l3.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
+    ).toHaveLength(1);
+    expect(
+      l4.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
+    ).toHaveLength(0);
+  });
+
+  it("moves the ConstellationOverlay onto L4 with its members", () => {
+    renderWithFigure();
+    const l3 = document.querySelector(".galaxy-l3-wrap") as HTMLElement;
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    expect(l4.querySelector(".galaxy-constellation")).not.toBeNull();
+    expect(l3.querySelector(".galaxy-constellation")).toBeNull();
+  });
+
+  it("carries the same Local-Group hide gate as L3 (both hide on the LG overview)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage userStars={joyMembers(3)} />);
+    // At the LG landing the memory interior (both planes) hides.
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    expect(l4.className).toContain("invisible");
+    expect(l4.className).toContain("opacity-0");
+    expect(l4.className).toContain("pointer-events-none");
+    // Diving into the MW restores it (gate lifts on both planes together).
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 });
+    expect(l4.className).not.toContain("invisible");
+    expect(l4.className).not.toContain("pointer-events-none");
+  });
+
+  it("keeps both layers interactive — clicking a figure member on L4 opens its card", () => {
+    renderWithFigure();
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    const member = l4.querySelector<HTMLButtonElement>(
+      '.mem-star[data-mood="joyful"] button',
+    );
+    expect(member).not.toBeNull();
+    fireEvent.click(member as HTMLElement);
+    expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
+  });
+});
+
 describe("GalaxyStage — wayfinding deep-links (#129)", () => {
   // All snap-path (reduced motion): the dive + the focus land without racing
   // GSAP's ticker — the eased flights themselves are pinned in

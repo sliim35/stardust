@@ -490,7 +490,7 @@ body {
   opacity: 1;
 }
 
-/* L3 — memory stars (nearest plane). */
+/* L3 — the loose (non-figure) memory stars. */
 .galaxy-l3-wrap {
   position: absolute;
   inset: 0;
@@ -500,6 +500,14 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+/* L4 — the foreground figure plane (#243): the emotion figures + their member stars,
+   stacked above L3 (later in source order, same inset-0 footprint → it paints on top)
+   and parallaxing the MOST (PARALLAX_MAX.l4) so the figures read as the nearest tier. */
+.galaxy-l4-wrap {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
 }
 
 .mem-star {

@@ -30,14 +30,18 @@ describe("parallaxOffsets", () => {
       l1: { x: 0, y: 0 },
       l2: { x: 0, y: 0 },
       l3: { x: 0, y: 0 },
+      l4: { x: 0, y: 0 },
     });
   });
 
   it("shifts layers opposite the pointer, nearest layer moving most", () => {
     const o = parallaxOffsets({ x: 1280, y: 400 }, vp); // far right edge
-    expect(o.l3.x).toBe(-PARALLAX_MAX.l3); // opposite + max at the edge
+    expect(o.l4.x).toBe(-PARALLAX_MAX.l4); // opposite + max at the edge
+    expect(o.l3.x).toBe(-PARALLAX_MAX.l3);
     expect(o.l2.x).toBe(-PARALLAX_MAX.l2);
     expect(o.l1.x).toBe(-PARALLAX_MAX.l1);
+    // L4 is the new nearest plane → it moves MOST under parallax (#243).
+    expect(Math.abs(o.l4.x)).toBeGreaterThan(Math.abs(o.l3.x));
     expect(Math.abs(o.l3.x)).toBeGreaterThan(Math.abs(o.l2.x));
     expect(Math.abs(o.l2.x)).toBeGreaterThan(Math.abs(o.l1.x));
   });
@@ -47,7 +51,16 @@ describe("parallaxOffsets", () => {
       l1: { x: 0, y: 0 },
       l2: { x: 0, y: 0 },
       l3: { x: 0, y: 0 },
+      l4: { x: 0, y: 0 },
     });
+  });
+});
+
+describe("PARALLAX_MAX — the nearest plane (L4, #243) moves most", () => {
+  it("carries an l4 magnitude greater than l3", () => {
+    expect(PARALLAX_MAX.l4).toBeGreaterThan(PARALLAX_MAX.l3);
+    expect(PARALLAX_MAX.l3).toBeGreaterThan(PARALLAX_MAX.l2);
+    expect(PARALLAX_MAX.l2).toBeGreaterThan(PARALLAX_MAX.l1);
   });
 });
 
