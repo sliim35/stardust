@@ -77,29 +77,37 @@ export const ZoomHint = ({ label, dwellMs = ZOOM_HINT_DWELL_MS }: Props) => {
     if (alreadySeen()) return;
     setVisible(true);
 
+    // Observe the SAME gesture that drives the zoom — on window, capture phase,
+    // passive (observe-only) so it catches the first wheel/pinch even if the
+    // loader/stage would otherwise swallow it.
+    const opts: AddEventListenerOptions = { capture: true, passive: true };
+    let timer: ReturnType<typeof setTimeout>;
+
+    // `dismiss` tears down ALL three sources itself (both listeners + the dwell
+    // timer), so the FIRST of {wheel, touchmove, dwell} wins and nothing fires
+    // again. Can't lean on `{once:true}` — it only auto-detaches the ONE listener
+    // that fired, leaving the others live for the whole session (the component
+    // never unmounts after hiding), so a later scroll would re-run dismiss().
+    // Idempotent: removeEventListener/clearTimeout on an already-gone target no-op.
     const dismiss = () => {
+      window.removeEventListener("wheel", dismiss, opts);
+      window.removeEventListener("touchmove", dismiss, opts);
+      clearTimeout(timer);
       markSeen();
       setVisible(false);
     };
 
-    // Observe the SAME gesture that drives the zoom — on window, capture phase,
-    // passive (observe-only) so it catches the first wheel/pinch even if the
-    // loader/stage would otherwise swallow it. `once` auto-detaches after one fire.
-    const opts: AddEventListenerOptions = {
-      capture: true,
-      passive: true,
-      once: true,
-    };
     window.addEventListener("wheel", dismiss, opts);
     window.addEventListener("touchmove", dismiss, opts);
-
     // No zoom within the dwell → fade it out anyway (it is not a fixture).
-    const timer = window.setTimeout(dismiss, dwellMs);
+    timer = setTimeout(dismiss, dwellMs);
 
+    // The unmount path still tears down too (e.g. a locale/key change re-runs the
+    // effect before any of the three sources fired).
     return () => {
       window.removeEventListener("wheel", dismiss, opts);
       window.removeEventListener("touchmove", dismiss, opts);
-      window.clearTimeout(timer);
+      clearTimeout(timer);
     };
   }, [dwellMs]);
 

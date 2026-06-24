@@ -6,31 +6,16 @@ import { en } from "#/lib/i18n/messages/en";
 
 const LABEL = en.zoomHint.label;
 
-/** Stub `prefers-reduced-motion: reduce` → true for one test, restore after. */
-const stubReducedMotion = (reduce: boolean) => {
-  vi.stubGlobal(
-    "matchMedia",
-    (query: string) =>
-      ({
-        matches: reduce,
-        media: query,
-        onchange: null,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        addListener: () => {},
-        removeListener: () => {},
-        dispatchEvent: () => false,
-      }) as MediaQueryList,
-  );
-};
-
+// AC4 (reduced-motion) is enforced statically: the component reads no
+// `matchMedia` — it gates its only motion behind Tailwind `motion-safe:`, which
+// the browser disables under `prefers-reduced-motion: reduce`. So the real gate
+// is the class scan below (no raw `animate-*`), not a `matchMedia` stub.
 describe("ZoomHint — the scroll-to-zoom discoverability signifier (#251)", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.useRealTimers();
     window.sessionStorage.clear();
   });
@@ -78,6 +63,28 @@ describe("ZoomHint — the scroll-to-zoom discoverability signifier (#251)", () 
     expect(screen.queryByText(LABEL)).toBeNull();
   });
 
+  // Regression (review SHOULD #255) — whichever source dismisses FIRST must tear
+  // down the other two, so the wheel/touchmove listeners don't linger for the
+  // whole session (the component never unmounts after hiding). After the dwell
+  // dismisses, both gesture listeners are gone, so a later scroll is inert.
+  it("removes the wheel + touchmove listeners when the dwell dismisses first", () => {
+    vi.useFakeTimers();
+    const removed: string[] = [];
+    const spy = vi
+      .spyOn(window, "removeEventListener")
+      .mockImplementation((type) => {
+        removed.push(String(type));
+      });
+    render(<ZoomHint label={LABEL} dwellMs={6000} />);
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    // The dwell's dismiss() detached BOTH gesture listeners (the leak fix).
+    expect(removed).toContain("wheel");
+    expect(removed).toContain("touchmove");
+    spy.mockRestore();
+  });
+
   // AC3 — once dismissed, the "seen" flag is persisted to sessionStorage.
   it("AC3 — persists the seen flag to sessionStorage on dismiss", () => {
     render(<ZoomHint label={LABEL} />);
@@ -94,13 +101,12 @@ describe("ZoomHint — the scroll-to-zoom discoverability signifier (#251)", () 
     expect(screen.queryByText(LABEL)).toBeNull();
   });
 
-  // AC4 — prefers-reduced-motion: renders statically (no motion animation class).
-  it("AC4 — under prefers-reduced-motion it renders without a motion animation", () => {
-    stubReducedMotion(true);
+  // AC4 — no element carries a raw (always-on) `animate-*` class, so under
+  // `prefers-reduced-motion: reduce` the hint renders static (any motion is
+  // `motion-safe:`-gated, which the browser disables).
+  it("AC4 — renders without any always-on animation (static under reduced-motion)", () => {
     render(<ZoomHint label={LABEL} />);
     const hint = screen.getByTestId("zoom-hint");
-    // No element inside the hint carries a raw (always-on) `animate-*` class —
-    // any motion is gated behind `motion-safe:` so reduced-motion shows static.
     for (const el of hint.querySelectorAll("*")) {
       for (const cls of el.classList) {
         if (cls.startsWith("animate-")) {
@@ -112,9 +118,9 @@ describe("ZoomHint — the scroll-to-zoom discoverability signifier (#251)", () 
     expect(screen.getByText(LABEL)).toBeTruthy();
   });
 
-  // AC4 — reduced-motion still auto-dismisses on a zoom gesture.
-  it("AC4 — under prefers-reduced-motion it still dismisses on a wheel gesture", () => {
-    stubReducedMotion(true);
+  // AC4 — the auto-dismiss is motion-independent (a window listener, not an
+  // animation), so it fires identically whether or not motion is reduced.
+  it("AC4 — still dismisses on a wheel gesture (dismiss is not motion-gated)", () => {
     render(<ZoomHint label={LABEL} />);
     act(() => {
       window.dispatchEvent(new WheelEvent("wheel", { deltaY: -1 }));
