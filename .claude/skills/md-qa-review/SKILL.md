@@ -72,6 +72,15 @@ applies when qa would otherwise need to switch branches.
    section. For real defects, open a bug issue:
    `gh issue create --label "type:bug,role:dev" …`.
 5. **Decide the gate**: sign off (→ `md-deploy`) or send back to `md-implement` with specifics.
+6. **Tear down — REQUIRED (QA is not finished until this runs, on pass OR fail).** Clean up
+   every environment staged for this QA: kill all dev/preview servers started for it
+   (`pnpm dev` / `vite dev` / `wrangler`), free their ports — including the Node inspector
+   **`9229`** (only one `vite dev` can hold it, so a lingering server blocks the next QA) and any
+   app ports (`3000`, `3254`, `3255`, …) — and prune stale QA worktrees. Use a **per-PID loop**
+   (zsh won't split `$PIDS`): `for pid in $(lsof -ti tcp:<port>); do kill "$pid"; done`. Leave no
+   orphaned process or bound port. If the **orchestrator** (not you) staged the server — see
+   "Staging the target branch" — state in the verdict that teardown is owed so it isn't left
+   running (`memory: post-qa-cleanup-phase`).
 
 ## Output
 A QA verdict with evidence; bug issues if needed; a clear pass/fail gate.
@@ -80,4 +89,7 @@ A QA verdict with evidence; bug issues if needed; a clear pass/fail gate.
 `superpowers:verification-before-completion`, `superpowers:requesting-code-review`; `playwright` MCP.
 
 ## Done when
-Every AC is evidenced as pass/fail and the merge/deploy gate decision is explicit.
+Every AC is evidenced as pass/fail, the merge/deploy gate decision is explicit, **and the QA
+environment is torn down** — all dev/preview servers killed, their ports (incl. `9229`) freed, and
+stale QA worktrees pruned (step 6). A passing verdict with a server still bound to `9229`/`3xxx` is
+**not done**.
