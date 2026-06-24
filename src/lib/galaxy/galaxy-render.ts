@@ -701,6 +701,37 @@ export const buildSolarSystemScene = (
   return { bodies: placed, gold, cool, rings };
 };
 
+/** How many faint background stars dust the tier-3 void (the design's quiet field). */
+const SOLAR_FIELD_COUNT = 150;
+/** The xor fold that derives the tier-3 field's rng stream from a seed (independent from the bodies' streams). */
+const SOLAR_FIELD_XOR = 0x517cc1b7;
+
+/**
+ * The tier-3 quiet-void starfield (ADR-0016 §3, the design's sparse cool field) —
+ * a faint, sparse scatter of cool background stars for depth, NOT a dense
+ * deep-field stipple. A pure `seed → BackdropPoint[]` so the render math lives in
+ * lib, not the component (mirrors `buildDeepField` / `buildDeepMeteors`): the
+ * caller paints it through `paintGlow`. Cool only (`warm` low — gold is Sol-only);
+ * `Math.round`-quantized, SSR-safe.
+ */
+export const buildSolarFieldPoints = (seed: number): BackdropPoint[] => {
+  const rng = mulberry32((seed ^ SOLAR_FIELD_XOR) >>> 0);
+  const field: BackdropPoint[] = [];
+  for (let i = 0; i < SOLAR_FIELD_COUNT; i++) {
+    const b = rng();
+    field.push({
+      x: Math.round(rng() * STAGE_W),
+      y: Math.round(rng() * STAGE_H),
+      size: b > 0.93 ? 2 : 1,
+      alpha: 0.08 + b * 0.22,
+      phase: rng(),
+      // cool only — the void stays cold (gold is Sol-only).
+      warm: rng() * 0.35,
+    });
+  }
+  return field;
+};
+
 /**
  * One real galaxy placed somewhere on the stage — what a tier composition (the
  * Local-Group scene, `lg-composition.ts`) hands the renderer: the curated object

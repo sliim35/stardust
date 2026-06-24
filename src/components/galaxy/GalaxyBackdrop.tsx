@@ -11,6 +11,7 @@ import {
   bloomPointsFor,
   buildEnteredGalaxyGeometry,
   buildGalaxyGeometry,
+  buildSolarFieldPoints,
   buildSolarSystemScene,
   type PlacedGalaxy,
   type SolarRing,
@@ -23,7 +24,6 @@ import {
 } from "#/lib/galaxy/meteors";
 import { paletteFor } from "#/lib/galaxy/palette";
 import { STAGE_H, STAGE_W } from "#/lib/galaxy/place";
-import { mulberry32 } from "#/lib/galaxy/rng";
 import type {
   GalaxyBackdrop as Backdrop,
   RealObject,
@@ -166,27 +166,13 @@ const toTwinklers = (
     .filter((s) => s.alpha > 0.5)
     .map((s) => ({ ...s, speed: 0.6 + s.phase * 1.6 }));
 
-/** A faint sparse cool starfield for the tier-3 void's depth (the design's quiet field). */
+/** Paint the tier-3 quiet-void starfield — the points come from `buildSolarFieldPoints` (lib render math). */
 const paintSolarField = (
   ctx: CanvasRenderingContext2D,
   seed: number,
   sprites: Sprites,
 ): void => {
-  const rng = mulberry32(seed);
-  const field: BackdropPoint[] = [];
-  for (let i = 0; i < 150; i++) {
-    const b = rng();
-    field.push({
-      x: Math.round(rng() * STAGE_W),
-      y: Math.round(rng() * STAGE_H),
-      size: b > 0.93 ? 2 : 1,
-      alpha: 0.08 + b * 0.22,
-      phase: rng(),
-      // cool only — the void stays cold (gold is Sol-only).
-      warm: rng() * 0.35,
-    });
-  }
-  paintGlow(ctx, field, sprites);
+  paintGlow(ctx, buildSolarFieldPoints(seed), sprites);
 };
 
 /** The faint tilted orbital ring ellipses, Sol-centred (ADR-0016 §2 — cool-grey, very low opacity). */

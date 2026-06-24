@@ -9,6 +9,7 @@ import {
   bloomPointsFor,
   buildGalaxyGeometry,
   buildPointGeometry,
+  buildSolarFieldPoints,
   buildSolarSystemScene,
   placementFor,
   solarPlacementFor,
@@ -420,6 +421,38 @@ describe("buildSolarSystemScene — the whole tier-3 scene (ADR-0016 §3)", () =
   it("is pure — same bodies yield byte-identical scene geometry", () => {
     expect(buildSolarSystemScene(solarSystemObjects())).toEqual(
       buildSolarSystemScene(solarSystemObjects()),
+    );
+  });
+});
+
+describe("buildSolarFieldPoints — the tier-3 quiet-void starfield (ADR-0016 §3)", () => {
+  it("scatters a faint, sparse cool field on the stage (not a dense stipple)", () => {
+    const field = buildSolarFieldPoints(7777);
+    expect(field).toHaveLength(150); // sparse — far below the disk deep field's 560
+    for (const p of field) {
+      expect(p.x).toBeGreaterThanOrEqual(0);
+      expect(p.x).toBeLessThanOrEqual(STAGE_W);
+      expect(p.y).toBeGreaterThanOrEqual(0);
+      expect(p.y).toBeLessThanOrEqual(STAGE_H);
+      // cool only — the void stays cold (gold is reserved for Sol).
+      expect(p.warm).toBeLessThanOrEqual(0.35);
+      // faint — every star sits well under a full glow.
+      expect(p.alpha).toBeLessThan(0.5);
+    }
+  });
+
+  it("is Math.round-quantized + deterministic (pure, SSR-safe)", () => {
+    const field = buildSolarFieldPoints(7777);
+    for (const p of field) {
+      expect(Number.isInteger(p.x)).toBe(true);
+      expect(Number.isInteger(p.y)).toBe(true);
+    }
+    expect(buildSolarFieldPoints(7777)).toEqual(buildSolarFieldPoints(7777));
+  });
+
+  it("varies with the seed (different seeds → different fields)", () => {
+    expect(buildSolarFieldPoints(7777)).not.toEqual(
+      buildSolarFieldPoints(1234),
     );
   });
 });
