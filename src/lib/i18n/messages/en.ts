@@ -120,6 +120,49 @@ export const en = {
       sublabel: "Andromeda satellite · 2.7 Mly",
       line: "a soft dwarf elliptical drifting beside Andromeda — a smudge beside a giant.",
     },
+    // The 8 real planets (ADR-0016 §5) — factual-warm, real worlds, NOT
+    // dedications ("her home" stays on Sol only). Lines verbatim from the imported
+    // design (docs/design/imports/solar-system-hd-2d.html).
+    mercury: {
+      name: "Mercury",
+      sublabel: "0.39 AU from the sun",
+      line: "the swift one — closest to the sun, a scorched world of bare iron and rock with no air to hold the heat. a whole year here lasts just 88 days.",
+    },
+    venus: {
+      name: "Venus",
+      sublabel: "0.72 AU from the sun",
+      line: "earth's twin in size, wrapped in unbroken cloud — and the hottest world of all, hot enough to melt lead under a sky that never once clears.",
+    },
+    earth: {
+      name: "Earth",
+      sublabel: "1 AU from the sun",
+      line: "the pale blue one — third out from the sun, the only world we know of that wakes up and looks back. every life that has ever happened, happened here.",
+    },
+    mars: {
+      name: "Mars",
+      sublabel: "1.52 AU from the sun",
+      line: "the rust-red desert — about half earth's size, holding the tallest volcano and the deepest canyon in the system. it once ran with rivers.",
+    },
+    jupiter: {
+      name: "Jupiter",
+      sublabel: "5.2 AU from the sun",
+      line: "the giant — 5.2 au out, and large enough to swallow some 1,300 earths. its great red storm has been turning for centuries.",
+    },
+    saturn: {
+      name: "Saturn",
+      sublabel: "9.5 AU from the sun",
+      line: "the ringed one — so light it would float on water; nine and a half au from the sun, circled by rings of ice (not drawn here).",
+    },
+    uranus: {
+      name: "Uranus",
+      sublabel: "19.2 AU from the sun",
+      line: "the tilted world — it rolls around the sun on its side, 19 au out, wrapped in a pale cyan haze among the coldest ever measured.",
+    },
+    neptune: {
+      name: "Neptune",
+      sublabel: "30 AU from the sun",
+      line: "the farthest — 30 au out in the deep dark, a deep-blue world swept by winds faster than any storm that has ever crossed the earth.",
+    },
   },
   // ASTRO's guided-journey narration (ADR-0010 §4) — HARDCODED, hand-curated (the
   // post-v1 ASTRO-AI swap-seam). Tour-guide voice, wistful, first-person.

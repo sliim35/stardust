@@ -165,28 +165,19 @@ export type BlackHole = {
   radius: number; // 0..1, the event-horizon glow scale
 };
 
-/** A solar system's central star — scenery, NOT a memory (the memory is a Memory Star). */
-export type Sun = {
-  seed: number;
-  color: string; // hex
-  radius: number; // 0..1
-};
-
-/** A tier-3 scenery leaf orbiting a sun. */
-export type PlanetNode = {
-  id: string;
-  seed: number;
-  color: string; // hex
-  orbit: number; // 0..1, distance from the sun
-  placement: Placement; // { tier:'solarSystem', parentId:<systemId>, r, angle }
-};
-
-/** A tier-3 container inside a galaxy (a sun + its planets). */
+/**
+ * A tier-3 container inside a galaxy (ADR-0016 §1) — the home Sol system. The
+ * procedural `Sun`/`PlanetNode` PRNG generator (ADR-0008) is **retired**: the
+ * Solar System is now a curated `RealObject[]` like every other Layer-A object
+ * (the ADR-0010 §2 PRNG→data flip, completed at the deepest tier). This node is
+ * the thin **adapter output container** (`buildSolarSystem` in `scenegraph.ts`,
+ * mirroring `realNeighbourNode`): `bodies` is the real Sol + 8 planets read from
+ * `realdata.ts`; the renderer paints them through the point/halo recipe.
+ */
 export type SolarSystemNode = {
   id: string;
   seed: number;
-  sun: Sun;
-  planets: PlanetNode[];
+  bodies: readonly RealObject[]; // the curated Sol + 8 planets (Layer A)
   placement: Placement; // { tier:'galaxy', parentId:<galaxyId>, r, angle }
 };
 
@@ -244,7 +235,15 @@ export type GalaxyStore = {
 // their own positions/colours/lore and never recolor or anchor a Memory Star.
 
 /** What sort of real object this is — drives which silhouette/feature the renderer draws. */
-export type RealKind = "galaxy" | "nebula" | "star" | "marker" | "armLabel";
+export type RealKind =
+  | "galaxy"
+  | "nebula"
+  | "star"
+  | "marker"
+  | "armLabel"
+  // The tier-3 Solar System (ADR-0016 §1): the 8 real planets are `planet`s —
+  // Layer-A scenery (lore card, never a memory). Sol stays a `star`.
+  | "planet";
 
 /** Real morphology (spec §5.1a) → which silhouette the renderer draws. */
 export type RealShape =
@@ -256,17 +255,22 @@ export type RealShape =
   | "dwarf-spheroidal"
   | "nebula"
   | "star"
-  | "marker";
+  | "marker"
+  // A `planet` is a single soft-glow lit sphere — a point object, NOT a disk
+  // (ADR-0016 §3). Routed to `buildPointGeometry` alongside `star`/`marker`,
+  // never to a galaxy disk recipe.
+  | "planet";
 
 /**
  * The *real* distance — the published heliocentric figure, rounded to display
  * precision (spec §5.1). Decoupled from `placement`: it powers the lore card + the
- * scale-net labels, not the render position. (No `AU` in v1 — the Solar-System tier
- * is deferred to #127; the unit union extends there.)
+ * scale-net labels, not the render position. `AU` (astronomical units) joins the
+ * unit union for the Solar-System tier (ADR-0016 §1/§2) — planet distances ride
+ * along in AU for the lore card + the AU-relabelled scale net.
  */
 export type RealDistance = {
   value: number;
-  unit: "ly" | "Mly";
+  unit: "ly" | "Mly" | "AU";
 };
 
 /**

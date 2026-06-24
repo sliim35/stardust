@@ -32,8 +32,24 @@ import type { LoreKey, RealObject, Tier } from "#/lib/galaxy/types";
 export const HOME_MILKY_WAY_ID = "home";
 /** Sol — "her home", the one descendable star inside the Milky Way. */
 export const SOL_ID = "sol";
+/**
+ * The tier-3 container `parentId` for the Solar-System floor (ADR-0016 §1) — the
+ * dive *target*, distinct from `SOL_ID` (the gateway *star* at the Milky-Way tier).
+ * Sol + the 8 planets carry `tier:'solarSystem', parentId: SOL_SYSTEM_ID`.
+ */
+export const SOL_SYSTEM_ID = "sol-system";
+/**
+ * Sol-at-the-tier-3-centre (ADR-0016 §2) — the white-hot bloom the dive floor is
+ * composed around. A SEPARATE `RealObject` from `SOL_ID` (the Milky-Way-tier
+ * gateway *marker* you click to dive): same star, two tiers, two ids (ids are
+ * the dataset's unique keys). It shares the `lore.sol` "her home" copy.
+ */
+export const SOL_SYSTEM_STAR_ID = "sol-star";
 /** Andromeda (M31) — the giant anchor that optionally carries M32 / M110. */
 export const ANDROMEDA_ID = "andromeda";
+
+/** Degrees → radians for the design's hand-authored scatter angles (authoring sugar). */
+const deg = (d: number): number => (d * Math.PI) / 180;
 
 /**
  * The whole curated dataset. Two tiers:
@@ -247,6 +263,142 @@ const REAL_OBJECTS_DATA = [
     color: "#9ec0e2",
     loreKey: "orion",
   },
+  // ── Solar-System tier (parentId = sol-system) — ADR-0016 §1/§2 ────────────────
+  // Sol + the 8 real planets, authored as curated `RealObject`s (NOT procedural —
+  // this completes the ADR-0010 §2 PRNG→data flip at the deepest tier). The ring
+  // ladder (`placement.r`/`.angle`), per-planet sizes/colours, and the real AU
+  // distances are the imported design's exact data (docs/design/imports/
+  // solar-system-hd-2d.html). Sol is the white-hot gold bloom at the centre; the
+  // planets are cool soft-glow lit spheres, sized loosely by real diameter
+  // (Jupiter biggest, Mercury smallest), all clearly ≪ Sol. Gold (#f5d6a0) is
+  // reserved for Sol; every planet is cool. None are gateways (no Earth tier —
+  // planets are the deepest objects).
+  {
+    id: SOL_SYSTEM_STAR_ID,
+    kind: "star",
+    name: "Sol",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 1, unit: "AU" }, // 1 AU = the Earth–Sun distance (the AU's definition)
+    placement: { r: 0, angle: 0 }, // dead-centre — projects to GALAXY_CENTER
+    shape: "star",
+    size: 1, // the hero — clearly the largest, warmest thing in the scene
+    brightness: 1,
+    color: "#f5d6a0", // GOLD — reserved for Sol + chrome only
+    loreKey: "sol",
+  },
+  {
+    id: "mercury",
+    kind: "planet",
+    name: "Mercury",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 0.39, unit: "AU" },
+    placement: { r: 0.24, angle: deg(202) },
+    shape: "planet",
+    size: 0.225, // smallest (design px 9 / 40)
+    brightness: 0.7,
+    color: "#b0c2bc", // cool grey
+    loreKey: "mercury",
+  },
+  {
+    id: "venus",
+    kind: "planet",
+    name: "Venus",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 0.72, unit: "AU" },
+    placement: { r: 0.343, angle: deg(338) },
+    shape: "planet",
+    size: 0.375, // design px 15 / 40
+    brightness: 0.78,
+    color: "#e8d8b8", // pale cream (cool of gold)
+    loreKey: "venus",
+  },
+  {
+    id: "earth",
+    kind: "planet",
+    name: "Earth",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 1, unit: "AU" },
+    placement: { r: 0.446, angle: deg(62) },
+    shape: "planet",
+    size: 0.4, // design px 16 / 40
+    brightness: 0.8,
+    color: "#9cc8e8", // pale blue
+    loreKey: "earth",
+  },
+  {
+    id: "mars",
+    kind: "planet",
+    name: "Mars",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 1.52, unit: "AU" },
+    placement: { r: 0.549, angle: deg(150) },
+    shape: "planet",
+    size: 0.3, // design px 12 / 40
+    brightness: 0.72,
+    color: "#d8a890", // muted rust (desaturated, cool of gold)
+    loreKey: "mars",
+  },
+  {
+    id: "jupiter",
+    kind: "planet",
+    name: "Jupiter",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 5.2, unit: "AU" },
+    placement: { r: 0.652, angle: deg(284) },
+    shape: "planet",
+    size: 0.8, // biggest planet (design px 32 / 40) — still well under Sol
+    brightness: 0.85,
+    color: "#cbb8a8", // soft tan
+    loreKey: "jupiter",
+  },
+  {
+    id: "saturn",
+    kind: "planet",
+    name: "Saturn",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 9.5, unit: "AU" },
+    placement: { r: 0.755, angle: deg(28) },
+    shape: "planet",
+    size: 0.625, // second-largest (design px 25 / 40); NO rings drawn (out of scope)
+    brightness: 0.8,
+    color: "#d8c89c", // pale straw
+    loreKey: "saturn",
+  },
+  {
+    id: "uranus",
+    kind: "planet",
+    name: "Uranus",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 19.2, unit: "AU" },
+    placement: { r: 0.858, angle: deg(112) },
+    shape: "planet",
+    size: 0.5, // design px 20 / 40
+    brightness: 0.76,
+    color: "#9cd8d0", // pale cyan
+    loreKey: "uranus",
+  },
+  {
+    id: "neptune",
+    kind: "planet",
+    name: "Neptune",
+    tier: "solarSystem",
+    parentId: SOL_SYSTEM_ID,
+    realDistance: { value: 30, unit: "AU" },
+    placement: { r: 0.961, angle: deg(216) },
+    shape: "planet",
+    size: 0.475, // design px 19 / 40
+    brightness: 0.74,
+    color: "#8aa0d8", // deep periwinkle (outermost, deepest blue)
+    loreKey: "neptune",
+  },
 ] as const satisfies readonly RealObject[];
 
 /**
@@ -284,3 +436,12 @@ export const realObjectsForView = (
   parentId?: string,
 ): readonly RealObject[] =>
   REAL_OBJECTS.filter((o) => o.tier === tier && o.parentId === parentId);
+
+/**
+ * The tier-3 Solar-System view (ADR-0016 §1/§6) — Sol + the 8 planets, the whole
+ * Layer-A object set the dive floor paints. A thin alias over `realObjectsForView`
+ * pinned to `(solarSystem, SOL_SYSTEM_ID)` so the renderer + the no-memory-stars
+ * structural test read the set through one named seam (mirrors `localGroupNeighbours`).
+ */
+export const solarSystemObjects = (): readonly RealObject[] =>
+  realObjectsForView("solarSystem", SOL_SYSTEM_ID);

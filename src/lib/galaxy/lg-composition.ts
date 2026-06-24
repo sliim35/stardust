@@ -263,11 +263,14 @@ const LABEL_EXTENT_FACTOR = {
   magellanic: CLUMPY_LABEL_EXTENT,
   irregular: CLUMPY_LABEL_EXTENT,
   "dwarf-spheroidal": CLUMPY_LABEL_EXTENT,
-  // Non-disk shapes never reach lgLabels in v1; the clumpy factor is the
-  // conservative default if one ever does.
+  // Non-disk shapes never reach lgLabels (they're tier-3 / interior point
+  // objects, not LG-tier galaxy disks); the clumpy factor is the conservative
+  // default if one ever does. `planet` (ADR-0016) is a tier-3 point object — it
+  // never reaches the LG label layer, but the exhaustive map must classify it.
   nebula: CLUMPY_LABEL_EXTENT,
   star: CLUMPY_LABEL_EXTENT,
   marker: CLUMPY_LABEL_EXTENT,
+  planet: CLUMPY_LABEL_EXTENT,
 } as const satisfies Record<RealShape, number>;
 
 const labelExtentY = (o: RealObject, place: DiskPlacement): number =>

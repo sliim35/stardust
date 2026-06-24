@@ -8,15 +8,26 @@ import {
   BLOOM_TUNING,
   bloomPointsFor,
   buildGalaxyGeometry,
+  buildPointGeometry,
+  buildSolarSystemScene,
   placementFor,
+  solarPlacementFor,
   tuningFor,
 } from "#/lib/galaxy/galaxy-render";
 import { LG_MW_PLACEMENT, lgGalaxies } from "#/lib/galaxy/lg-composition";
-import { GALAXY_R, polarToXY, STAGE_H, STAGE_W } from "#/lib/galaxy/place";
+import {
+  GALAXY_CENTER,
+  GALAXY_R,
+  polarToXY,
+  STAGE_H,
+  STAGE_W,
+} from "#/lib/galaxy/place";
 import {
   HOME_MILKY_WAY_ID,
   localGroupNeighbours,
   REAL_OBJECTS,
+  SOL_SYSTEM_STAR_ID,
+  solarSystemObjects,
 } from "#/lib/galaxy/realdata";
 import type { GalaxyBackdrop, RealObject } from "#/lib/galaxy/types";
 
@@ -243,5 +254,172 @@ describe("bloomPointsFor — LG hover bloom payload (#174)", () => {
     // The alpha multiply is clamped at 1 downstream, so a fully-bright point
     // can't push past the additive ceiling.
     expect(Math.min(1, 1 * BLOOM_TUNING.alphaScale)).toBeLessThanOrEqual(1);
+  });
+});
+
+// ── Tier-3 point/halo recipe (ADR-0016 §3, AC3) ────────────────────────────────
+const byPlanet = (id: string): RealObject => {
+  const o = solarSystemObjects().find((x) => x.id === id);
+  if (!o) throw new Error(`no solar-system object ${id}`);
+  return o;
+};
+
+describe("solarPlacementFor — a tier-3 body → its screen centre on the ring ladder", () => {
+  it("seats Sol at the stage centre (placement r:0 → GALAXY_CENTER)", () => {
+    const place = solarPlacementFor(byPlanet(SOL_SYSTEM_STAR_ID));
+    expect(place.cx).toBeCloseTo(GALAXY_CENTER.x, 6);
+    expect(place.cy).toBeCloseTo(GALAXY_CENTER.y, 6);
+  });
+
+  it("scales the body radius by its size, foreshortens y by the ecliptic tilt", () => {
+    const jupiter = solarPlacementFor(byPlanet("jupiter")); // size 0.8
+    const mercury = solarPlacementFor(byPlanet("mercury")); // size 0.225
+    expect(jupiter.r).toBeGreaterThan(mercury.r);
+    // tilt < 1 → the ring ellipses read foreshortened (seen from above).
+    expect(jupiter.tilt).toBeGreaterThan(0);
+    expect(jupiter.tilt).toBeLessThan(1);
+  });
+
+  it("places outer planets farther from Sol than inner ones (the monotone ladder)", () => {
+    const centre = GALAXY_CENTER;
+    const distOf = (id: string) => {
+      const p = solarPlacementFor(byPlanet(id));
+      return Math.hypot(p.cx - centre.x, p.cy - centre.y);
+    };
+    expect(distOf("neptune")).toBeGreaterThan(distOf("mercury"));
+    expect(distOf("jupiter")).toBeGreaterThan(distOf("earth"));
+  });
+
+  it("keeps every planet clear of Sol's centre and on the stage", () => {
+    for (const o of solarSystemObjects()) {
+      const p = solarPlacementFor(o);
+      expect(p.cx).toBeGreaterThanOrEqual(0);
+      expect(p.cx).toBeLessThanOrEqual(STAGE_W);
+      expect(p.cy).toBeGreaterThanOrEqual(0);
+      expect(p.cy).toBeLessThanOrEqual(STAGE_H);
+    }
+  });
+});
+
+describe("buildPointGeometry — soft-glow point/halo for star · planet · marker (ADR-0016 §3)", () => {
+  it("emits a soft-glow point cloud for a planet (a lit sphere, not a disk)", () => {
+    const earth = byPlanet("earth");
+    const g = buildPointGeometry(earth, solarPlacementFor(earth));
+    // Points live in arms+bulge (so the canvas paints them through the same
+    // back-to-front paintGlow path); no full-stage deep field per body.
+    expect(g.arms.length + g.bulge.length).toBeGreaterThan(0);
+    expect(g.bgStars.length).toBe(0);
+  });
+
+  it("clusters a planet's points tightly around its own centre (a point object, not a sprawling disk)", () => {
+    const mars = byPlanet("mars");
+    const place = solarPlacementFor(mars);
+    const g = buildPointGeometry(mars, place);
+    const pts = [...g.arms, ...g.bulge];
+    for (const p of pts) {
+      // every point sits within a small radius of the body centre — a planet is
+      // a compact sphere, never the GALAXY_R·size sprawl of a disk recipe.
+      expect(Math.hypot(p.x - place.cx, p.y - place.cy)).toBeLessThanOrEqual(
+        place.r + 8,
+      );
+    }
+  });
+
+  it("renders Sol denser + brighter than any planet (the white-hot hero bloom)", () => {
+    const sol = byPlanet(SOL_SYSTEM_STAR_ID);
+    const earth = byPlanet("earth");
+    const solG = buildPointGeometry(sol, solarPlacementFor(sol));
+    const earthG = buildPointGeometry(earth, solarPlacementFor(earth));
+    const count = (g: { arms: unknown[]; bulge: unknown[] }) =>
+      g.arms.length + g.bulge.length;
+    expect(count(solG)).toBeGreaterThan(count(earthG));
+    const maxAlpha = (g: {
+      arms: { alpha: number }[];
+      bulge: { alpha: number }[];
+    }) => Math.max(...[...g.arms, ...g.bulge].map((p) => p.alpha));
+    expect(maxAlpha(solG)).toBeGreaterThanOrEqual(maxAlpha(earthG));
+  });
+
+  it("sizes a bigger planet's sphere larger than a smaller one (size → reach)", () => {
+    const reach = (id: string) => {
+      const o = byPlanet(id);
+      const place = solarPlacementFor(o);
+      const g = buildPointGeometry(o, place);
+      return Math.max(
+        ...[...g.arms, ...g.bulge].map((p) =>
+          Math.hypot(p.x - place.cx, p.y - place.cy),
+        ),
+      );
+    };
+    expect(reach("jupiter")).toBeGreaterThan(reach("mercury"));
+  });
+
+  it("keeps every point on the stage (clamped + Math.round-quantized, SSR-safe)", () => {
+    for (const o of solarSystemObjects()) {
+      const g = buildPointGeometry(o, solarPlacementFor(o));
+      for (const p of [...g.arms, ...g.bulge]) {
+        expect(Number.isInteger(p.x)).toBe(true);
+        expect(Number.isInteger(p.y)).toBe(true);
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.x).toBeLessThanOrEqual(STAGE_W);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeLessThanOrEqual(STAGE_H);
+      }
+    }
+  });
+
+  it("is deterministic — same body yields byte-identical geometry (pure, hashStr-seeded)", () => {
+    const jupiter = byPlanet("jupiter");
+    const place = solarPlacementFor(jupiter);
+    expect(buildPointGeometry(jupiter, place)).toEqual(
+      buildPointGeometry(jupiter, place),
+    );
+  });
+
+  it("routes star/planet/marker through the point recipe — NOT a disk recipe", () => {
+    // A planet forced through this recipe must NOT match the clumpy/disk build:
+    // a disk recipe scatters hundreds of points across GALAXY_R·size (a fuzzy
+    // mini-galaxy); the point recipe keeps a compact sphere. The two diverge in
+    // both point budget and spread.
+    const earth = byPlanet("earth");
+    const place = solarPlacementFor(earth);
+    const point = buildPointGeometry(earth, place);
+    const asDisk = buildGalaxyGeometry({ ...earth, shape: "spiral" }, place);
+    expect(point.arms.length + point.bulge.length).not.toBe(
+      asDisk.arms.length + asDisk.bulge.length,
+    );
+  });
+});
+
+describe("buildSolarSystemScene — the whole tier-3 scene (ADR-0016 §3)", () => {
+  it("splits Sol (gold) from the 8 cool planets (palette), each with point geometry", () => {
+    const scene = buildSolarSystemScene(solarSystemObjects());
+    // Sol paints with the reserved gold sprite; the planets with the cool palette.
+    expect(scene.gold.length).toBeGreaterThan(0);
+    expect(scene.cool.length).toBeGreaterThan(0);
+    // 8 cool bodies (planets) + 1 gold body (Sol) = 9 placed bodies.
+    expect(scene.bodies).toHaveLength(9);
+    const goldIds = scene.bodies.filter((b) => b.gold).map((b) => b.object.id);
+    expect(goldIds).toEqual([SOL_SYSTEM_STAR_ID]);
+  });
+
+  it("draws 8 faint ring-ladder ellipses, Sol-centred, monotone outward, foreshortened", () => {
+    const scene = buildSolarSystemScene(solarSystemObjects());
+    expect(scene.rings).toHaveLength(8);
+    for (const ring of scene.rings) {
+      expect(ring.cx).toBeCloseTo(GALAXY_CENTER.x, 6);
+      expect(ring.cy).toBeCloseTo(GALAXY_CENTER.y, 6);
+      expect(ring.ry).toBeLessThan(ring.rx); // ecliptic foreshortening (tilt < 1)
+    }
+    // outer rings are larger than inner ones.
+    for (let i = 1; i < scene.rings.length; i++) {
+      expect(scene.rings[i].rx).toBeGreaterThan(scene.rings[i - 1].rx);
+    }
+  });
+
+  it("is pure — same bodies yield byte-identical scene geometry", () => {
+    expect(buildSolarSystemScene(solarSystemObjects())).toEqual(
+      buildSolarSystemScene(solarSystemObjects()),
+    );
   });
 });

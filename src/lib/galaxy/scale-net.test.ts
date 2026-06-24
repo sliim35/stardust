@@ -16,13 +16,19 @@ describe("ringsForTier — the tier-aware scale net model (spec §5.3)", () => {
     expect(rings.map(formatRingLabel)).toEqual(["10k ly", "50k ly", "100k ly"]);
   });
 
+  it("Solar-System tier labels the AU ladder: 1 AU · 5 AU · 30 AU (ADR-0016 §2)", () => {
+    const rings = ringsForTier("solarSystem");
+    expect(rings.map(formatRingLabel)).toEqual(["1 AU", "5 AU", "30 AU"]);
+  });
+
   it("returns three rings per built tier (the §5.3 table)", () => {
     expect(ringsForTier("localGroup")).toHaveLength(3);
     expect(ringsForTier("galaxy")).toHaveLength(3);
+    expect(ringsForTier("solarSystem")).toHaveLength(3);
   });
 
   it("radii are relative (0..1), strictly increasing outward", () => {
-    for (const tier of ["localGroup", "galaxy"] as const) {
+    for (const tier of ["localGroup", "galaxy", "solarSystem"] as const) {
       const radii = ringsForTier(tier).map((r) => r.radius);
       for (const r of radii) {
         expect(r).toBeGreaterThan(0);
@@ -36,16 +42,10 @@ describe("ringsForTier — the tier-aware scale net model (spec §5.3)", () => {
   });
 
   it("the outermost ring is the full radius (1) — the net's edge", () => {
-    for (const tier of ["localGroup", "galaxy"] as const) {
+    for (const tier of ["localGroup", "galaxy", "solarSystem"] as const) {
       const rings = ringsForTier(tier);
       expect(rings.at(-1)?.radius).toBe(1);
     }
-  });
-
-  it("Solar-System tier is deferred (#127) — returns no rings, no crash", () => {
-    // The tier exists in the union but is not built in v1; the net must degrade
-    // gracefully rather than throw (the visitor never reaches it).
-    expect(ringsForTier("solarSystem")).toEqual([]);
   });
 
   it("is a pure function — same tier yields equal label/distance data each call", () => {
@@ -76,6 +76,15 @@ describe("formatRingLabel — authored real-distance → display label", () => {
   it("keeps exactly the whole number when the value is round (no trailing .0)", () => {
     expect(formatRingLabel({ radius: 1, value: 100000, unit: "ly" })).toBe(
       "100k ly",
+    );
+  });
+
+  it("formats AU verbatim — no k collapse (ADR-0016 §2)", () => {
+    expect(formatRingLabel({ radius: 0.3, value: 1, unit: "AU" })).toBe("1 AU");
+    expect(formatRingLabel({ radius: 1, value: 30, unit: "AU" })).toBe("30 AU");
+    // Even a large AU value stays verbatim (AU magnitudes never reach the k rule).
+    expect(formatRingLabel({ radius: 1, value: 1000, unit: "AU" })).toBe(
+      "1000 AU",
     );
   });
 });
