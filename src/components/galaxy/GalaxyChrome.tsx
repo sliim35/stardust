@@ -17,6 +17,11 @@ const NAVIGABLE = new Set<Tier>(["localGroup", "galaxy"]);
  *  — never by a different size or case. */
 const BREADCRUMB_SEGMENT_BASE = "font-mono text-eyebrow uppercase";
 
+/** The visual-only `›` separator between crumbs — its own dim class string so
+ *  "segment" vs "separator" stay distinct concerns. Same font + size as a segment,
+ *  but no `uppercase` (a no-op on the glyph anyway); always dim, never a segment. */
+const BREADCRUMB_SEPARATOR = "font-mono text-eyebrow text-dim-3";
+
 /** The trail caps at 3 chunks (Miller's Law): Local Group › galaxy › Sol. No 4th
  *  tier exists, but slicing makes the cap a hard invariant — no 4th crumb can ever
  *  appear regardless of the tier source (#249 AC5). */
@@ -122,10 +127,7 @@ export const GalaxyChrome = ({
               {/* Separators are visual-only: dim, never part of a link, and
                   aria-hidden — the nav is real now, so AT must not read them. */}
               {i > 0 && (
-                <span
-                  aria-hidden="true"
-                  className={`${BREADCRUMB_SEGMENT_BASE} text-dim-3`}
-                >
+                <span aria-hidden="true" className={BREADCRUMB_SEPARATOR}>
                   {" › "}
                 </span>
               )}

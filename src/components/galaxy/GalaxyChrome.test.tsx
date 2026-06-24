@@ -283,13 +283,14 @@ describe("GalaxyChrome — breadcrumb redesign (#249, BR35/BR36)", () => {
   });
 
   // AC5 — the trail is capped at 3 segments; even a hypothetical 4-tier source
-  // can never render a 4th crumb.
-  it("AC5 — never renders more than 3 segments", () => {
+  // can never render a 4th crumb. `toBe(3)` (not `<= 3`) so a regression that
+  // DROPS the SOL crumb (rendering only 2) also fails the cap gate.
+  it("AC5 — renders exactly 3 segments at the deepest (home) trail", () => {
     // home is the deepest real trail (3 tiers); assert the hard cap holds.
     render(<GalaxyChrome count={3} tier="galaxy" galaxyId="home" />);
     const nav = navOf();
     const segments = nav.querySelectorAll("[data-breadcrumb-segment]");
-    expect(segments.length).toBeLessThanOrEqual(3);
+    expect(segments.length).toBe(3);
   });
 
   // AC6 — the <620px hide is preserved (Tailwind `max-[620px]:hidden` on the nav).
