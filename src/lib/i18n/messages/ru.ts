@@ -220,6 +220,10 @@ export const ru = {
   scaleNet: {
     label: "Шкала расстояний",
   },
+  // Подсказка о прокрутке/зуме (#251, BR38) — текст пассивного указателя.
+  zoomHint: {
+    label: "Прокрутите, чтобы исследовать",
+  },
   // English-only MVP (ADR-0013 §4); ru → #182. The values below intentionally
   // duplicate the English copy as a tracked placeholder to satisfy the
   // compile-enforced parity guard until the real ru translation lands in #182.

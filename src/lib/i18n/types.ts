@@ -190,6 +190,17 @@ export type Messages = {
     label: string;
   };
   /**
+   * The scroll/zoom discoverability hint (#251, BR38, ux: signifiers — Norman) —
+   * the ambient bottom-area cue that the galaxy is explorable by scrolling. `label`
+   * is the short copy ("Scroll to explore") shown beside the wheel glyph; it doubles
+   * as the region's accessible name. One string — the hint is a passive signifier,
+   * not an interactive control.
+   */
+  zoomHint: {
+    /** The hint's visible copy + accessible name ("Scroll to explore"). */
+    label: string;
+  };
+  /**
    * "Add your star" chat chrome (#183, ADR-0013 §3/§4) — the authored copy around
    * the AI mood→placement write path: the input affordance, the success
    * confirmation (flows through ASTRO's `narration` seam), and the `error.*`

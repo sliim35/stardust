@@ -94,4 +94,22 @@ describe("ChromeOverlay — wires the tier-aware scale net (#112)", () => {
     );
     expect(screen.getByText("narration line")).toBeTruthy();
   });
+
+  // #251 — the overlay mounts the scroll/zoom discoverability hint inside the
+  // pointer-events:none overlay, so it never blocks the canvas/chrome (AC1/AC5).
+  it("mounts the scroll-to-zoom hint with its localized copy (#251)", () => {
+    window.sessionStorage.clear();
+    render(
+      <ChromeOverlay
+        count={3}
+        palette="auroral"
+        onPaletteChange={noop}
+        tier="galaxy"
+      />,
+    );
+    expect(screen.getByText(en.zoomHint.label)).toBeTruthy();
+    expect(screen.getByTestId("zoom-hint").className).toContain(
+      "pointer-events-none",
+    );
+  });
 });

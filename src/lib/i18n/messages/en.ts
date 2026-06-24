@@ -223,6 +223,10 @@ export const en = {
   scaleNet: {
     label: "Distance scale",
   },
+  // Scroll/zoom discoverability hint (#251, BR38) — the ambient signifier copy.
+  zoomHint: {
+    label: "Scroll to explore",
+  },
   // "Add your star" chat chrome (#183, ADR-0013 §3/§4) — the write-path copy.
   chat: {
     open: "Add your star",

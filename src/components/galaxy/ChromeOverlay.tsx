@@ -4,6 +4,7 @@ import { Astro } from "./Astro";
 import { GalaxyChrome } from "./GalaxyChrome";
 import { PaletteSwitcher } from "./PaletteSwitcher";
 import { ScaleNet } from "./ScaleNet";
+import { ZoomHint } from "./ZoomHint";
 
 type Props = {
   count: number;
@@ -59,21 +60,29 @@ export const ChromeOverlay = ({
   onNarrationDismiss,
   onStarAdded,
   canAddStar = false,
-}: Props) => (
-  <div className="galaxy-chrome-overlay">
-    <GalaxyChrome
-      count={count}
-      tier={tier}
-      galaxyId={galaxyId}
-      onTierSelect={onTierSelect}
-    />
-    <Astro
-      narration={narration}
-      onNarrationDismiss={onNarrationDismiss}
-      onStarAdded={onStarAdded}
-      canAddStar={canAddStar}
-    />
-    <PaletteSwitcher value={palette} onChange={onPaletteChange} />
-    <ScaleNet tier={tier} label={getMessages(useLocale()).scaleNet.label} />
-  </div>
-);
+}: Props) => {
+  const m = getMessages(useLocale());
+  return (
+    <div className="galaxy-chrome-overlay">
+      <GalaxyChrome
+        count={count}
+        tier={tier}
+        galaxyId={galaxyId}
+        onTierSelect={onTierSelect}
+      />
+      <Astro
+        narration={narration}
+        onNarrationDismiss={onNarrationDismiss}
+        onStarAdded={onStarAdded}
+        canAddStar={canAddStar}
+      />
+      <PaletteSwitcher value={palette} onChange={onPaletteChange} />
+      <ScaleNet tier={tier} label={m.scaleNet.label} />
+      {/* The scroll/zoom discoverability hint (#251) — an ambient bottom-centre
+          signifier that lives in this pointer-events:none overlay (it never blocks
+          the canvas/chrome) and dismisses on the first zoom gesture or a short
+          dwell. It self-guards `sessionStorage` so it shows once per session. */}
+      <ZoomHint label={m.zoomHint.label} />
+    </div>
+  );
+};
