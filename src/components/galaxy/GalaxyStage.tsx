@@ -28,7 +28,11 @@ import {
 } from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
 import { DISK_TILT } from "#/lib/galaxy/place";
-import { HOME_MILKY_WAY_ID, REAL_OBJECTS } from "#/lib/galaxy/realdata";
+import {
+  HOME_MILKY_WAY_ID,
+  REAL_OBJECTS,
+  solarSystemObjects,
+} from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { createD1Store } from "#/lib/galaxy/store-d1";
@@ -316,6 +320,9 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // L3 memory layer (MW-interior content) hides below. Memoized so the canvas
   // only redraws when the displayed tier actually swaps.
   const lgView = displayedTier === "localGroup";
+  // The Solar-System tier (ADR-0016 §3): the deepest dive floor — Sol + the 8
+  // planets, the quiet void. Layer A only; the L3 memory layer hides (BR33, §6).
+  const solarView = displayedTier === "solarSystem";
   const neighbours = useMemo(
     () => (lgView ? lgGalaxies() : NO_NEIGHBOURS),
     [lgView],
@@ -323,6 +330,12 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   const goldDust = useMemo(
     () => (lgView ? lgGoldAccents() : NO_GOLD),
     [lgView],
+  );
+  // The tier-3 body set the backdrop paints (Sol + 8 planets); null off-tier so
+  // every other view keeps its disk render unchanged.
+  const solarSystem = useMemo(
+    () => (solarView ? solarSystemObjects() : null),
+    [solarView],
   );
   // The entered (tier-2) galaxy whose OWN morphology the backdrop must paint (#226):
   // a non-home neighbour at the galaxy tier; null at the LG overview or home MW (the
@@ -361,8 +374,8 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // star layer draws them — placed on-anchor at write/seed time). `constellation.ts`
   // owns the rules. Gated off the Local-Group view (I-2): L3 hides there.
   const figures = useMemo(
-    () => (lgView ? [] : figuresInSky(sky.stars, displayTilt)),
-    [lgView, sky.stars, displayTilt],
+    () => (lgView || solarView ? [] : figuresInSky(sky.stars, displayTilt)),
+    [lgView, solarView, sky.stars, displayTilt],
   );
   // The L4 foreground figure plane (#243): partition the sky once into the stars that
   // belong to a renderable figure (the members — promoted to L4 with their overlay) and
@@ -436,6 +449,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 neighbours={neighbours}
                 goldDust={goldDust}
                 highlight={lgHighlight}
+                solarSystem={solarSystem}
               />
               {/* Serif/mono galaxy titles ride the L2 plane so they track the
                   framing + parallax exactly like the disks they annotate.
@@ -460,7 +474,9 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 figure members + their overlay ride the L4 plane below (#243). */}
             <div
               className={`galaxy-l3-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
-                lgView ? "pointer-events-none invisible opacity-0" : ""
+                lgView || solarView
+                  ? "pointer-events-none invisible opacity-0"
+                  : ""
               }`}
               ref={cam.l3}
             >
@@ -551,7 +567,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           // star ignites via the store seam (the subscribe effect above) and ASTRO
           // speaks the confirmation in its own bubble.
           onStarAdded={(star) => store.addStar(star)}
-          canAddStar={!lgView}
+          canAddStar={!lgView && !solarView}
         />
         {/* Discovery search (#113) — a viewport-fixed chrome panel that finds a
             memory star by text/mood/colour and frames it via the focus-on-star
@@ -559,7 +575,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
             MW-interior content (the L3 layer hides on the Local-Group overview),
             so the index is meaningless there. Selecting a result eases the camera
             onto the star — the same primitive the deep-link path uses. */}
-        {!lgView && (
+        {!lgView && !solarView && (
           <SearchChromeMount
             stars={sky.stars}
             onSelect={(id) => focus.focusStar(id)}

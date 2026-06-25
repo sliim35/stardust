@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { HOME_MILKY_WAY_ID, localGroupNeighbours } from "#/lib/galaxy/realdata";
+import {
+  HOME_MILKY_WAY_ID,
+  localGroupNeighbours,
+  SOL_SYSTEM_ID,
+  SOL_SYSTEM_STAR_ID,
+} from "#/lib/galaxy/realdata";
 import {
   buildGalaxy,
   buildLocalGroup,
@@ -7,6 +12,7 @@ import {
   HOME_GALAXY_ID,
   homeGalaxyOf,
   realObjectsForView,
+  solarSystemObjects,
   starsForView,
 } from "#/lib/galaxy/scenegraph";
 import { buildSeedSky } from "#/lib/galaxy/seed";
@@ -190,6 +196,15 @@ describe("homeGalaxyOf (#126 — home is the Local Group's focused/home node)", 
 });
 
 describe("buildGalaxy", () => {
+  const homeNode = () =>
+    buildLocalGroup(UNIVERSE_SEED).galaxies.find(
+      (g) => g.id === HOME_GALAXY_ID,
+    );
+  const neighbourNode = () =>
+    buildLocalGroup(UNIVERSE_SEED).galaxies.find(
+      (g) => g.id !== HOME_GALAXY_ID,
+    );
+
   it("is deterministic for a given node (same node → identical galaxy)", () => {
     const node = buildLocalGroup(UNIVERSE_SEED).galaxies[0];
     expect(buildGalaxy(node)).toEqual(buildGalaxy(node));
@@ -200,59 +215,130 @@ describe("buildGalaxy", () => {
     expect(buildGalaxy(node)).toBe(buildGalaxy(node));
   });
 
-  it("derives a black-hole core and at least one solar system", () => {
+  it("derives a black-hole core for every galaxy", () => {
     const node = buildLocalGroup(UNIVERSE_SEED).galaxies[0];
-    const galaxy = buildGalaxy(node);
-    expect(galaxy.blackHole).toBeDefined();
-    expect(galaxy.solarSystems.length).toBeGreaterThan(0);
+    expect(buildGalaxy(node).blackHole).toBeDefined();
   });
 
-  it("gives each solar system a unique id and a polar placement parented to the galaxy", () => {
-    const node = buildLocalGroup(UNIVERSE_SEED).galaxies[0];
-    const galaxy = buildGalaxy(node);
-    const ids = galaxy.solarSystems.map((s) => s.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    for (const s of galaxy.solarSystems) {
-      expect(s.placement.tier).toBe("galaxy");
-      expect(s.placement.parentId).toBe(node.id);
-      expect(s.placement.r).toBeGreaterThanOrEqual(0);
-      expect(s.placement.r).toBeLessThanOrEqual(1);
+  it("seats EXACTLY the one real Sol system on the home Milky Way (ADR-0016 §1)", () => {
+    const home = homeNode();
+    expect(home).toBeDefined();
+    if (!home) return;
+    const galaxy = buildGalaxy(home);
+    expect(galaxy.solarSystems).toHaveLength(1);
+    const sys = galaxy.solarSystems[0];
+    expect(sys.id).toBe(SOL_SYSTEM_ID);
+    expect(sys.placement.tier).toBe("galaxy");
+    expect(sys.placement.parentId).toBe(home.id);
+  });
+
+  it("gives neighbour galaxies NO solar systems (asymmetric tiers — only home descends)", () => {
+    const neighbour = neighbourNode();
+    expect(neighbour).toBeDefined();
+    if (!neighbour) return;
+    expect(buildGalaxy(neighbour).solarSystems).toEqual([]);
+  });
+});
+
+describe("buildSolarSystem — the real-data adapter (ADR-0016 §1, AC5)", () => {
+  it("is pure + memoized — same call yields the identical container", () => {
+    expect(buildSolarSystem(HOME_GALAXY_ID)).toBe(
+      buildSolarSystem(HOME_GALAXY_ID),
+    );
+    expect(buildSolarSystem(HOME_GALAXY_ID)).toEqual(
+      buildSolarSystem(HOME_GALAXY_ID),
+    );
+  });
+
+  it("carries the real Sol + 8 planets as bodies (NOT procedural PRNG planets)", () => {
+    const sys = buildSolarSystem(HOME_GALAXY_ID);
+    expect(sys.id).toBe(SOL_SYSTEM_ID);
+    expect(sys.bodies).toEqual(solarSystemObjects());
+    expect(sys.bodies).toHaveLength(9); // Sol + 8 planets
+  });
+
+  it("its bodies are exactly the curated tier-3 set: Sol + the 8 planets", () => {
+    const ids = buildSolarSystem(HOME_GALAXY_ID).bodies.map((b) => b.id);
+    expect(ids.sort()).toEqual(
+      [
+        SOL_SYSTEM_STAR_ID,
+        "mercury",
+        "venus",
+        "earth",
+        "mars",
+        "jupiter",
+        "saturn",
+        "uranus",
+        "neptune",
+      ].sort(),
+    );
+  });
+
+  it("every body is a curated real object at the solarSystem tier (Layer A)", () => {
+    for (const b of buildSolarSystem(HOME_GALAXY_ID).bodies) {
+      expect(b.tier).toBe("solarSystem");
+      expect(b.parentId).toBe(SOL_SYSTEM_ID);
+      expect(b.color).toMatch(/^#[0-9a-f]{6}$/i);
     }
   });
 });
 
-describe("buildSolarSystem", () => {
-  it("is deterministic for a given node", () => {
-    const galaxyNode = buildLocalGroup(UNIVERSE_SEED).galaxies[0];
-    const sysNode = buildGalaxy(galaxyNode).solarSystems[0];
-    expect(buildSolarSystem(sysNode)).toEqual(buildSolarSystem(sysNode));
+// ── BR33/ADR-0016 §6 — NO Memory Stars at tier 3 (structural pin, AC7) ─────────
+describe("no memory stars at the Solar-System tier (BR33, ADR-0016 §6)", () => {
+  const star = (id: string, placement: Placement): MemoryStar => ({
+    id,
+    text: id,
+    mood: "wonder",
+    color: "#abcdef",
+    r: placement.r,
+    angle: placement.angle,
+    brightness: 0.7,
+    createdAt: 1,
+    placement,
   });
 
-  it("memoizes per node", () => {
-    const galaxyNode = buildLocalGroup(UNIVERSE_SEED).galaxies[0];
-    const sysNode = buildGalaxy(galaxyNode).solarSystems[0];
-    expect(buildSolarSystem(sysNode)).toBe(buildSolarSystem(sysNode));
+  it("starsForView(.., 'solarSystem', SOL_SYSTEM_ID) is empty for the whole seeded corpus", () => {
+    const seeded = buildSeedSky().stars;
+    expect(starsForView(seeded, "solarSystem", SOL_SYSTEM_ID)).toEqual([]);
+    // …and for the live home node (the only galaxy that descends to tier 3).
+    const home = homeGalaxyOf(buildLocalGroup(UNIVERSE_SEED));
+    expect(starsForView(home.stars, "solarSystem", SOL_SYSTEM_ID)).toEqual([]);
   });
 
-  it("derives a sun and at least one planet", () => {
-    const galaxyNode = buildLocalGroup(UNIVERSE_SEED).galaxies[0];
-    const sysNode = buildGalaxy(galaxyNode).solarSystems[0];
-    const sys = buildSolarSystem(sysNode);
-    expect(sys.sun).toBeDefined();
-    expect(sys.planets.length).toBeGreaterThan(0);
-  });
-
-  it("gives each planet a unique id, a color, and a polar placement parented to the system", () => {
-    const galaxyNode = buildLocalGroup(UNIVERSE_SEED).galaxies[0];
-    const sysNode = buildGalaxy(galaxyNode).solarSystems[0];
-    const planets = buildSolarSystem(sysNode).planets;
-    const ids = planets.map((p) => p.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    for (const p of planets) {
-      expect(p.color).toMatch(/^#[0-9a-f]{6}$/i);
-      expect(p.placement.tier).toBe("solarSystem");
-      expect(p.placement.parentId).toBe(sysNode.id);
+  it("the tier-3 object set is exactly Sol + 8 planets, all star|planet, none a gateway", () => {
+    const bodies = realObjectsForView("solarSystem", SOL_SYSTEM_ID);
+    expect(bodies).toHaveLength(9);
+    for (const b of bodies) {
+      expect(["star", "planet"]).toContain(b.kind);
+      // none descends further (no Earth tier — planets are the deepest objects).
+      expect(b.gateway).not.toBe(true);
     }
+  });
+
+  it("never adopts a stray tier-3 star even if one is authored (the filter is structural)", () => {
+    // A hypothetical mis-placed memory star at tier 3 must NOT leak into the
+    // no-memory view — the invariant is enforced by the filter, not by the data
+    // happening to be empty. starsForView keys on placement, so a tier-3 star
+    // would only ever match a tier-3 query (which the renderer never mounts).
+    const seeded = buildSeedSky().stars;
+    const strayId = "stray-tier3";
+    const withStray = [
+      ...seeded,
+      star(strayId, {
+        tier: "solarSystem",
+        parentId: SOL_SYSTEM_ID,
+        r: 0.5,
+        angle: 1,
+      }),
+    ];
+    // The galaxy-tier view (what tier 2 actually mounts) never picks it up…
+    expect(
+      starsForView(withStray, "galaxy", HOME_GALAXY_ID).some(
+        (s) => s.id === strayId,
+      ),
+    ).toBe(false);
+    // …and the seeded corpus authors NO tier-3 star in the first place.
+    expect(seeded.some((s) => s.placement?.tier === "solarSystem")).toBe(false);
   });
 });
 

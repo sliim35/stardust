@@ -50,10 +50,10 @@ describe("ScaleNet — the tier-aware bottom-left range rings (spec §5.3)", () 
     expect(container.querySelector('[role="button"]')).toBeNull();
   });
 
-  it("Solar-System tier (deferred #127) renders nothing — no crash", () => {
-    const { container } = render(
-      <ScaleNet tier="solarSystem" label={en.scaleNet.label} />,
-    );
-    expect(container.firstChild).toBeNull();
+  it("relabels to the AU ladder at the Solar-System tier: 1 AU · 5 AU · 30 AU (ADR-0016 §2)", () => {
+    render(<ScaleNet tier="solarSystem" label={en.scaleNet.label} />);
+    expect(screen.getByText("1 AU")).toBeTruthy();
+    expect(screen.getByText("5 AU")).toBeTruthy();
+    expect(screen.getByText("30 AU")).toBeTruthy();
   });
 });

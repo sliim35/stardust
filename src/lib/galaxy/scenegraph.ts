@@ -19,6 +19,9 @@ import {
   localGroupNeighbours,
   REAL_OBJECTS,
   realObjectsForView,
+  SOL_ID,
+  SOL_SYSTEM_ID,
+  solarSystemObjects,
 } from "#/lib/galaxy/realdata";
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import { buildSeedSky } from "#/lib/galaxy/seed";
@@ -26,10 +29,8 @@ import type {
   GalaxyNode,
   LocalGroup,
   MemoryStar,
-  PlanetNode,
   RealObject,
   SolarSystemNode,
-  Sun,
   Tier,
 } from "#/lib/galaxy/types";
 
@@ -40,31 +41,9 @@ import type {
  */
 export const HOME_GALAXY_ID = HOME_MILKY_WAY_ID;
 
-// The real-object selector is the data seam wave-2 rendering reads; re-export it
-// here so callers reach scenery (real + procedural) through one module (ADR-0010 §4).
-export { realObjectsForView };
-
-// Counts per tier are intentionally small + fixed (KISS); tune visually later (#112).
-// (The Local Group is no longer counted — it's the REAL set: home + 3 neighbours.)
-const SYSTEMS_PER_GALAXY = 5;
-const PLANETS_PER_SYSTEM = 4;
-
-// A palette of procedural scenery colors (planets / suns). Decorative, not mood-derived.
-const SCENERY_COLORS = [
-  "#9cc4e8",
-  "#e8b89c",
-  "#c0e8a8",
-  "#d8a8e8",
-  "#e8d49c",
-  "#a8e8d8",
-] as const;
-
-/** Pick a stable color for a seed (no PRNG state needed — one draw). */
-const colorFor = (seed: number): string =>
-  SCENERY_COLORS[
-    Math.floor(mulberry32(seed)() * SCENERY_COLORS.length) %
-      SCENERY_COLORS.length
-  ];
+// The real-object selectors are the data seam wave-2 rendering reads; re-export
+// them here so callers reach Layer-A scenery through one module (ADR-0010 §4).
+export { realObjectsForView, solarSystemObjects };
 
 /**
  * Default home-galaxy stars to `placement: { tier:'galaxy', parentId:'home', r, angle }`,
@@ -80,71 +59,52 @@ export const withHomePlacement = (star: MemoryStar): MemoryStar => ({
   },
 });
 
-// ── tier 3: solar system (sun + planets) ───────────────────────────────────────
+// ── tier 3: the Solar System (Sol + 8 real planets) ────────────────────────────
+// The procedural `Sun`/`PlanetNode` PRNG generator (ADR-0008) is RETIRED here:
+// tier 3 is now a curated `RealObject[]` read from `realdata.ts` (the ADR-0010 §2
+// PRNG→data flip, completed at the deepest tier — ADR-0016 §1). `buildSolarSystem`
+// is a thin adapter mirroring `realNeighbourNode`: the real Sol + planets fill the
+// node's `bodies`; the renderer paints them through the point/halo recipe. The home
+// Sol is the only built system in v1 (Sol carries `gateway:true`, ADR-0016 §4).
 const solarSystemCache = new Map<string, SolarSystemNode>();
 
-const planetsFor = (node: SolarSystemNode): PlanetNode[] => {
-  const out: PlanetNode[] = [];
-  for (let i = 0; i < PLANETS_PER_SYSTEM; i++) {
-    const id = `${node.id}-p${i}`;
-    const seed = hashStr(id);
-    const rng = mulberry32(seed);
-    out.push({
-      id,
-      seed,
-      color: colorFor(seed),
-      orbit: (i + 1) / (PLANETS_PER_SYSTEM + 1),
-      placement: {
-        tier: "solarSystem",
-        parentId: node.id,
-        r: 0.2 + rng() * 0.7,
-        angle: rng() * Math.PI * 2,
-      },
-    });
-  }
-  return out;
-};
-
-/** Derive a solar system's sun + planets from its node. Pure + memoized by node id. */
-export const buildSolarSystem = (node: SolarSystemNode): SolarSystemNode => {
-  const cached = solarSystemCache.get(node.id);
+/**
+ * Adapt the curated Solar System (`realdata.ts`) into the `SolarSystemNode`
+ * container the scene graph carries (ADR-0016 §1) — the real Sol + 8 planets as
+ * `bodies`. Pure + memoized by id. The galaxy id parents the system at the
+ * Milky-Way tier (where Sol the gateway marker lives); the tier-3 `bodies`
+ * themselves carry `tier:'solarSystem', parentId: SOL_SYSTEM_ID`.
+ */
+export const buildSolarSystem = (parentGalaxyId: string): SolarSystemNode => {
+  const cached = solarSystemCache.get(SOL_SYSTEM_ID);
   if (cached) return cached;
-  const sun: Sun = {
-    seed: node.seed,
-    color: colorFor(node.seed),
-    radius: 0.5 + mulberry32(node.seed ^ 0x51)() * 0.4,
+  // Seat the system container at the gateway Sol's Milky-Way-interior placement,
+  // so it sits where Sol reads on the disk (the dive target).
+  const solGateway = REAL_OBJECTS.find((o) => o.id === SOL_ID);
+  const built: SolarSystemNode = {
+    id: SOL_SYSTEM_ID,
+    seed: hashStr(SOL_SYSTEM_ID),
+    bodies: solarSystemObjects(),
+    placement: {
+      tier: "galaxy",
+      parentId: parentGalaxyId,
+      r: solGateway?.placement.r ?? 0.5,
+      angle: solGateway?.placement.angle ?? 0,
+    },
   };
-  const built: SolarSystemNode = { ...node, sun, planets: planetsFor(node) };
-  solarSystemCache.set(node.id, built);
+  solarSystemCache.set(SOL_SYSTEM_ID, built);
   return built;
 };
 
-// ── tier 2: galaxy (black hole + solar systems) ────────────────────────────────
+// ── tier 2: galaxy (black hole + the home Sol system) ──────────────────────────
 const galaxyCache = new Map<string, GalaxyNode>();
 
-const solarSystemsFor = (node: GalaxyNode): SolarSystemNode[] => {
-  const out: SolarSystemNode[] = [];
-  for (let i = 0; i < SYSTEMS_PER_GALAXY; i++) {
-    const id = `${node.id}-sys${i}`;
-    const seed = hashStr(id);
-    const rng = mulberry32(seed);
-    out.push({
-      id,
-      seed,
-      sun: { seed, color: colorFor(seed), radius: 0.5 },
-      planets: [],
-      placement: {
-        tier: "galaxy",
-        parentId: node.id,
-        r: 0.25 + rng() * 0.65,
-        angle: rng() * Math.PI * 2,
-      },
-    });
-  }
-  return out;
-};
-
-/** Derive a galaxy's black hole + solar systems from its node. Pure + memoized by id. */
+/**
+ * Derive a galaxy's black hole + its solar systems. The home Milky Way seats the
+ * one real Sol system (ADR-0016 §1); the procedural neighbour systems are retired
+ * with the PRNG generator (they were decorative + unwired — only the home Sol
+ * descends in v1). Pure + memoized by id.
+ */
 export const buildGalaxy = (node: GalaxyNode): GalaxyNode => {
   const cached = galaxyCache.get(node.id);
   if (cached) return cached;
@@ -154,7 +114,9 @@ export const buildGalaxy = (node: GalaxyNode): GalaxyNode => {
       seed: node.seed,
       radius: 0.4 + mulberry32(node.seed ^ 0xb0)() * 0.3,
     },
-    solarSystems: solarSystemsFor(node),
+    // Only the home Milky Way carries a built (real) Sol system; neighbours have
+    // none (no descent below the galaxy tier for them — asymmetric tiers, ADR-0008).
+    solarSystems: node.id === HOME_GALAXY_ID ? [buildSolarSystem(node.id)] : [],
   };
   galaxyCache.set(node.id, built);
   return built;

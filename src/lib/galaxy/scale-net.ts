@@ -35,11 +35,12 @@ export type Ring = RealDistance & {
 /**
  * The authored rings per tier (spec §5.3 table). Local Group = the LG range
  * centred on the Milky Way; Milky Way = the disk scale centred on Sol/galactic
- * centre. `ly` values ≥ 1000 collapse to a `k` magnitude in the label
- * (`200000 → "200k ly"`); the data stays in the base unit so the values are the
- * real light-year figures. Radii are spaced to roughly echo the §5.2
- * close-to-real layout (compressed on the LG tier where the range spans ~17×),
- * outermost pinned to 1. Solar System is omitted (deferred #127) → an empty net.
+ * centre; Solar System = the AU ladder centred on Sol (ADR-0016 §2). `ly` values
+ * ≥ 1000 collapse to a `k` magnitude in the label (`200000 → "200k ly"`); `Mly`
+ * and `AU` render verbatim (the data stays in the base unit, real figures). Radii
+ * are spaced to roughly echo the close-to-real layout (compressed on the LG tier
+ * where the range spans ~17×; the AU tier marks ~1 / ~5 / ~30 AU on the ring
+ * ladder), outermost pinned to 1.
  */
 const RINGS_BY_TIER = {
   localGroup: [
@@ -52,21 +53,31 @@ const RINGS_BY_TIER = {
     { radius: 0.66, value: 50000, unit: "ly" },
     { radius: 1, value: 100000, unit: "ly" },
   ],
+  // Solar System (ADR-0016 §2): three rings on the AU ladder — ~1 AU (Earth's
+  // orbit), ~5 AU (Jupiter), ~30 AU (Neptune). Radii map to the inner / mid /
+  // outer of the even ring ladder; AU carries the real semi-major axis the lore
+  // card + the relabelled net read. No `k` collapse for AU.
+  solarSystem: [
+    { radius: 0.45, value: 1, unit: "AU" },
+    { radius: 0.7, value: 5, unit: "AU" },
+    { radius: 1, value: 30, unit: "AU" },
+  ],
 } as const satisfies Partial<Record<Tier, readonly Ring[]>>;
 
 /**
- * The rings for a tier — relabels the net per the §5.3 table. Pure; the same
- * tier always yields equal data. Returns `[]` for the deferred Solar-System
- * tier (#127) so the net renders nothing instead of crashing.
+ * The rings for a tier — relabels the net per the §5.3 / ADR-0016 §2 table. Pure;
+ * the same tier always yields equal data. Returns `[]` for any tier with no
+ * authored ring set so the net renders nothing instead of crashing.
  */
 export const ringsForTier = (tier: Tier): readonly Ring[] =>
   RINGS_BY_TIER[tier as keyof typeof RINGS_BY_TIER] ?? [];
 
 /**
  * Format a ring's authored real distance into its display label, e.g.
- * `200k ly` · `1 Mly` · `2.5 Mly` · `10k ly`. `ly` values ≥ 1000 collapse to a
- * `k` magnitude (`10000 → "10k"`); `Mly` and sub-kilo values render verbatim.
- * Round values carry no trailing `.0`. The unit is appended with a space.
+ * `200k ly` · `1 Mly` · `2.5 Mly` · `10k ly` · `1 AU` · `30 AU`. `ly` values
+ * ≥ 1000 collapse to a `k` magnitude (`10000 → "10k"`); `Mly`, `AU`, and sub-kilo
+ * values render verbatim (no `k` collapse for AU — ADR-0016 §2). Round values
+ * carry no trailing `.0`. The unit is appended with a space.
  */
 export const formatRingLabel = (ring: Ring): string =>
   ring.unit === "ly" && ring.value >= 1000

@@ -7,7 +7,11 @@ import {
   REAL_OBJECTS,
   realObjectsForView,
   SOL_ID,
+  SOL_SYSTEM_ID,
+  SOL_SYSTEM_STAR_ID,
+  solarSystemObjects,
 } from "#/lib/galaxy/realdata";
+import type { RealDistance } from "#/lib/galaxy/types";
 import { en } from "#/lib/i18n/messages/en";
 import { ru } from "#/lib/i18n/messages/ru";
 
@@ -22,15 +26,22 @@ describe("REAL_OBJECTS — the curated real-astronomy dataset (ADR-0010 §4)", (
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("only ever uses the five allowed kinds", () => {
-    const kinds = new Set(["galaxy", "nebula", "star", "marker", "armLabel"]);
+  it("only ever uses the allowed kinds (incl. the tier-3 planet, ADR-0016)", () => {
+    const kinds = new Set([
+      "galaxy",
+      "nebula",
+      "star",
+      "marker",
+      "armLabel",
+      "planet",
+    ]);
     for (const o of REAL_OBJECTS) expect(kinds.has(o.kind)).toBe(true);
   });
 
   it("carries a realDistance with a value and a real unit on every object", () => {
     for (const o of REAL_OBJECTS) {
       expect(o.realDistance.value).toBeGreaterThan(0);
-      expect(["ly", "Mly"]).toContain(o.realDistance.unit);
+      expect(["ly", "Mly", "AU"]).toContain(o.realDistance.unit);
     }
   });
 
@@ -147,8 +158,9 @@ describe("the 3 Local-Group neighbours (spec §5.1)", () => {
   });
 
   it("orders placement.r by real distance (nearer reads smaller r)", () => {
-    // Compare in a common unit (ly): Mly = 1e6 ly.
-    const toLy = (d: { value: number; unit: "ly" | "Mly" }) =>
+    // Compare in a common unit (ly): Mly = 1e6 ly. (Neighbours are all ly/Mly;
+    // AU is the tier-3 planets, not in this localGroup-neighbour comparison.)
+    const toLy = (d: RealDistance) =>
       d.unit === "Mly" ? d.value * 1e6 : d.value;
     const neighbours = [...localGroupNeighbours()].sort(
       (a, b) => toLy(a.realDistance) - toLy(b.realDistance),
@@ -254,5 +266,126 @@ describe("realObjectsForView — the (tier, parentId) selector for wave-2 render
     const ids = realObjectsForView("localGroup").map((o) => o.id);
     expect(ids).not.toContain("m32");
     expect(ids).not.toContain("m110");
+  });
+});
+
+// ── The Solar-System tier (ADR-0016 §1/§2, BR32) ───────────────────────────────
+describe("the Solar System — Sol + 8 real planets as curated RealObjects", () => {
+  const PLANET_IDS = [
+    "mercury",
+    "venus",
+    "earth",
+    "mars",
+    "jupiter",
+    "saturn",
+    "uranus",
+    "neptune",
+  ] as const;
+
+  // The ADR-0016 §2 ring ladder, matching the imported design HTML:
+  // RNORM = [0.24, 0.343, 0.446, 0.549, 0.652, 0.755, 0.858, 0.961], angles
+  // are the design's degrees converted to radians (order 0..7).
+  const RNORM = [
+    0.24, 0.343, 0.446, 0.549, 0.652, 0.755, 0.858, 0.961,
+  ] as const;
+  const ANGLE_DEG = [202, 338, 62, 150, 284, 28, 112, 216] as const;
+
+  it("exports SOL_SYSTEM_ID + SOL_SYSTEM_STAR_ID distinct from SOL_ID (container · centre-star · MW gateway)", () => {
+    expect(SOL_SYSTEM_ID).toBe("sol-system");
+    expect(SOL_SYSTEM_STAR_ID).toBe("sol-star");
+    expect(SOL_SYSTEM_ID).not.toBe(SOL_ID);
+    expect(SOL_SYSTEM_STAR_ID).not.toBe(SOL_ID);
+    expect(SOL_SYSTEM_STAR_ID).not.toBe(SOL_SYSTEM_ID);
+  });
+
+  it("selects exactly 9 objects for the tier-3 view: Sol + 8 planets", () => {
+    const ids = solarSystemObjects().map((o) => o.id);
+    expect(ids.sort()).toEqual([SOL_SYSTEM_STAR_ID, ...PLANET_IDS].sort());
+    expect(solarSystemObjects()).toHaveLength(9);
+  });
+
+  it("routes the tier-3 view through realObjectsForView(solarSystem, SOL_SYSTEM_ID)", () => {
+    const ids = realObjectsForView("solarSystem", SOL_SYSTEM_ID).map(
+      (o) => o.id,
+    );
+    expect(ids.sort()).toEqual([SOL_SYSTEM_STAR_ID, ...PLANET_IDS].sort());
+  });
+
+  it("authors Sol at the tier-3 centre as a gold star (shape:'star'), NOT a planet", () => {
+    const sol = solarSystemObjects().find((o) => o.id === SOL_SYSTEM_STAR_ID);
+    expect(sol).toBeDefined();
+    expect(sol?.kind).toBe("star");
+    expect(sol?.shape).toBe("star");
+    expect(sol?.tier).toBe("solarSystem");
+    expect(sol?.parentId).toBe(SOL_SYSTEM_ID);
+    expect(sol?.placement).toEqual({ r: 0, angle: 0 }); // dead-centre
+    expect(sol?.color.toLowerCase()).toBe("#f5d6a0"); // reserved gold
+    // Sol is the tier-3 anchor — it is NOT a gateway (no Earth tier below it).
+    expect(sol?.gateway).toBeUndefined();
+  });
+
+  it("authors all 8 planets as kind:'planet' shape:'planet' at the tier-3 floor", () => {
+    const planets = solarSystemObjects().filter((o) => o.kind === "planet");
+    expect(planets).toHaveLength(8);
+    for (const p of planets) {
+      expect(p.shape).toBe("planet");
+      expect(p.tier).toBe("solarSystem");
+      expect(p.parentId).toBe(SOL_SYSTEM_ID);
+      // planets are the deepest objects — never gateways (no descent below).
+      expect(p.gateway).toBeUndefined();
+    }
+  });
+
+  it("places each planet on the ADR-0016 §2 ring ladder (Mercury→Neptune)", () => {
+    const byId = new Map(solarSystemObjects().map((o) => [o.id, o]));
+    PLANET_IDS.forEach((id, i) => {
+      const p = byId.get(id);
+      expect(p, id).toBeDefined();
+      expect(p?.placement.r).toBeCloseTo(RNORM[i], 6);
+      expect(p?.placement.angle).toBeCloseTo((ANGLE_DEG[i] * Math.PI) / 180, 6);
+    });
+  });
+
+  it("carries the real semi-major axis in AU on every planet (design data)", () => {
+    const byId = new Map(solarSystemObjects().map((o) => [o.id, o]));
+    const au: Record<(typeof PLANET_IDS)[number], number> = {
+      mercury: 0.39,
+      venus: 0.72,
+      earth: 1,
+      mars: 1.52,
+      jupiter: 5.2,
+      saturn: 9.5,
+      uranus: 19.2,
+      neptune: 30,
+    };
+    for (const id of PLANET_IDS) {
+      expect(byId.get(id)?.realDistance.unit).toBe("AU");
+      expect(byId.get(id)?.realDistance.value).toBeCloseTo(au[id], 6);
+    }
+  });
+
+  it("orders relative size so Jupiter is the biggest planet, Mercury the smallest, and all ≪ Sol", () => {
+    const byId = new Map(solarSystemObjects().map((o) => [o.id, o]));
+    const size = (id: string) => byId.get(id)?.size ?? 0;
+    expect(size("jupiter")).toBeGreaterThan(size("saturn"));
+    expect(size("saturn")).toBeGreaterThan(size("mercury"));
+    expect(size("mercury")).toBeLessThan(size("earth"));
+    // every planet is clearly smaller than Sol.
+    for (const id of PLANET_IDS) {
+      expect(size(id)).toBeLessThan(size(SOL_SYSTEM_STAR_ID));
+    }
+  });
+
+  it("keeps gold (#f5d6a0) reserved for Sol — every planet is cool", () => {
+    for (const p of solarSystemObjects().filter((o) => o.kind === "planet")) {
+      expect(p.color.toLowerCase()).not.toBe("#f5d6a0");
+    }
+  });
+
+  it("carries a per-planet loreKey that resolves in BOTH locales", () => {
+    for (const o of solarSystemObjects()) {
+      expect(en.lore[o.loreKey]).toBeDefined();
+      expect(ru.lore[o.loreKey]).toBeDefined();
+    }
   });
 });

@@ -119,6 +119,51 @@ export const ru = {
       sublabel: "спутник Андромеды · 2,7 млн св. лет",
       line: "мягкая карликовая эллиптическая галактика рядом с Андромедой — пятнышко возле гиганта.",
     },
+    // The 8 real planets (ADR-0016 §5, BR-i18n). Russian content is NOT authored
+    // for v1 (the dropped-ru decision) — these are STUBS: the `name` is the plain
+    // Russian planet name, `line` carries the English copy as a placeholder so the
+    // catalog stays parity-complete and nothing breaks. A future ru pass replaces
+    // the `line`/`sublabel`. "her home" framing is Sol-only; planets are factual.
+    mercury: {
+      name: "Меркурий",
+      sublabel: "0.39 AU from the sun",
+      line: "the swift one — closest to the sun, a scorched world of bare iron and rock with no air to hold the heat. a whole year here lasts just 88 days.",
+    },
+    venus: {
+      name: "Венера",
+      sublabel: "0.72 AU from the sun",
+      line: "earth's twin in size, wrapped in unbroken cloud — and the hottest world of all, hot enough to melt lead under a sky that never once clears.",
+    },
+    earth: {
+      name: "Земля",
+      sublabel: "1 AU from the sun",
+      line: "the pale blue one — third out from the sun, the only world we know of that wakes up and looks back. every life that has ever happened, happened here.",
+    },
+    mars: {
+      name: "Марс",
+      sublabel: "1.52 AU from the sun",
+      line: "the rust-red desert — about half earth's size, holding the tallest volcano and the deepest canyon in the system. it once ran with rivers.",
+    },
+    jupiter: {
+      name: "Юпитер",
+      sublabel: "5.2 AU from the sun",
+      line: "the giant — 5.2 au out, and large enough to swallow some 1,300 earths. its great red storm has been turning for centuries.",
+    },
+    saturn: {
+      name: "Сатурн",
+      sublabel: "9.5 AU from the sun",
+      line: "the ringed one — so light it would float on water; nine and a half au from the sun, circled by rings of ice (not drawn here).",
+    },
+    uranus: {
+      name: "Уран",
+      sublabel: "19.2 AU from the sun",
+      line: "the tilted world — it rolls around the sun on its side, 19 au out, wrapped in a pale cyan haze among the coldest ever measured.",
+    },
+    neptune: {
+      name: "Нептун",
+      sublabel: "30 AU from the sun",
+      line: "the farthest — 30 au out in the deep dark, a deep-blue world swept by winds faster than any storm that has ever crossed the earth.",
+    },
   },
   // ASTRO — повествование путешествия (#146), переведено по смыслу.
   astroNarration: {

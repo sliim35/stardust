@@ -93,6 +93,16 @@ export type Messages = {
     triangulum: LoreEntry;
     m32: LoreEntry;
     m110: LoreEntry;
+    // The 8 real planets (ADR-0016 §5, BR33/BR34) — factual-warm, real worlds,
+    // NOT dedications ("her home" is reserved for Sol). en authored; ru stubbed.
+    mercury: LoreEntry;
+    venus: LoreEntry;
+    earth: LoreEntry;
+    mars: LoreEntry;
+    jupiter: LoreEntry;
+    saturn: LoreEntry;
+    uranus: LoreEntry;
+    neptune: LoreEntry;
   };
   /**
    * ASTRO's guided-journey narration (ADR-0010 §4, interaction spec §1). HARDCODED,

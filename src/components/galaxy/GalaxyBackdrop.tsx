@@ -11,7 +11,10 @@ import {
   bloomPointsFor,
   buildEnteredGalaxyGeometry,
   buildGalaxyGeometry,
+  buildSolarFieldPoints,
+  buildSolarSystemScene,
   type PlacedGalaxy,
+  type SolarRing,
 } from "#/lib/galaxy/galaxy-render";
 import { LG_GOLD } from "#/lib/galaxy/lg-composition";
 import {
@@ -155,6 +158,64 @@ const drawBase = (
   paintGlow(ctx, goldDust, [goldSprite, goldSprite, goldSprite]);
 };
 
+/** The brighter points → twinkle entries (seeded speed). Shared by the disk + tier-3 live overlays. */
+const toTwinklers = (
+  points: readonly BackdropPoint[],
+): readonly (BackdropPoint & { speed: number })[] =>
+  points
+    .filter((s) => s.alpha > 0.5)
+    .map((s) => ({ ...s, speed: 0.6 + s.phase * 1.6 }));
+
+/** Paint the tier-3 quiet-void starfield — the points come from `buildSolarFieldPoints` (lib render math). */
+const paintSolarField = (
+  ctx: CanvasRenderingContext2D,
+  seed: number,
+  sprites: Sprites,
+): void => {
+  paintGlow(ctx, buildSolarFieldPoints(seed), sprites);
+};
+
+/** The faint tilted orbital ring ellipses, Sol-centred (ADR-0016 §2 — cool-grey, very low opacity). */
+const paintSolarRings = (
+  ctx: CanvasRenderingContext2D,
+  rings: readonly SolarRing[],
+): void => {
+  ctx.save();
+  ctx.lineWidth = 1;
+  for (const ring of rings) {
+    ctx.beginPath();
+    ctx.ellipse(ring.cx, ring.cy, ring.rx, ring.ry, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(150, 166, 200, ${ring.alpha})`;
+    ctx.stroke();
+  }
+  ctx.restore();
+};
+
+/**
+ * The tier-3 Solar-System scene (ADR-0016 §3, the imported design): a quiet void
+ * — a faint cool starfield + the faint tilted ring ladder — with Sol's white-hot
+ * gold bloom at the centre and the 8 cool planet spheres on the ladder. Planets
+ * paint with the theme palette sprites (cool); Sol paints with the reserved gold
+ * sprite (never theme-tinted, like `goldDust`). No galaxy disks, no deep-field
+ * stipple — the emptiness is the mood.
+ */
+const drawSolarSystem = (
+  ctx: CanvasRenderingContext2D,
+  bodies: readonly RealObject[],
+  seed: number,
+  sprites: Sprites,
+  goldSprite: HTMLCanvasElement,
+): readonly BackdropPoint[] => {
+  ctx.clearRect(0, 0, STAGE_W, STAGE_H);
+  const scene = buildSolarSystemScene(bodies);
+  paintSolarField(ctx, seed, sprites);
+  paintSolarRings(ctx, scene.rings);
+  paintGlow(ctx, scene.cool, sprites);
+  paintGlow(ctx, scene.gold, [goldSprite, goldSprite, goldSprite]);
+  // The brighter points (Sol's core + the lit planet limbs) drive the live twinkle.
+  return [...scene.gold, ...scene.cool].filter((p) => p.alpha > 0.5);
+};
+
 export const GalaxyBackdrop = ({
   backdrop,
   homePlacement = MW_PLACEMENT,
@@ -162,6 +223,7 @@ export const GalaxyBackdrop = ({
   neighbours = [],
   goldDust = [],
   highlight = null,
+  solarSystem = null,
 }: {
   backdrop: Backdrop;
   /**
@@ -194,6 +256,13 @@ export const GalaxyBackdrop = ({
    * nothing strands across the descend.
    */
   highlight?: string | null;
+  /**
+   * The tier-3 Solar-System bodies (ADR-0016 §3): Sol + the 8 planets, read from
+   * `realdata.ts` via `solarSystemObjects()`. When set, the base canvas paints the
+   * quiet void + the point/halo scene instead of the galaxy disk(s); `null` (every
+   * other tier) keeps the disk render unchanged.
+   */
+  solarSystem?: readonly RealObject[] | null;
 }) => {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const liveRef = useRef<HTMLCanvasElement | null>(null);
@@ -220,6 +289,44 @@ export const GalaxyBackdrop = ({
       makeGlowSprite(p.starWarm),
       makeGlowSprite(p.starHot),
     ];
+    const goldSprite = makeGlowSprite(LG_GOLD);
+
+    // The tier-3 Solar System (ADR-0016 §3): paint the quiet void + Sol's bloom +
+    // the 8 planet spheres instead of the galaxy disk(s). The brighter points feed
+    // the same twinkle overlay; no galaxy disk / neighbour / deep-field draw.
+    if (solarSystem) {
+      const bright = drawSolarSystem(
+        bctx,
+        solarSystem,
+        backdrop.seed,
+        sprites,
+        goldSprite,
+      );
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      if (reduceMotion) return;
+      const solTwinklers = toTwinklers(bright);
+      const hotS = sprites[2];
+      let rafS = 0;
+      const drawS = (ms: number): void => {
+        const t = ms * 0.001;
+        lctx.clearRect(0, 0, STAGE_W, STAGE_H);
+        lctx.globalCompositeOperation = "lighter";
+        for (const s of solTwinklers) {
+          const tw = 0.5 + 0.5 * Math.sin(t * s.speed + s.phase * 6.283);
+          const d = s.size === 2 ? 6.5 : 4.5;
+          lctx.globalAlpha = s.alpha * tw * 0.5;
+          lctx.drawImage(hotS, s.x - d / 2, s.y - d / 2, d, d);
+        }
+        lctx.globalAlpha = 1;
+        lctx.globalCompositeOperation = "source-over";
+        rafS = requestAnimationFrame(drawS);
+      };
+      rafS = requestAnimationFrame(drawS);
+      return () => cancelAnimationFrame(rafS);
+    }
+
     // #226: an entered neighbour paints ITS own shape-dispatched disk + deep field;
     // the home Milky Way keeps the untouched grand-spiral path (AC1 byte-identical).
     const geom = enteredObject
@@ -228,14 +335,7 @@ export const GalaxyBackdrop = ({
     const neighbourGeoms = neighbours.map(({ object, place }) =>
       buildGalaxyGeometry(object, place),
     );
-    drawBase(
-      bctx,
-      geom,
-      neighbourGeoms,
-      goldDust,
-      sprites,
-      makeGlowSprite(LG_GOLD),
-    );
+    drawBase(bctx, geom, neighbourGeoms, goldDust, sprites, goldSprite);
 
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -243,9 +343,7 @@ export const GalaxyBackdrop = ({
     if (reduce) return;
 
     // Twinkle the brighter arm/bulge points; speed reuses the seeded phase.
-    const twinklers = [...geom.arms, ...geom.bulge]
-      .filter((s) => s.alpha > 0.5)
-      .map((s) => ({ ...s, speed: 0.6 + s.phase * 1.6 }));
+    const twinklers = toTwinklers([...geom.arms, ...geom.bulge]);
 
     // Multi-directional, full-field streaks (story #55, spike #54): origin edge,
     // slope sign, and y0 all varied per shooter; geometry lives in the pure,
@@ -289,7 +387,14 @@ export const GalaxyBackdrop = ({
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [backdrop, homePlacement, enteredObject, neighbours, goldDust]);
+  }, [
+    backdrop,
+    homePlacement,
+    enteredObject,
+    neighbours,
+    goldDust,
+    solarSystem,
+  ]);
 
   // The hover bloom (#174) in its OWN effect — deliberately NOT keyed on the base
   // deps, so a hover never repaints the base scene (AC6). It rebuilds just the one

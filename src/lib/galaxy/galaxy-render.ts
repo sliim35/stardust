@@ -29,10 +29,17 @@ import {
   MW_PLACEMENT,
   pointAt,
 } from "#/lib/galaxy/backdrop";
-import { DISK_TILT, GALAXY_R, polarToXY } from "#/lib/galaxy/place";
+import {
+  DISK_TILT,
+  GALAXY_CENTER,
+  GALAXY_R,
+  polarToXY,
+  STAGE_H,
+  STAGE_W,
+} from "#/lib/galaxy/place";
 import { HOME_MILKY_WAY_ID, REAL_OBJECTS } from "#/lib/galaxy/realdata";
-import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
-import type { GalaxyBackdrop, RealObject } from "#/lib/galaxy/types";
+import { clamp, hashStr, mulberry32 } from "#/lib/galaxy/rng";
+import type { GalaxyBackdrop, RealObject, RealShape } from "#/lib/galaxy/types";
 
 const TAU = Math.PI * 2;
 
@@ -407,6 +414,324 @@ const buildBarredIrregularGeometry = (
   return { bgStars: [], arms, bulge };
 };
 
+// ── Tier-3 Solar System: soft-glow point/halo recipe (ADR-0016 §3) ─────────────
+// A planet (and Sol) is a single soft-glow POINT object — NOT a disk. ADR-0011's
+// disk recipes scatter hundreds of points across `GALAXY_R·size` (a fuzzy
+// mini-galaxy); a point object needs its OWN compact recipe on the same seam, so
+// `star`/`planet`/`marker` route here instead of falling through to a disk recipe.
+// Same `paintGlow` (`lighter`) + `paletteFor` family — one coherent cosmos.
+
+/** The tier-3 ring radius at normalised r=1 — the design's `RX` (a touch over `GALAXY_R` so the outer ring fills the void). */
+const SOLAR_RX = 440;
+/** The tier-3 ecliptic foreshortening — the design's `TILT` (rings seen slightly from above). */
+const SOLAR_TILT = 0.58;
+/** Body silhouette radius (stage px) per unit `size` — Jupiter (size 0.8) reads clearly bigger than Mercury (0.225), all ≪ Sol. */
+const SOLAR_BODY_PX = 18;
+/** Sol's bloom radius (stage px) — the white-hot hero, wider than any planet sphere. */
+const SOLAR_SUN_PX = 64;
+
+/**
+ * A tier-3 body (Sol or a planet, `realdata.ts`) → its screen `DiskPlacement` on
+ * the ring ladder (ADR-0016 §2). Sol sits dead-centre (`placement.r:0` →
+ * `GALAXY_CENTER`); planets sit on `RNORM[i]·SOLAR_RX` with the ecliptic
+ * foreshortening — the same world-centre + tilt convention the MW uses (so the
+ * dive lands cleanly). `r` is the body's own silhouette radius (sized by `size`),
+ * NOT the orbital radius — it's how big the soft-glow sphere is painted.
+ */
+export const solarPlacementFor = (o: RealObject): DiskPlacement => {
+  const a = o.placement.angle;
+  const rr = o.placement.r * SOLAR_RX;
+  return {
+    cx: GALAXY_CENTER.x + Math.cos(a) * rr,
+    cy: GALAXY_CENTER.y + Math.sin(a) * rr * SOLAR_TILT,
+    r: (o.shape === "star" ? SOLAR_SUN_PX : SOLAR_BODY_PX) * o.size,
+    tilt: SOLAR_TILT,
+    pa: 0,
+  };
+};
+
+/** Project a body-local cartesian offset (px) onto a stage-clamped, Math.round-quantized `BackdropPoint`. */
+const bodyPoint = (
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+  rng: () => number,
+  alpha: number,
+  warm: number,
+  bigChance: number,
+): BackdropPoint => ({
+  x: clamp(Math.round(cx + dx), 0, STAGE_W),
+  y: clamp(Math.round(cy + dy), 0, STAGE_H),
+  size: rng() < bigChance ? 2 : 1,
+  alpha,
+  phase: rng(),
+  warm,
+});
+
+/**
+ * A planet as a soft-glow LIT SPHERE (ADR-0016 §3 / the design's per-frame sphere
+ * shading): a compact filled disk of points whose brightness is biased toward the
+ * Sol-facing limb — additive `paintGlow` then reads it as a lit sphere, shaded
+ * toward the warm light at the centre, cool of Sol. Distinguishable by size +
+ * colour only; no texture, no rings, no pixels. `warm` is low (the canvas tints it
+ * to the cool palette); the lit limb is the brightest band.
+ */
+const buildPlanetGeometry = (
+  o: RealObject,
+  place: DiskPlacement,
+): BackdropGeometry => {
+  const rng = mulberry32(hashStr(o.id));
+  const R = place.r;
+  // Unit vector from the planet toward Sol (the system centre) = the lit direction.
+  let lx = GALAXY_CENTER.x - place.cx;
+  let ly = GALAXY_CENTER.y - place.cy;
+  const d = Math.hypot(lx, ly) || 1;
+  lx /= d;
+  ly /= d;
+  // Point budget scales with the silhouette so a bigger sphere stays smooth.
+  const count = Math.round(70 + R * 7);
+  const arms: BackdropPoint[] = [];
+  for (let i = 0; i < count; i++) {
+    // Centre-biased fill (sqrt) → a solid sphere, denser at the core.
+    const rr = Math.sqrt(rng()) * R;
+    const theta = rng() * TAU;
+    const dx = Math.cos(theta) * rr;
+    const dy = Math.sin(theta) * rr;
+    // How far this point sits toward the lit limb (−1 dark side → +1 lit side).
+    const lit = R > 0 ? (dx * lx + dy * ly) / R : 0;
+    // Lit hemisphere bright, terminator soft, dark side dim — the sphere read.
+    const shade = 0.32 + 0.68 * Math.max(0, lit * 0.5 + 0.5);
+    arms.push(
+      bodyPoint(
+        place.cx,
+        place.cy,
+        dx,
+        dy,
+        rng,
+        (0.34 + rng() * 0.3) * shade * o.brightness,
+        0.2 + rng() * 0.3,
+        0.08,
+      ),
+    );
+  }
+  // A faint atmosphere halo — a thin ring just past the limb (the design's
+  // drop-shadow glow), so the sphere has a soft edge rather than a hard cutoff.
+  const bulge: BackdropPoint[] = [];
+  const haloCount = Math.round(18 + R * 2);
+  for (let i = 0; i < haloCount; i++) {
+    const theta = rng() * TAU;
+    const rr = R * (0.9 + rng() * 0.5);
+    bulge.push(
+      bodyPoint(
+        place.cx,
+        place.cy,
+        Math.cos(theta) * rr,
+        Math.sin(theta) * rr,
+        rng,
+        (0.12 + rng() * 0.12) * o.brightness,
+        0.25,
+        0.04,
+      ),
+    );
+  }
+  return { bgStars: [], arms, bulge };
+};
+
+/**
+ * Sol — the white-hot hero bloom (ADR-0016 §3 / the design's HD sun): a small dense
+ * cluster of hot points at the centre (the photosphere + bright core) inside a wide
+ * warm-gold halo. Brighter + denser than any planet; painted with the reserved gold
+ * sprite (the caller routes a `star` body to the gold sprite so it never theme-tints,
+ * like `lgGoldAccents`). `warm:1` everywhere → the hot/gold bucket.
+ */
+const buildSunGeometry = (
+  o: RealObject,
+  place: DiskPlacement,
+): BackdropGeometry => {
+  const rng = mulberry32(hashStr(o.id));
+  const R = place.r;
+  // The hot photosphere core — a dense, bright, centre-biased disk.
+  const core = Math.round(R * 0.45);
+  const arms: BackdropPoint[] = [];
+  const coreCount = 220;
+  for (let i = 0; i < coreCount; i++) {
+    const rr = rng() ** 1.4 * core;
+    const theta = rng() * TAU;
+    arms.push(
+      bodyPoint(
+        place.cx,
+        place.cy,
+        Math.cos(theta) * rr,
+        Math.sin(theta) * rr,
+        rng,
+        0.7 + rng() * 0.3,
+        1,
+        0.5,
+      ),
+    );
+  }
+  // The wide warm corona halo — fainter points spread to the full bloom radius.
+  const bulge: BackdropPoint[] = [];
+  const halo = 320;
+  for (let i = 0; i < halo; i++) {
+    const rr = (0.45 + rng() ** 0.6 * 0.55) * R;
+    const theta = rng() * TAU;
+    bulge.push(
+      bodyPoint(
+        place.cx,
+        place.cy,
+        Math.cos(theta) * rr,
+        Math.sin(theta) * rr,
+        rng,
+        0.16 + rng() * 0.28 * (1 - rr / R),
+        1,
+        0.2,
+      ),
+    );
+  }
+  return { bgStars: [], arms, bulge };
+};
+
+/** A bare point marker (Sgr A* / Orion-Arm label dots) — a single soft point + a tiny halo. */
+const buildMarkerGeometry = (
+  o: RealObject,
+  place: DiskPlacement,
+): BackdropGeometry => {
+  const rng = mulberry32(hashStr(o.id));
+  const R = Math.max(4, place.r);
+  const arms: BackdropPoint[] = [];
+  for (let i = 0; i < 24; i++) {
+    const rr = Math.sqrt(rng()) * R * 0.5;
+    const theta = rng() * TAU;
+    arms.push(
+      bodyPoint(
+        place.cx,
+        place.cy,
+        Math.cos(theta) * rr,
+        Math.sin(theta) * rr,
+        rng,
+        (0.4 + rng() * 0.4) * o.brightness,
+        0.3 + rng() * 0.4,
+        0.1,
+      ),
+    );
+  }
+  return { bgStars: [], arms, bulge: [] };
+};
+
+/**
+ * The point/halo recipe for a point object (`shape: 'star' | 'planet' | 'marker'`,
+ * ADR-0016 §3) — Sol's hero bloom, a planet's lit sphere, or a bare marker, each a
+ * compact soft-glow cloud (NOT a disk). Pure + SSR-safe (`hashStr(o.id)` seed,
+ * `Math.round`-quantized). The caller paints `star` with the reserved gold sprite.
+ */
+export const buildPointGeometry = (
+  o: RealObject,
+  place: DiskPlacement = solarPlacementFor(o),
+): BackdropGeometry => {
+  switch (o.shape) {
+    case "star":
+      return buildSunGeometry(o, place);
+    case "planet":
+      return buildPlanetGeometry(o, place);
+    default:
+      return buildMarkerGeometry(o, place);
+  }
+};
+
+/** One placed tier-3 body: the object, its point geometry, and whether it paints with the reserved gold sprite (Sol) vs the cool palette (planets). */
+export type PlacedBody = {
+  object: RealObject;
+  geometry: BackdropGeometry;
+  gold: boolean;
+};
+
+/** A faint tilted orbital ring ellipse, Sol-centred (ADR-0016 §2): `rx`/`ry` are the foreshortened semi-axes. */
+export type SolarRing = {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  alpha: number;
+};
+
+/**
+ * The whole tier-3 scene (ADR-0016 §2/§3, the imported design) as pure data the
+ * `GalaxyBackdrop` paints: the 8 faint ecliptic ring ellipses, plus each body's
+ * point/halo geometry split by sprite — Sol (`shape:'star'`) on the reserved gold
+ * sprite (never theme-tinted, like `lgGoldAccents`), the planets on the cool
+ * palette. The component stays a thin painter; this owns the composition.
+ */
+export const buildSolarSystemScene = (
+  bodies: readonly RealObject[],
+): {
+  bodies: readonly PlacedBody[];
+  gold: readonly BackdropPoint[];
+  cool: readonly BackdropPoint[];
+  rings: readonly SolarRing[];
+} => {
+  const placed: PlacedBody[] = bodies.map((object) => {
+    const place = solarPlacementFor(object);
+    return {
+      object,
+      geometry: buildPointGeometry(object, place),
+      gold: object.shape === "star",
+    };
+  });
+  const gold: BackdropPoint[] = [];
+  const cool: BackdropPoint[] = [];
+  for (const b of placed) {
+    const sink = b.gold ? gold : cool;
+    sink.push(...b.geometry.arms, ...b.geometry.bulge);
+  }
+  // The faint ring ladder — the planets' orbital radii (`placement.r`), drawn as
+  // foreshortened ellipses around Sol; outer rings a touch fainter (the design).
+  const planetR = bodies
+    .filter((o) => o.shape === "planet")
+    .map((o) => o.placement.r)
+    .sort((a, b) => a - b);
+  const rings: SolarRing[] = planetR.map((r, i) => ({
+    cx: GALAXY_CENTER.x,
+    cy: GALAXY_CENTER.y,
+    rx: r * SOLAR_RX,
+    ry: r * SOLAR_RX * SOLAR_TILT,
+    alpha: Math.max(0.07, 0.13 - i * 0.006),
+  }));
+  return { bodies: placed, gold, cool, rings };
+};
+
+/** How many faint background stars dust the tier-3 void (the design's quiet field). */
+const SOLAR_FIELD_COUNT = 150;
+/** The xor fold that derives the tier-3 field's rng stream from a seed (independent from the bodies' streams). */
+const SOLAR_FIELD_XOR = 0x517cc1b7;
+
+/**
+ * The tier-3 quiet-void starfield (ADR-0016 §3, the design's sparse cool field) —
+ * a faint, sparse scatter of cool background stars for depth, NOT a dense
+ * deep-field stipple. A pure `seed → BackdropPoint[]` so the render math lives in
+ * lib, not the component (mirrors `buildDeepField` / `buildDeepMeteors`): the
+ * caller paints it through `paintGlow`. Cool only (`warm` low — gold is Sol-only);
+ * `Math.round`-quantized, SSR-safe.
+ */
+export const buildSolarFieldPoints = (seed: number): BackdropPoint[] => {
+  const rng = mulberry32((seed ^ SOLAR_FIELD_XOR) >>> 0);
+  const field: BackdropPoint[] = [];
+  for (let i = 0; i < SOLAR_FIELD_COUNT; i++) {
+    const b = rng();
+    field.push({
+      x: Math.round(rng() * STAGE_W),
+      y: Math.round(rng() * STAGE_H),
+      size: b > 0.93 ? 2 : 1,
+      alpha: 0.08 + b * 0.22,
+      phase: rng(),
+      // cool only — the void stays cold (gold is Sol-only).
+      warm: rng() * 0.35,
+    });
+  }
+  return field;
+};
+
 /**
  * One real galaxy placed somewhere on the stage — what a tier composition (the
  * Local-Group scene, `lg-composition.ts`) hands the renderer: the curated object
@@ -417,7 +742,32 @@ export type PlacedGalaxy = {
   place: DiskPlacement;
 };
 
-/** Shared `shape`→recipe dispatch (#226); every recipe returns `bgStars:[]` so the caller owns the deep-field choice. Recipe map: see PR #230. */
+/**
+ * Which recipe family each `RealShape` routes to — an exhaustive
+ * `satisfies Record<RealShape, …>` map (the #177 pattern): the disk shapes paint
+ * a galaxy disk, the point shapes (`star`/`planet`/`marker`) paint a soft-glow
+ * point + halo (ADR-0016 §3, the latent mis-route of `star`/`marker` into the
+ * clumpy disk recipe is fixed here). Adding a new `RealShape` fails the build
+ * until it's classified — the renderer can never silently misroute a body.
+ */
+const RECIPE_FAMILY = {
+  "barred-spiral": "disk",
+  spiral: "disk",
+  "flocculent-spiral": "disk",
+  magellanic: "disk",
+  irregular: "disk",
+  "dwarf-spheroidal": "disk",
+  nebula: "disk",
+  star: "point",
+  planet: "point",
+  marker: "point",
+} as const satisfies Record<RealShape, "disk" | "point">;
+
+/** Which render family a `RealShape` belongs to — `'disk'` (galaxy point-cloud) or `'point'` (Sol/planet/marker soft-glow sphere). The exhaustive `RECIPE_FAMILY` is the single source. */
+export const recipeFamilyFor = (shape: RealShape): "disk" | "point" =>
+  RECIPE_FAMILY[shape];
+
+/** The disk-family `shape`→recipe dispatch (#226); every recipe returns `bgStars:[]` so the caller owns the deep-field choice. */
 const dispatchDiskGeometry = (
   o: RealObject,
   place: DiskPlacement,
@@ -438,16 +788,26 @@ const dispatchDiskGeometry = (
       // LMC (#226): a barred-irregular SBm — bar + ragged arm + lopsided scatter.
       return buildBarredIrregularGeometry(tuning, place);
     default:
-      // irregular / dwarf-spheroidal (+ any non-disk fallthrough)
+      // irregular / dwarf-spheroidal / nebula (disk-family fallthrough)
       return buildClumpyGeometry(tuning, place);
   }
 };
 
-/** LG-overview render for one object: the `shape`-dispatched disk WITHOUT a deep field (the home MW backdrop owns the one full-stage stipple). */
+/**
+ * Render-capability for one real object: the `shape`-dispatched point cloud
+ * WITHOUT a deep field (the home MW backdrop owns the one full-stage stipple). A
+ * point shape (`star`/`planet`/`marker`, ADR-0016 §3) routes to the soft-glow
+ * point/halo recipe; a disk shape to the galaxy-disk recipe — the `RECIPE_FAMILY`
+ * map is the single classifier, so a point object can never fall through to a disk
+ * recipe (the latent #177 mis-route, fixed structurally).
+ */
 export const buildGalaxyGeometry = (
   o: RealObject,
   place: DiskPlacement = placementFor(o),
-): BackdropGeometry => dispatchDiskGeometry(o, place);
+): BackdropGeometry =>
+  recipeFamilyFor(o.shape) === "point"
+    ? buildPointGeometry(o, place)
+    : dispatchDiskGeometry(o, place);
 
 /** Entered (tier-2) render for one object: its OWN `shape`-dispatched disk PLUS its own deep field (the #225 fix — see PR #230). */
 export const buildEnteredGalaxyGeometry = (
