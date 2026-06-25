@@ -25,7 +25,8 @@
 
 import type { Camera } from "#/lib/galaxy/camera";
 import { DEFAULT_FRAMING } from "#/lib/galaxy/focus";
-import { LG_FRAMING } from "#/lib/galaxy/lg-composition";
+import { LG_FRAMING, lgFramingForGalaxy } from "#/lib/galaxy/lg-composition";
+import type { Point } from "#/lib/galaxy/place";
 import { HOME_MILKY_WAY_ID, loreKeyForGalaxy } from "#/lib/galaxy/realdata";
 import { TIER_ORDER } from "#/lib/galaxy/tier-nav";
 import type { Tier } from "#/lib/galaxy/types";
@@ -92,15 +93,42 @@ export type TierTransitionPlan = {
  * framing, which is what lets a mid-flight reverse retrace without a jump.
  * Returns `null` for a same-tier move or an unbuilt tier (#127) — the camera
  * simply doesn't move.
+ *
+ * **ADR-0018 §1 extension** — `galaxyPos?`: for a `localGroup ⇄ galaxy` move
+ * with a galaxy position, the LG-side framing is `lgFramingForGalaxy(galaxyPos)`
+ * instead of the flat `LG_FRAMING`. This centres the camera on the galaxy's
+ * on-screen position so the dive originates FROM where the galaxy visually sits,
+ * not from the MW anchor. The interior `rest` stays `DEFAULT_FRAMING` (the
+ * entered galaxy's disk is re-projected at `GALAXY_CENTER` — unchanged). The
+ * threshold and symmetry properties are preserved. Omitting `galaxyPos` (or
+ * passing `undefined`) leaves today's behaviour exactly.
  */
 export const planTierTransition = (
   from: Tier,
   to: Tier,
+  galaxyPos?: Point,
 ): TierTransitionPlan | null => {
   const direction = directionOf(from, to);
-  const a = framingForTier(from);
-  const b = framingForTier(to);
-  if (!direction || !a || !b) return null;
+  if (!direction) return null;
+
+  // For a localGroup ⇄ galaxy move with a galaxyPos, use the galaxy-aware LG
+  // framing; otherwise fall through to the per-tier defaults.
+  const useGalaxyAware =
+    galaxyPos !== undefined &&
+    ((from === "localGroup" && to === "galaxy") ||
+      (from === "galaxy" && to === "localGroup"));
+
+  const lgFraming = useGalaxyAware ? lgFramingForGalaxy(galaxyPos) : LG_FRAMING;
+
+  // Build the two endpoint framings, substituting the galaxy-aware LG framing
+  // for the relevant side (localGroup).
+  const aBase = from === "localGroup" ? lgFraming : framingForTier(from);
+  const bBase = to === "localGroup" ? lgFraming : framingForTier(to);
+  if (!aBase || !bBase) return null;
+
+  const a = aBase;
+  const b = bBase;
+
   return {
     from,
     to,
@@ -110,7 +138,7 @@ export const planTierTransition = (
       cy: (a.cy + b.cy) / 2,
       zoom: Math.sqrt(a.zoom * b.zoom),
     },
-    rest: b,
+    rest: { ...b },
   };
 };
 

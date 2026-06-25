@@ -20,6 +20,18 @@ import { DISK_TILT, GALAXY_CENTER, polarToXY } from "#/lib/galaxy/place";
 import type { GalaxySky } from "#/lib/galaxy/types";
 
 /**
+ * The in-context zoom for a deep-link arrival (ADR-0018 §3). A cold deep-link
+ * should read like home *nudged toward the star's region* — the surrounding
+ * constellation / figure stays visible, but the star is clearly in frame. The
+ * `focusOn` default (1.8) is an inspect-tight close-up with no context; this is
+ * the in-context alternative.
+ *
+ * **Owner-ratifiable knob:** QA will show 1.0 / 1.15 / 1.3 variants so the owner
+ * can pick the right balance of context and proximity. Default is 1.15.
+ */
+export const DEEPLINK_FRAMING_ZOOM = 1.15 as const;
+
+/**
  * The zoomed-out "home" framing — galaxy centered at neutral zoom. ESC/back eases
  * here when there is no prior framing to restore (e.g. a deep-link that landed
  * straight on a star). Center is derived from `GALAXY_CENTER` (one source of

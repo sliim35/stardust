@@ -20,6 +20,12 @@ import { MemoryStarView } from "./MemoryStarView";
 type Props = {
   stars: readonly MemoryStar[];
   ignitingIds?: ReadonlySet<string>;
+  /**
+   * The id of the deep-link arrival highlighted star (ADR-0018 §3). The matching
+   * `MemoryStarView` receives `data-highlighted` so the CSS ring cue fires. Only
+   * one star is highlighted at a time; `null` = no highlight.
+   */
+  highlightedId?: string | null;
   /** Slice E (#153): when set, each star is an accessible click target. */
   onSelect?: (star: MemoryStar) => void;
   /** i18n fallback aria-label for unnamed stars. */
@@ -38,6 +44,7 @@ type Props = {
 export const MemoryStarLayer = ({
   stars,
   ignitingIds,
+  highlightedId = null,
   onSelect,
   a11yLabel,
   onHoverChange,
@@ -61,6 +68,7 @@ export const MemoryStarLayer = ({
           star={star}
           position={memberAnchors[star.id] ?? positions[star.id]}
           igniting={ignitingIds?.has(star.id)}
+          highlighted={highlightedId !== null && highlightedId === star.id}
           onSelect={onSelect}
           a11yLabel={a11yLabel}
           onHoverChange={onHoverChange}
