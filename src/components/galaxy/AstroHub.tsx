@@ -67,6 +67,12 @@ export type AstroHubProps = {
    * the handler then falls back to the authored `lore[key].line` (§4, AC8).
    */
   narrate: (input: NarrateInput) => Promise<string | null>;
+  /**
+   * Add-your-star sink (#250 owner): when provided, the rail leads with an
+   * "Add your star" nav pill (the CTA moved OUT of the speech bubble into the pill
+   * rail). Omitted where adding isn't available (non-MW tiers / store not wired).
+   */
+  onAddStar?: () => void;
 };
 
 export const AstroHub = ({
@@ -78,6 +84,7 @@ export const AstroHub = ({
   onDive,
   onSpeak,
   narrate,
+  onAddStar,
 }: AstroHubProps) => {
   const messages = getMessages(useLocale());
   const m = messages.search;
@@ -288,6 +295,18 @@ export const AstroHub = ({
           the row scrolls horizontally so the pills never wrap/clip in the corner. */}
       <fieldset className="m-0 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto border-0 p-0 pb-0.5 pr-8 [scrollbar-width:none]">
         <legend className="sr-only">{hub.pillGroup}</legend>
+        {/* "Add your star" leads the rail as a nav pill (#250 owner: moved out of the
+            speech bubble). Only when wired (`onAddStar`) at an add-capable tier. */}
+        {onAddStar && (
+          <button
+            type="button"
+            onClick={onAddStar}
+            className="pointer-events-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-accent-soft px-2.5 py-1 font-sans text-eyebrow font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+          >
+            <span aria-hidden="true">✦</span>
+            {messages.chat.open}
+          </button>
+        )}
         {pills.map((pill) => (
           <button
             key={pill.id}

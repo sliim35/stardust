@@ -196,18 +196,9 @@ export const Astro = ({
             speaker. Borderless inside the panel. */}
         {(text != null || composing) && (
           <AstroBubble message={composing ? null : text} onDismiss={onDismiss}>
-            {composing ? (
-              <AstroComposer onSuccess={onComposed} />
-            ) : showAdd ? (
-              <button
-                type="button"
-                className="galaxy-astro__add pointer-events-auto mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-snug border border-accent-soft bg-transparent px-3 py-1.5 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
-                onClick={onAdd}
-              >
-                <span aria-hidden="true">✦</span>
-                {m.chat.open}
-              </button>
-            ) : null}
+            {/* The "Add your star" CTA moved OUT of the bubble into the pill rail
+                (#250 owner) — the bubble hosts ONLY ASTRO's line (or the composer). */}
+            {composing ? <AstroComposer onSuccess={onComposed} /> : null}
           </AstroBubble>
         )}
         {/* Divider — only when a bubble sits ABOVE the hub, so dismissing the bubble
@@ -222,7 +213,7 @@ export const Astro = ({
         {/* 2. Interaction hub — pill rail + full-width search, inside the same panel.
             Its spoken responses route through the bubble's aria-live region via
             `onSpeak` (wired to `showNarration`) — no second a11y surface (#72). */}
-        {hub && <AstroHub {...hub} />}
+        {hub && <AstroHub {...hub} onAddStar={showAdd ? onAdd : undefined} />}
       </div>
       {/* The pixel ASTRO sprite — at the panel's bottom-right edge; the panel's
           ▽ tail (top-right, in CSS) points down toward his head. */}

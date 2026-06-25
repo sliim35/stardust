@@ -76,7 +76,7 @@ describe("Astro — tier-transition narration takes the bubble (#125)", () => {
   });
 });
 
-describe("Astro — add-star lives in the bubble (#183, dir. A)", () => {
+describe("Astro — add-star is a pill in the hub rail (#250 owner; #183 dir. A)", () => {
   const savedStar: MemoryStar = {
     id: "u-9",
     text: "a memory",
@@ -87,11 +87,22 @@ describe("Astro — add-star lives in the bubble (#183, dir. A)", () => {
     brightness: 0.6,
     createdAt: 1748100000000,
   };
+  // The "Add your star" CTA moved OUT of the bubble into the hub's pill rail, so these
+  // tests render Astro WITH a hub (galaxy tier); the pill shows only when add is wired.
+  const HUB = {
+    stars: [],
+    ctx: { tier: "galaxy" as const, galaxyId: null },
+    onSelect: vi.fn(),
+    onTierSelect: vi.fn(),
+    onDive: vi.fn(),
+    onSpeak: vi.fn(),
+    narrate: vi.fn().mockResolvedValue(null),
+  };
 
-  it("shows the 'Add your star' CTA only when canAddStar + onStarAdded are set", () => {
-    const { rerender } = render(<Astro />);
+  it("shows the 'Add your star' pill only when canAddStar + onStarAdded are set", () => {
+    const { rerender } = render(<Astro hub={HUB} />);
     expect(screen.queryByRole("button", { name: en.chat.open })).toBeNull();
-    rerender(<Astro onStarAdded={vi.fn()} canAddStar />);
+    rerender(<Astro hub={HUB} onStarAdded={vi.fn()} canAddStar />);
     expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
   });
 
@@ -104,7 +115,7 @@ describe("Astro — add-star lives in the bubble (#183, dir. A)", () => {
     });
     commitStarFn.mockResolvedValueOnce({ ok: true, star: savedStar });
     const onStarAdded = vi.fn();
-    render(<Astro onStarAdded={onStarAdded} canAddStar />);
+    render(<Astro hub={HUB} onStarAdded={onStarAdded} canAddStar />);
     fireEvent.click(screen.getByRole("button", { name: en.chat.open }));
     // the composer is now in the bubble
     fireEvent.change(screen.getByLabelText(en.chat.label), {
@@ -123,8 +134,8 @@ describe("Astro — add-star lives in the bubble (#183, dir. A)", () => {
     expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
   });
 
-  it("the bubble × cancels composing back to ASTRO's line (without closing ASTRO)", () => {
-    render(<Astro onStarAdded={vi.fn()} canAddStar />);
+  it("the × cancels composing back to ASTRO's line (without closing ASTRO)", () => {
+    render(<Astro hub={HUB} onStarAdded={vi.fn()} canAddStar />);
     fireEvent.click(screen.getByRole("button", { name: en.chat.open }));
     expect(screen.getByLabelText(en.chat.label)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "dismiss" }));
