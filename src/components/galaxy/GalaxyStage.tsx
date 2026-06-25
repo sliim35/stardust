@@ -877,25 +877,26 @@ const SolGatewayMarker = ({
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 flex items-center justify-center"
         >
-          {/* Outer halo / bloom ring */}
+          {/* A soft warm-gold bloom — SUBTLE: reads as a slightly-brighter star
+              sitting in the arm, not a hard ringed disk. Smooth falloff to
+              transparent, no concentric box-shadow rings (owner: "looked odd"). */}
           <span
             className="absolute rounded-full"
             style={{
-              width: "28px",
-              height: "28px",
+              width: "18px",
+              height: "18px",
               background:
-                "radial-gradient(circle, #f5d6a0 0%, #f5d6a080 40%, transparent 70%)",
-              boxShadow: "0 0 12px 4px #f5d6a060, 0 0 24px 8px #f5d6a030",
+                "radial-gradient(circle, #f5d6a0cc 0%, #f5d6a038 36%, transparent 72%)",
             }}
           />
-          {/* Inner core: the warm white-gold centre */}
+          {/* The warm core: a small soft point, a touch brighter than its neighbours. */}
           <span
             className="absolute rounded-full"
             style={{
-              width: "8px",
-              height: "8px",
+              width: "4px",
+              height: "4px",
               background: "#fff8e8",
-              boxShadow: "0 0 6px 2px #f5d6a0",
+              boxShadow: "0 0 4px 1px #f5d6a080",
             }}
           />
         </span>
