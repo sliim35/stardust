@@ -160,9 +160,12 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     ).not.toBeNull();
     // The first dive (scroll up) restores the memory layer and unmounts the
     // LG titles AND their hover targets (MW hover stays the mem-star affair)…
+    // The L3 wrap is ALWAYS pointer-events-none now (the plane-transparency
+    // pattern — stars opt in via their own buttons, and empty clicks pass through
+    // to the Sol gateway on the L2 disk plane, #262); show/hide is invisible/opacity.
     fireEvent.wheel(stage, { deltaY: -12 });
     expect(l3.className).not.toContain("invisible");
-    expect(l3.className).not.toContain("pointer-events-none");
+    expect(l3.className).not.toContain("opacity-0");
     expect(screen.queryByText(en.lore.andromeda.name)).toBeNull();
     expect(
       screen.queryByRole("button", {
@@ -479,6 +482,205 @@ describe("GalaxyStage — node-aware breadcrumb derived from the live galaxyId (
   });
 });
 
+describe("GalaxyStage — Sol gateway + dive into the Solar-System tier (#248)", () => {
+  const crumbs = () => within(screen.getByRole("navigation"));
+
+  // AC5 — scroll-descend reaches tier 3 with no extra code: from the LG overview
+  // two wheel-up steps walk LG → galaxy → solarSystem (the wheel cooldown is
+  // mocked away above). The AU scale net is the ground-truth that tier 3 landed.
+  it("scroll-descend from the LG overview reaches the Solar-System tier (AC5)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy (into the MW)
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    fireEvent.wheel(stage, { deltaY: -12 }); // galaxy → solarSystem (into Sol)
+    expect(screen.getByText("1 AU")).toBeTruthy(); // tier-3 AU scale net
+    expect(screen.queryByText("100k ly")).toBeNull();
+    expect(
+      crumbs()
+        .getByText(en.chrome.breadcrumb.solarSystem)
+        .getAttribute("aria-current"),
+    ).toBe("location");
+  });
+
+  // AC6 — from tier 3, a wheel-down ascend returns to the galaxy tier (the SOL
+  // crumb goes inactive, the MW scale net returns): the reverse timeline.
+  it("scroll-ascend from the Solar System returns to the galaxy tier (AC6)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy
+    fireEvent.wheel(stage, { deltaY: -12 }); // galaxy → solarSystem
+    expect(screen.getByText("1 AU")).toBeTruthy();
+    fireEvent.wheel(stage, { deltaY: 12 }); // solarSystem → galaxy (ascend)
+    expect(screen.getByText("100k ly")).toBeTruthy(); // back at the MW net
+    expect(screen.queryByText("1 AU")).toBeNull();
+    // The home MW crumb is the active segment again; SOL is no longer current.
+    expect(
+      crumbs().getByText(en.lore.milkyWay.name).getAttribute("aria-current"),
+    ).toBe("location");
+    expect(
+      crumbs()
+        .getByText(en.chrome.breadcrumb.solarSystem)
+        .getAttribute("aria-current"),
+    ).toBeNull();
+  });
+
+  // AC6 — the SOL crumb, navigable above tier 3, dives into the Solar System; the
+  // MILKY WAY crumb then ascends back out — the breadcrumb spine round-trips.
+  it("the SOL breadcrumb dives in and MILKY WAY ascends back out (AC3/AC6)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // into the MW (galaxy tier)
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    // SOL is a navigable button above tier 3 → dives into the Solar System.
+    fireEvent.click(
+      crumbs().getByRole("button", {
+        name: en.chrome.breadcrumb.solarSystem,
+      }),
+    );
+    expect(screen.getByText("1 AU")).toBeTruthy();
+    // MILKY WAY (the galaxy crumb) is the ascent button at tier 3 → back to galaxy.
+    fireEvent.click(
+      crumbs().getByRole("button", { name: en.lore.milkyWay.name }),
+    );
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    expect(screen.queryByText("1 AU")).toBeNull();
+  });
+});
+
+describe("GalaxyStage — Sol gateway visible + clickable in the MW interior (#262 scope-gap)", () => {
+  // The Sol gateway must appear ONLY when displayedTier === 'galaxy' AND the home MW
+  // is showing — neighbours have no Sol, and the LG/solarSystem tiers must not show it.
+  const solMarker = () =>
+    document.querySelector("[data-sol-gateway]") as HTMLElement | null;
+
+  it("Sol gateway marker is absent at the Local-Group landing (LG tier)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    // Still at the LG tier: no Sol marker.
+    expect(solMarker()).toBeNull();
+  });
+
+  it("Sol gateway marker renders when inside the home Milky Way (galaxy tier)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy (home MW)
+    // The marker must be present as an interactive button.
+    expect(solMarker()).not.toBeNull();
+    expect(
+      solMarker()?.querySelector("button") ??
+        (solMarker()?.tagName === "BUTTON" ? solMarker() : null),
+    ).not.toBeNull();
+  });
+
+  // Regression (#262 owner re-report): the REAL way in is CLICKING the Milky-Way
+  // gateway (→ diveTo(HOME_MILKY_WAY_ID,"galaxy"), which sets galaxyId="home"), not
+  // the wheel-descend (which leaves galaxyId=null). Sol must render on BOTH paths —
+  // the first fix only matched the null path, so the clicked entry showed no Sol.
+  it("Sol gateway marker renders when ENTERING the home MW via the gateway click", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    // The REAL entry: click the Milky-Way gateway → diveTo(HOME_MILKY_WAY_ID,"galaxy")
+    // sets galaxyId="home" (the wheel-descend leaves it null). Sol must render on BOTH.
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${en.lore.milkyWay.name} · ${en.lore.milkyWay.sublabel}`,
+      }),
+    );
+    expect(screen.getByText("100k ly")).toBeTruthy(); // confirm we're in the MW tier
+    expect(solMarker()).not.toBeNull(); // …and Sol is visible (the bug: it wasn't)
+  });
+
+  it("Sol gateway marker is absent at the Solar-System tier (already inside Sol)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy
+    fireEvent.wheel(stage, { deltaY: -12 }); // galaxy → solarSystem
+    expect(screen.getByText("1 AU")).toBeTruthy(); // confirm tier-3
+    // Inside the Solar System: Sol marker is gone (you're already there).
+    expect(solMarker()).toBeNull();
+  });
+
+  it("Sol gateway marker is absent inside a neighbour galaxy (Andromeda has no Sol)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    // Dive into Andromeda (a neighbour, no solarSystem tier).
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${en.lore.andromeda.name} · ${en.lore.andromeda.sublabel}`,
+      }),
+    );
+    expect(screen.getByText("100k ly")).toBeTruthy(); // at the galaxy tier
+    // Andromeda has no Sol → marker absent.
+    expect(solMarker()).toBeNull();
+  });
+
+  it("clicking the Sol gateway dives to the Solar-System tier — no card opens", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // into the MW
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    // Find and click the Sol gateway button.
+    const btn =
+      solMarker()?.querySelector("button") ??
+      (solMarker()?.tagName === "BUTTON" ? (solMarker() as HTMLElement) : null);
+    expect(btn).not.toBeNull();
+    fireEvent.click(btn as HTMLElement);
+    // The click dives into the Solar System (scale net relabels to AU).
+    expect(screen.getByText("1 AU")).toBeTruthy();
+    // A gateway dive does NOT open a card.
+    expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
+  });
+
+  it("Sol gateway label appears on hover/focus and hides on leave/blur", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // into the MW
+    const marker = solMarker();
+    expect(marker).not.toBeNull();
+    const btn =
+      marker?.querySelector("button") ??
+      (marker?.tagName === "BUTTON" ? marker : null);
+    expect(btn).not.toBeNull();
+    // The Sol name is in the label; it's hidden at rest (opacity-0 / data-active=false).
+    const label = marker?.querySelector(
+      "[data-sol-label]",
+    ) as HTMLElement | null;
+    expect(label).not.toBeNull();
+    // At rest: label is visually hidden (opacity-0 class or aria-hidden state).
+    expect(label?.className).toContain("opacity-0");
+    // Hover/focus reveals the label.
+    fireEvent.pointerEnter(btn as HTMLElement);
+    expect(label?.className).toContain("opacity-100");
+    fireEvent.pointerLeave(btn as HTMLElement);
+    expect(label?.className).toContain("opacity-0");
+    // Same with keyboard focus.
+    fireEvent.focus(btn as HTMLElement);
+    expect(label?.className).toContain("opacity-100");
+    fireEvent.blur(btn as HTMLElement);
+    expect(label?.className).toContain("opacity-0");
+  });
+
+  it("Sol gateway does not interfere with clicking a memory star on the same plane", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // into the MW
+    // Memory stars remain clickable → the Sol marker's container must be pointer-safe.
+    const star = document.querySelector<HTMLButtonElement>(".mem-star button");
+    expect(star).not.toBeNull();
+    fireEvent.click(star as HTMLElement);
+    expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
+  });
+});
+
 describe("GalaxyStage — emotion figures render ambiently (owner Claude Design #232)", () => {
   // Figures are AMBIENT (no hover reveal): an authored figure with ≥2 members of an
   // emotion shows a dashed ghost + hollow open-slot rings + solid lines between filled
@@ -747,6 +949,24 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
     render(<GalaxyStage deepLink={{}} />);
     expect(screen.getByText("2.5 Mly")).toBeTruthy();
     expect(screen.queryByText("100k ly")).toBeNull();
+  });
+
+  // #248 (deep-link fix flagged by #247 QA) — the stage now threads
+  // availableTiersFor('home') into resolveDeepLink, so `?at=system:sol` reaches
+  // the Solar-System tier (the v1 default set could not). The AU scale net + the
+  // active SOL crumb are the ground-truth that the dive landed on tier 3.
+  it("?at=system:sol dives into the Solar System on load (#248)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ at: "system:sol" }} />);
+    expect(screen.getByText("1 AU")).toBeTruthy(); // solarSystem scale net
+    expect(screen.queryByText("100k ly")).toBeNull(); // not the MW net
+    expect(screen.queryByText("2.5 Mly")).toBeNull(); // not the LG net
+    const nav = within(screen.getByRole("navigation"));
+    expect(
+      nav
+        .getByText(en.chrome.breadcrumb.solarSystem)
+        .getAttribute("aria-current"),
+    ).toBe("location");
   });
 });
 

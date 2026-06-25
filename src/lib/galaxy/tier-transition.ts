@@ -26,29 +26,48 @@
 import type { Camera } from "#/lib/galaxy/camera";
 import { DEFAULT_FRAMING } from "#/lib/galaxy/focus";
 import { LG_FRAMING, lgFramingForGalaxy } from "#/lib/galaxy/lg-composition";
-import type { Point } from "#/lib/galaxy/place";
+import { GALAXY_CENTER, type Point } from "#/lib/galaxy/place";
 import { HOME_MILKY_WAY_ID, loreKeyForGalaxy } from "#/lib/galaxy/realdata";
 import { TIER_ORDER } from "#/lib/galaxy/tier-nav";
 import type { Tier } from "#/lib/galaxy/types";
 import type { Messages } from "#/lib/i18n/types";
 
 /**
+ * The Solar-System resting framing (ADR-0016 §4, #248). Sol is authored at the
+ * tier centre (`SOL_SYSTEM_ID`'s scene composes around `GALAXY_CENTER`, the
+ * world-invariant centre the MW also uses), so the dive INTO Sol lands on the
+ * same world centre — mirroring the LG→MW descend. The zoom is one step DEEPER
+ * than the galaxy rest (`DEFAULT_FRAMING.zoom` = 1) so the descent reads as a
+ * zoom-in (the planet ring fills the stage) rather than a pure scene-swap with no
+ * camera move; the ratio mirrors the LG→MW step (1/`LG_ZOOM` ≈ 1.18) for a
+ * consistent dive scale across tiers.
+ */
+const SOLAR_FRAMING = {
+  cx: GALAXY_CENTER.x,
+  cy: GALAXY_CENTER.y,
+  zoom: 1.18,
+} as const satisfies Camera;
+
+/**
  * The per-tier resting camera framings (spec §1: within a tier the framing is
  * fixed). The galaxy/home tier IS the identity framing the camera already rests
  * on (`DEFAULT_FRAMING`); the Local-Group tier rests on the I-2 composition's
- * `LG_FRAMING` (zoomed out, the MW slightly low — the FINAL proof). The
- * Solar-System tier is deferred (#127) — absent here, so transitions into it
- * degrade to a no-op rather than a throw (the v1 reducer never offers it).
+ * `LG_FRAMING` (zoomed out, the MW slightly low — the FINAL proof); the
+ * Solar-System tier rests on `SOLAR_FRAMING` (centred on Sol at the tier centre,
+ * zoomed in — ADR-0016 §4, #248). Every tier is now built, so a tier transition
+ * always has a framing target and never no-ops.
  */
 const TIER_FRAMINGS = {
   localGroup: LG_FRAMING,
   galaxy: DEFAULT_FRAMING,
+  solarSystem: SOLAR_FRAMING,
 } as const satisfies Partial<Record<Tier, Camera>>;
 
 /**
  * The resting framing for a tier — a fresh copy each call so callers (and GSAP's
- * tween bookkeeping) can never mutate the authored constant. `null` for the
- * deferred Solar-System tier (#127).
+ * tween bookkeeping) can never mutate the authored constant. Non-`null` for every
+ * tier now that the Solar-System floor is built (ADR-0016 §4, #248); the `| null`
+ * return is kept so the type tolerates a future unbuilt tier without a churn.
  */
 export const framingForTier = (tier: Tier): Camera | null => {
   const framing = TIER_FRAMINGS[tier as keyof typeof TIER_FRAMINGS];
@@ -91,8 +110,8 @@ export type TierTransitionPlan = {
  * *geometric* mean (zoom is multiplicative, so this is the perceptual halfway
  * point) — and is symmetric by construction: both directions cross the SAME
  * framing, which is what lets a mid-flight reverse retrace without a jump.
- * Returns `null` for a same-tier move or an unbuilt tier (#127) — the camera
- * simply doesn't move.
+ * Returns `null` for a same-tier move (no framing target to ease toward); every
+ * tier is built now (ADR-0016 §4, #248), so a real tier change always plans.
  *
  * **ADR-0018 §1 extension** — `galaxyPos?`: for a `localGroup ⇄ galaxy` move
  * with a galaxy position, the LG-side framing is `lgFramingForGalaxy(galaxyPos)`

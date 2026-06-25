@@ -46,7 +46,7 @@ describe("GalaxyChrome — node-aware breadcrumb trail (BR21, #199)", () => {
   });
 
   // AC3 — the home MW carries the third (Solar-System) tier, so its trail keeps
-  // the SOL crumb; SOL is the deferred tier (#127) — present but inert.
+  // the SOL crumb (now a built, navigable tier — ADR-0016 §4, #248).
   it("shows the SOL crumb only under the home Milky Way (AC3)", () => {
     render(<GalaxyChrome count={3} tier="galaxy" galaxyId="home" />);
     expect(screen.getByText(en.chrome.breadcrumb.solarSystem)).toBeTruthy();
@@ -165,13 +165,47 @@ describe("GalaxyChrome — clickable breadcrumb nav (owner 2026-06-10)", () => {
     expect(onTierSelect).toHaveBeenCalledWith("galaxy");
   });
 
-  it("keeps the active segment and the deferred SOL tail inert (no buttons) at the LG tier", () => {
+  // #248 (AC3) — the SOL crumb is no longer the inert #127 tail: with the
+  // Solar-System tier built it is navigable when above tier 3. At the LG tier the
+  // home trail (LOCAL GROUP active › MILKY WAY › SOL) now has TWO buttons — the
+  // galaxy crumb AND SOL — and only the active LOCAL GROUP segment stays inert.
+  it("makes both MILKY WAY and SOL navigable buttons at the LG tier (#248 AC3)", () => {
     render(<GalaxyChrome count={3} tier="localGroup" galaxyId={null} />);
-    // Only one button: the galaxy crumb (the other reachable tier). LOCAL GROUP
-    // is the active inert segment; SOL = #127, inert.
     const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]?.textContent).toBe(en.lore.milkyWay.name);
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      en.lore.milkyWay.name,
+      en.chrome.breadcrumb.solarSystem,
+    ]);
+    // LOCAL GROUP is the active, inert segment — never a button.
+    const active = screen.getByText(en.chrome.breadcrumb.localGroup);
+    expect(active.tagName).not.toBe("BUTTON");
+  });
+
+  // #248 (AC3) — clicking the now-navigable SOL crumb (while above tier 3) fires
+  // onTierSelect('solarSystem'); the stage maps that to the Sol dive.
+  it("navigates: clicking SOL above tier 3 fires onTierSelect('solarSystem') (#248 AC3)", () => {
+    const onTierSelect = vi.fn();
+    render(
+      <GalaxyChrome
+        count={3}
+        tier="galaxy"
+        galaxyId="home"
+        onTierSelect={onTierSelect}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: en.chrome.breadcrumb.solarSystem }),
+    );
+    expect(onTierSelect).toHaveBeenCalledWith("solarSystem");
+  });
+
+  // #248 (AC3) — at the Solar-System tier the SOL crumb is the ACTIVE segment
+  // (aria-current), not a button, so it can't re-dive into itself.
+  it("keeps SOL inert (active, not a button) at the Solar-System tier (#248 AC3)", () => {
+    render(<GalaxyChrome count={3} tier="solarSystem" galaxyId="home" />);
+    const sol = screen.getByText(en.chrome.breadcrumb.solarSystem);
+    expect(sol.getAttribute("aria-current")).toBe("location");
+    expect(sol.tagName).not.toBe("BUTTON");
   });
 
   // AC1 — a neighbour's trail has exactly one navigable ascent button (LOCAL
