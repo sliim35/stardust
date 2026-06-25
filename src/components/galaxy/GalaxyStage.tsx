@@ -388,6 +388,14 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // The Solar-System tier (ADR-0016 §3): the deepest dive floor — Sol + the 8
   // planets, the quiet void. Layer A only; the L3 memory layer hides (BR33, §6).
   const solarView = displayedTier === "solarSystem";
+  // The home Milky Way interior is represented TWO ways: `null` (a wheel-descend
+  // from the LG leaves galaxyId unset) OR HOME_MILKY_WAY_ID (the gateway-click dive
+  // sets it). Both mean "inside the home MW" — the same rule `entryNarration` uses —
+  // so the Sol gateway (#262) renders in BOTH entry paths, not just the wheel one.
+  const inHomeMilkyWay =
+    !lgView &&
+    !solarView &&
+    (displayedGalaxyId === null || displayedGalaxyId === HOME_MILKY_WAY_ID);
   const neighbours = useMemo(
     () => (lgView ? lgGalaxies() : NO_NEIGHBOURS),
     [lgView],
@@ -568,7 +576,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                   the outer wrapper is `pointer-events-none`; only the button opts back in.
                   Rides L3 (same plane as free stars) so it scales + parallaxes with the
                   disk — NOT a fixed overlay. */}
-              {!lgView && !solarView && displayedGalaxyId === null && (
+              {inHomeMilkyWay && (
                 <SolGatewayMarker
                   diveTo={nav.diveTo}
                   available={available}

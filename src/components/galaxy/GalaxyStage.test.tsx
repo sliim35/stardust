@@ -574,6 +574,24 @@ describe("GalaxyStage — Sol gateway visible + clickable in the MW interior (#2
     ).not.toBeNull();
   });
 
+  // Regression (#262 owner re-report): the REAL way in is CLICKING the Milky-Way
+  // gateway (→ diveTo(HOME_MILKY_WAY_ID,"galaxy"), which sets galaxyId="home"), not
+  // the wheel-descend (which leaves galaxyId=null). Sol must render on BOTH paths —
+  // the first fix only matched the null path, so the clicked entry showed no Sol.
+  it("Sol gateway marker renders when ENTERING the home MW via the gateway click", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    // The REAL entry: click the Milky-Way gateway → diveTo(HOME_MILKY_WAY_ID,"galaxy")
+    // sets galaxyId="home" (the wheel-descend leaves it null). Sol must render on BOTH.
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${en.lore.milkyWay.name} · ${en.lore.milkyWay.sublabel}`,
+      }),
+    );
+    expect(screen.getByText("100k ly")).toBeTruthy(); // confirm we're in the MW tier
+    expect(solMarker()).not.toBeNull(); // …and Sol is visible (the bug: it wasn't)
+  });
+
   it("Sol gateway marker is absent at the Solar-System tier (already inside Sol)", () => {
     stubReducedMotion(true);
     render(<GalaxyStage />);
