@@ -426,7 +426,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
         {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
             the farthest/slowest parallax plane). Decorative. */}
         <div
-          className={`absolute inset-0 [will-change:transform] ${dimClass}`}
+          className={`absolute inset-0 will-change-transform ${dimClass}`}
           ref={cam.l1}
           aria-hidden="true"
         >
