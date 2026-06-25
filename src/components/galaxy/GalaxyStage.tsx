@@ -14,11 +14,15 @@ import {
   hoverAffordanceFor,
 } from "#/lib/galaxy/constellation";
 import { type DeepLinkSearch, resolveDeepLink } from "#/lib/galaxy/deep-link";
-import { createFocusController } from "#/lib/galaxy/focus";
+import {
+  createFocusController,
+  DEEPLINK_FRAMING_ZOOM,
+} from "#/lib/galaxy/focus";
 import {
   enteredObjectFor,
   type PlacedGalaxy,
 } from "#/lib/galaxy/galaxy-render";
+import { createHighlightController } from "#/lib/galaxy/highlight";
 import {
   LG_MW_PLACEMENT,
   lgGalaxies,
@@ -33,6 +37,7 @@ import {
   REAL_OBJECTS,
   solarSystemObjects,
 } from "#/lib/galaxy/realdata";
+import { interiorLayersVisible } from "#/lib/galaxy/scene-visibility";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { createD1Store } from "#/lib/galaxy/store-d1";
@@ -66,6 +71,14 @@ import { useTimedNarration } from "./useTimedNarration";
 
 /** Mirrors the `memIgnite` CSS animation duration (1.5s) — one ignite number. */
 const IGNITE_MS = 1500;
+
+/**
+ * How long the deep-link arrival highlight ring holds before clearing (ADR-0018 §3).
+ * Owner-tunable knob (show variants at QA): ~2.4s default, matching the `IGNITE_MS`
+ * family feel. Reduced-motion variant is a static ring that holds then fades — the
+ * same duration clears it either way.
+ */
+const HIGHLIGHT_MS = 2400;
 
 /** Minimum on-screen dwell per ASTRO narration phrase (#183) — long enough to read a
  *  tier line before the next replaces it (owner: "at least 3s between phrases"). */
@@ -227,7 +240,10 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
       const pendingStar = pendingDeepLinkStar.current;
       if (pendingStar) {
         pendingDeepLinkStar.current = null;
-        focus.focusStar(pendingStar);
+        // Deep-link arrival: focus at the in-context zoom (not the default 1.8
+        // close-up) and set the highlight cue (ADR-0018 §3).
+        focus.focusStar(pendingStar, DEEPLINK_FRAMING_ZOOM);
+        highlight.highlight(pendingStar);
       }
     }
   };
@@ -246,6 +262,34 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // #113 search) call to ease the camera onto a star by id. The camera hook
   // resolves the id against the live sky (`skyRef`) and drives the eased move.
   const [focus] = useState(() => createFocusController());
+
+  // Deep-link highlight seam (ADR-0018 §3): which star (if any) is temporarily
+  // highlighted after a deep-link arrival. The clear timer is component-side,
+  // mirroring the ignite pattern above.
+  const [highlight] = useState(() => createHighlightController());
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  // Highlight subscription: drive `highlightedId` state from the pure controller
+  // seam. The clear timer is owned here (component-side, like the ignite timers).
+  useEffect(() => {
+    let clearTimer: ReturnType<typeof setTimeout> | null = null;
+    const off = highlight.subscribe((req) => {
+      if (clearTimer !== null) clearTimeout(clearTimer);
+      if (req.kind === "highlight") {
+        setHighlightedId(req.id);
+        // Route the auto-clear back through the controller so the single
+        // `clear` path (this handler's else-branch) owns the state mutation.
+        clearTimer = setTimeout(() => highlight.clear(), HIGHLIGHT_MS);
+      } else {
+        setHighlightedId(null);
+      }
+    });
+    return () => {
+      off();
+      if (clearTimer !== null) clearTimeout(clearTimer);
+    };
+  }, [highlight]);
+
   const cam = useGalaxyCamera({
     focus,
     getSky: () => skyRef.current,
@@ -310,9 +354,11 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
       pendingDeepLinkStar.current = target.star;
       nav.diveTo(target.dive.id, target.dive.tier);
     } else if (target.star) {
-      focus.focusStar(target.star);
+      // Same-tier deep-link: focus at in-context zoom + highlight (ADR-0018 §3).
+      focus.focusStar(target.star, DEEPLINK_FRAMING_ZOOM);
+      highlight.highlight(target.star);
     }
-  }, [deepLink, nav, focus]);
+  }, [deepLink, nav, focus, highlight]);
 
   // The scene swap (#125 → composed by I-2 #112): at the Local-Group tier the
   // disk paints the FINAL-proof composition — the MW shrunk (LG_MW_PLACEMENT) +
@@ -470,22 +516,25 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
               )}
             </div>
             {/* The L3 memory layer is MW-interior content: at the Local-Group
-                tier it fades with the threshold swap (motion-reduce snaps) and
-                drops its pointer + keyboard affordances (visibility removes the
-                star buttons from the tab order; pointer-events guards the fade
-                window). It now holds the FREE (non-figure) stars only — the
-                figure members + their overlay ride the L4 plane below (#243). */}
+                tier it hides at the threshold (motion-reduce snaps). ADR-0018 §2:
+                visibility is driven by `interiorLayersVisible(displayedTier)` —
+                a single source of truth keyed to the GSAP threshold commit, not
+                an independent 500ms CSS clock. On ASCEND the layers hide instantly
+                (hide-old-before-new eliminates the MW-star flash); on DESCEND the
+                `mem-star-enter` fade-in still applies. `pointer-events` guards the
+                gap between hide commit and browser paint. */}
             <div
-              className={`galaxy-l3-wrap absolute inset-0 will-change-transform transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
-                lgView || solarView
-                  ? "pointer-events-none invisible opacity-0"
-                  : ""
+              className={`galaxy-l3-wrap absolute inset-0 will-change-transform motion-reduce:transition-none ${
+                interiorLayersVisible(displayedTier)
+                  ? ""
+                  : "pointer-events-none invisible opacity-0"
               }`}
               ref={cam.l3}
             >
               <InteractiveStars
                 stars={freeStars}
                 ignitingIds={ignitingIds}
+                highlightedId={highlightedId}
                 diveTo={nav.diveTo}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
@@ -494,18 +543,15 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
             </div>
             {/* L4 — the foreground figure plane (#243): the emotion figures + their
                 member stars, promoted to a near depth tier so they float above the
-                loose stars + the disk. The ConstellationOverlay shares THIS wrapper
-                with its members so the per-plane parallax shifts the lines + jewels as
-                one rigid unit — the connect-lines stay welded to the dots at every
-                pointer/zoom and align under reduced motion (line-lock by construction).
-                ALWAYS `pointer-events-none` (the member stars opt back in via
-                `.mem-star`): the wrapper is full-bleed `inset-0` over L3, so if it
-                captured the pointer it would swallow every click on the loose stars
-                beneath — the Mom-unclickable regression. The LG gate only adds the
-                visibility fade (memory interior hides on the Local-Group overview). */}
+                loose stars + the disk. ALWAYS `pointer-events-none` (the member
+                stars opt back in via `.mem-star`). ADR-0018 §2: same threshold-
+                synced visibility as L3 — instant hide on ascend, no independent
+                CSS clock. */}
             <div
-              className={`pointer-events-none galaxy-l4-wrap absolute inset-0 will-change-transform transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
-                lgView ? "invisible opacity-0" : ""
+              className={`pointer-events-none galaxy-l4-wrap absolute inset-0 will-change-transform motion-reduce:transition-none ${
+                interiorLayersVisible(displayedTier)
+                  ? ""
+                  : "invisible opacity-0"
               }`}
               ref={cam.l4}
             >
@@ -521,6 +567,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
               <InteractiveStars
                 stars={memberStars}
                 ignitingIds={ignitingIds}
+                highlightedId={highlightedId}
                 diveTo={nav.diveTo}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
@@ -528,19 +575,20 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
               />
             </div>
             {/* L5 — the dedication plane (#243 follow-up, owner 2026-06-24): Mom's
-                singular gold `deep` star (ADR-0010 §1) rides this nearest plane ALONE
-                so it parallaxes the MOST and reads as the closest, most prominent point
-                in the galaxy. Same always-`pointer-events-none` wrapper (Mom's star
-                opts back in) + the same LG visibility gate as L4/L3. */}
+                singular gold `deep` star (ADR-0010 §1) rides this nearest plane ALONE.
+                ADR-0018 §2: same threshold-synced visibility as L3/L4. */}
             <div
-              className={`pointer-events-none galaxy-l5-wrap absolute inset-0 will-change-transform transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
-                lgView ? "invisible opacity-0" : ""
+              className={`pointer-events-none galaxy-l5-wrap absolute inset-0 will-change-transform motion-reduce:transition-none ${
+                interiorLayersVisible(displayedTier)
+                  ? ""
+                  : "invisible opacity-0"
               }`}
               ref={cam.l5}
             >
               <InteractiveStars
                 stars={deepStars}
                 ignitingIds={ignitingIds}
+                highlightedId={highlightedId}
                 diveTo={nav.diveTo}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
@@ -615,10 +663,12 @@ const SearchChromeMount = ({
  * gateway dive would route through `diveTo` (the real-object layer adopts this hook
  * when slice I / #112 lands). Hover/focus (#154) reports up through `onHoverChange`;
  * `litIds` flows back down as the dim mask while a constellation is lit.
+ * `highlightedId` (ADR-0018 §3) marks the deep-link arrival target.
  */
 const InteractiveStars = ({
   stars,
   ignitingIds,
+  highlightedId,
   diveTo,
   a11yLabel,
   moodLabels,
@@ -626,6 +676,8 @@ const InteractiveStars = ({
 }: {
   stars: readonly MemoryStar[];
   ignitingIds: ReadonlySet<string>;
+  /** ADR-0018 §3: the id of the deep-link highlighted star, or null. */
+  highlightedId?: string | null;
   diveTo: (id: string, tier: Tier) => void;
   a11yLabel: string;
   moodLabels: Messages["moods"];
@@ -637,6 +689,7 @@ const InteractiveStars = ({
     <MemoryStarLayer
       stars={stars}
       ignitingIds={ignitingIds}
+      highlightedId={highlightedId}
       onSelect={onSelect}
       a11yLabel={a11yLabel}
       moodLabels={moodLabels}
