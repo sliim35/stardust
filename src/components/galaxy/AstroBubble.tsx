@@ -15,16 +15,16 @@ import type { ReactNode } from "react";
  * the dismiss button is absolutely placed within it (top-right) — visually
  * unchanged.
  *
- * Soft-glow chrome, NOT pixel-art (the style rule: DOM chrome = soft glow). The
- * panel is a glass surface — `--color-surface` translucent bg, `backdrop-filter:
- * blur`, a 1px amber accent border, serif italic body — with a ▽ tail pointing
- * down at ASTRO. It docks above the sprite inside `.galaxy-astro`, so it inherits
- * ASTRO's stage scale, `z-index`, and the ≤720px hide (the bubble is tied to
- * ASTRO's visibility).
+ * Wide-panel redesign (2026-06-25): the bubble is now a BORDERLESS text section
+ * INSIDE the wide `.galaxy-astro__panel` glass surface — the panel owns the
+ * soft-glow chrome (bg/blur/border/glow). The bubble renders the left-aligned
+ * spoken line + the dismiss ×. The ASTRO speaker tag + the ▽ tail moved up to the
+ * panel (`.galaxy-astro__panel`, top-right) so the tail points at the sprite that
+ * stands at the panel's bottom-right edge — ASTRO visibly speaks the panel.
  *
  * Draw-only: the copy + the line-rotation rule live in the pure, unit-tested
  * `#/lib/galaxy/astro-voice` (the lib-pure rule). Entrance animation + the tail +
- * reduced-motion gate live in `.galaxy-astro__bubble*` CSS (src/styles.css).
+ * reduced-motion gate live in `.galaxy-astro*` CSS (src/styles.css).
  */
 
 type Props = {
@@ -42,11 +42,6 @@ type Props = {
 
 export const AstroBubble = ({ message = null, children, onDismiss }: Props) => (
   <div className="galaxy-astro__bubble pointer-events-auto">
-    {/* Speaker tag — identifies ASTRO as the author of the bubble so the tail
-        tether reads as "spoken by". Mono eyebrow style, accent colour. */}
-    <span className="galaxy-astro__bubble-tag" aria-hidden="true">
-      ASTRO
-    </span>
     {message != null && (
       <output className="galaxy-astro__bubble-text" aria-live="polite">
         {message}

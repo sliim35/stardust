@@ -26,16 +26,24 @@ import { useAstroFace } from "./useAstroFace";
  * `message` prop, else the greeting), so the bubble renders identically server- and
  * client-side on first paint — no `useEffect` visibility flip, no hydration mismatch.
  *
- * **Dock recomposition (redesign 2026-06-25, design spec §A–D):** The `.galaxy-astro`
- * frame is now a **flex-column dock** — three peer surfaces stacked:
- *   1. Speech bubble (at the top, with an ASTRO tag + a ▽ tail pointing DOWN at the
- *      sprite beneath it — the tail lands on his head, making him the visible speaker).
- *   2. The `AstroHub` (pill rail + disclosed search) as a peer of the bubble.
- *   3. The sprite button at the bottom.
- * The bubble is no longer `position: absolute` floating above; it's in normal flow
- * inside the dock. This re-tethers the tail to ASTRO without per-frame tracking
- * (dock variant b, SSR-safe — ADR-0003). The pill rail has its own right-edge fade
- * affordance; search is a disclosed mode (`aria-expanded` tracks real state).
+ * **Wide-panel recomposition (redesign 2026-06-25, owner-approved `Companion HUD`
+ * generated design).** The `.galaxy-astro` frame is a **wide bottom HUD** — a single
+ * rounded glass panel spanning the bottom from the left safe-area margin to ~85%
+ * width, with the pixel ASTRO sprite standing at its bottom-right edge:
+ *   - `.galaxy-astro__panel` — the wide glass surface. Inside, top→bottom:
+ *       (1) the speech-bubble text (left-aligned, generous);
+ *       (2) a thin divider;
+ *       (3) the horizontal pill rail (with its right-edge overflow fade);
+ *       (4) the full-width search/ask input (Enter affordance at its right).
+ *     The ASTRO tag sits at the panel's TOP-RIGHT; a small ▽ tail there points DOWN
+ *     at the sprite, so ASTRO visibly speaks the panel (static tail, SSR-safe — no
+ *     per-frame tracking; ADR-0003).
+ *   - `.galaxy-astro__hit` — the pixel sprite, at the panel's bottom-right edge.
+ * The bubble + hub are borderless content sections WITHIN the one glass panel (the
+ * panel owns the glass chrome), so the three jobs read as one HUD rather than a
+ * stack of separate boxes. Search is a disclosed mode (`aria-expanded` tracks real
+ * state); the pill rail never clips (the overflow fade signals "more →").
+ * The upper ~two-thirds of the canvas stays empty (deliberate negative space).
  *
  * #71 — expressions: `useAstroFace` drives the ambient idle-blink + the
  * click → emotion change. The single `onClick` is the shared trigger seam: it
@@ -169,36 +177,46 @@ export const Astro = ({
   // not already composing.
   const showAdd = canAddStar && onStarAdded != null && !composing;
 
-  // Dock layout (redesign 2026-06-25): the frame is now a flex-column dock.
-  // Order: bubble (speech, top) → hub (pills + search, peer) → sprite (bottom).
-  // The bubble's ▽ tail in CSS points DOWN toward the sprite below it — the tail
-  // lands on ASTRO's head because the dock keeps the gap small. (Variant b: static
-  // tail, SSR-safe — no per-frame tracking needed.)
+  // Wide-panel layout (redesign 2026-06-25): the frame is a wide bottom HUD —
+  // one glass panel (bubble text → divider → pill rail → search) with the pixel
+  // ASTRO sprite standing at the panel's bottom-right edge. The panel's ▽ tail
+  // (top-right, in CSS) points DOWN at the sprite, so ASTRO visibly speaks it.
   return (
     <div className="galaxy-astro">
-      {/* 1. Speech bubble — speech-only; the ASTRO tag + tail make him the speaker. */}
-      {(text != null || composing) && (
-        <AstroBubble message={composing ? null : text} onDismiss={onDismiss}>
-          {composing ? (
-            <AstroComposer onSuccess={onComposed} />
-          ) : showAdd ? (
-            <button
-              type="button"
-              className="galaxy-astro__add pointer-events-auto mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-snug border border-accent-soft bg-transparent px-3 py-1.5 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
-              onClick={onAdd}
-            >
-              <span aria-hidden="true">✦</span>
-              {m.chat.open}
-            </button>
-          ) : null}
-        </AstroBubble>
-      )}
-      {/* 2. Interaction hub — pill rail + disclosed search, peer of the bubble.
-          Its spoken responses route through the same bubble's aria-live region via
-          `onSpeak` (wired to `showNarration`) — no second a11y speech surface (#72). */}
-      {hub && <AstroHub {...hub} />}
-      {/* 3. Pixel ASTRO sprite — at the bottom of the dock; the bubble's ▽ tail
-          in CSS originates on the bubble's bottom edge and points at his head. */}
+      {/* The wide glass panel — owns the soft-glow chrome (bg/blur/border/glow);
+          the bubble + hub render as borderless content sections inside it. */}
+      <div className="galaxy-astro__panel pointer-events-auto">
+        {/* Speaker tag (panel top-right) — marks ASTRO as the author; the ▽ tail
+            in CSS originates here and points down at the sprite. aria-hidden (the
+            spoken text, not the tag, is the live region). */}
+        <span className="galaxy-astro__panel-tag" aria-hidden="true">
+          ASTRO
+        </span>
+        {/* 1. Speech bubble — speech-only; the panel tag + tail mark him as the
+            speaker. Borderless inside the panel. */}
+        {(text != null || composing) && (
+          <AstroBubble message={composing ? null : text} onDismiss={onDismiss}>
+            {composing ? (
+              <AstroComposer onSuccess={onComposed} />
+            ) : showAdd ? (
+              <button
+                type="button"
+                className="galaxy-astro__add pointer-events-auto mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-snug border border-accent-soft bg-transparent px-3 py-1.5 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+                onClick={onAdd}
+              >
+                <span aria-hidden="true">✦</span>
+                {m.chat.open}
+              </button>
+            ) : null}
+          </AstroBubble>
+        )}
+        {/* 2. Interaction hub — divider + pill rail + full-width search, inside the
+            same panel. Its spoken responses route through the bubble's aria-live
+            region via `onSpeak` (wired to `showNarration`) — no second a11y surface (#72). */}
+        {hub && <AstroHub {...hub} />}
+      </div>
+      {/* The pixel ASTRO sprite — at the panel's bottom-right edge; the panel's
+          ▽ tail (top-right, in CSS) points down toward his head. */}
       <button
         type="button"
         className="galaxy-astro__hit"

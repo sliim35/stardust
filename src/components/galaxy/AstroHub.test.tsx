@@ -299,6 +299,41 @@ describe("AstroHub — composition: three peer surfaces (redesign)", () => {
   });
 });
 
+describe("AstroHub — wide-panel composition (Companion HUD design)", () => {
+  it("renders the hub content as a full-width column (data-astro-hub)", () => {
+    const { container } = render(
+      <AstroHub
+        stars={STARS}
+        ctx={HOME_GALAXY}
+        onSelect={vi.fn()}
+        onTierSelect={vi.fn()}
+        onDive={vi.fn()}
+        onSpeak={vi.fn()}
+        narrate={vi.fn().mockResolvedValue(null)}
+      />,
+    );
+    const hub = container.querySelector("[data-astro-hub]");
+    expect(hub).not.toBeNull();
+    // Full-width inside the panel (not the old fixed narrow box).
+    expect(hub?.className).toContain("w-full");
+  });
+
+  it("renders a divider separating the speech bubble from the actions", () => {
+    const { container } = render(
+      <AstroHub
+        stars={STARS}
+        ctx={HOME_GALAXY}
+        onSelect={vi.fn()}
+        onTierSelect={vi.fn()}
+        onDive={vi.fn()}
+        onSpeak={vi.fn()}
+        narrate={vi.fn().mockResolvedValue(null)}
+      />,
+    );
+    expect(container.querySelector("[data-hub-divider]")).not.toBeNull();
+  });
+});
+
 describe("AstroHub — i18n (no hardcoded chrome)", () => {
   it("renders localized ru pill labels from the catalog", () => {
     stub.locale = "ru";

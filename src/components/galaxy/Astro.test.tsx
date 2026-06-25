@@ -133,3 +133,35 @@ describe("Astro — add-star lives in the bubble (#183, dir. A)", () => {
     expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
   });
 });
+
+describe("Astro — wide-panel HUD composition (Companion HUD design)", () => {
+  it("renders the speech text inside the one wide glass panel", () => {
+    const { container } = render(<Astro />);
+    const panel = container.querySelector(".galaxy-astro__panel");
+    expect(panel).not.toBeNull();
+    // The greeting text lives inside the panel (one HUD, not separate boxes).
+    expect(panel?.textContent).toContain(en.astro.greeting);
+  });
+
+  it("renders an ASTRO speaker tag on the panel (top-right marker)", () => {
+    const { container } = render(<Astro />);
+    const tag = container.querySelector(".galaxy-astro__panel-tag");
+    expect(tag).not.toBeNull();
+    expect(tag?.textContent).toBe("ASTRO");
+    // aria-hidden — the spoken text is the live region, not the tag.
+    expect(tag?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("keeps the pixel sprite as a sibling of the panel (sprite at the panel's edge)", () => {
+    const { container } = render(<Astro />);
+    const frame = container.querySelector(".galaxy-astro");
+    const panel = container.querySelector(".galaxy-astro__panel");
+    const sprite = container.querySelector(".galaxy-astro__hit");
+    expect(frame).not.toBeNull();
+    expect(panel).not.toBeNull();
+    expect(sprite).not.toBeNull();
+    // Sprite is a direct child of the frame, NOT nested inside the panel.
+    expect(panel?.contains(sprite ?? null)).toBe(false);
+    expect(sprite?.parentElement).toBe(frame);
+  });
+});

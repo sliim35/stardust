@@ -211,7 +211,7 @@ export const AstroHub = ({
   // ── sub-trees (one a11y wiring, composed in the single return below) ──────────
 
   const inputEl = (
-    <div className="relative">
+    <div className="relative w-full">
       <input
         type="text"
         role="combobox"
@@ -227,21 +227,32 @@ export const AstroHub = ({
         onFocus={onSearchFocus}
         onBlur={onSearchBlur}
         onKeyDown={onKeyDown}
-        className="pointer-events-auto w-full rounded border border-accent-soft bg-surface px-3 py-2 pr-9 font-mono text-count text-text placeholder:text-dim-3 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+        className="pointer-events-auto w-full rounded border border-accent-soft bg-surface px-3 py-2.5 pr-16 font-mono text-count text-text placeholder:text-dim-3 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
       />
-      {query !== "" && (
-        <button
-          type="button"
-          aria-label={m.clear}
-          onClick={() => {
-            onQueryChange("");
-            setSearchOpen(false);
-          }}
-          className="pointer-events-auto absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center border-0 bg-transparent p-0 font-mono text-[14px] leading-none text-dim-2 transition-colors duration-200 hover:text-text focus-visible:rounded-snug focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent motion-reduce:transition-none"
+      {/* Right-edge affordances: the clear × (only with a query) + the Enter (↵)
+          hint signalling "press Enter to ask/search". */}
+      <div className="pointer-events-none absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1.5">
+        {query !== "" && (
+          <button
+            type="button"
+            aria-label={m.clear}
+            onClick={() => {
+              onQueryChange("");
+              setSearchOpen(false);
+            }}
+            className="pointer-events-auto grid size-5 place-items-center border-0 bg-transparent p-0 font-mono text-[14px] leading-none text-dim-2 transition-colors duration-200 hover:text-text focus-visible:rounded-snug focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent motion-reduce:transition-none"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        )}
+        {/* Enter affordance — a static kbd-style hint at the input's right. */}
+        <span
+          aria-hidden="true"
+          className="grid h-5 min-w-5 place-items-center rounded-snug border border-dim-3 px-1 font-mono text-[11px] leading-none text-dim-2"
         >
-          <span aria-hidden="true">×</span>
-        </button>
-      )}
+          ↵
+        </span>
+      </div>
     </div>
   );
 
@@ -295,14 +306,21 @@ export const AstroHub = ({
     </div>
   );
 
-  // Three peer surfaces: the pill rail, and (where memory stars live) the disclosed
-  // search. The bubble is a sibling ABOVE in Astro.tsx's dock — not nested here.
+  // Inside the wide panel: a thin divider, then the pill rail, then (where memory
+  // stars live) the disclosed search — full-width within the panel. The bubble is
+  // a sibling ABOVE in Astro.tsx's panel — not nested here.
   //
   // The listbox is ALWAYS rendered (the combobox `aria-controls` target must be in
   // the DOM for the ARIA relationship to be valid). When search is collapsed, it
   // renders empty (no options). The status/count only renders when search is open.
   return (
-    <div className="flex w-[min(320px,72vw)] flex-col gap-row">
+    <div data-astro-hub className="flex w-full flex-col gap-row">
+      {/* Thin divider separating the speech bubble above from the actions below. */}
+      <div
+        aria-hidden="true"
+        className="h-px w-full bg-accent-soft"
+        data-hub-divider
+      />
       {pillRailEl}
       {showSearch && (
         <>
