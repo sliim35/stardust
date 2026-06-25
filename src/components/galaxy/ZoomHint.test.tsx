@@ -52,34 +52,33 @@ describe("ZoomHint — the scroll-to-zoom discoverability signifier (#251)", () 
     expect(screen.queryByText(LABEL)).toBeNull();
   });
 
-  // AC3 — dwell auto-hide after the configured timeout (no zoom).
-  it("AC3 — auto-hides after the dwell timeout with no interaction", () => {
+  // AC3 (reworked by the owner) — the hint PERSISTS until the first scroll: there
+  // is NO dwell timer. Advancing time alone must NOT hide it.
+  it("AC3 — does NOT auto-hide on a timer (persists until a scroll)", () => {
     vi.useFakeTimers();
-    render(<ZoomHint label={LABEL} dwellMs={6000} />);
+    render(<ZoomHint label={LABEL} />);
     expect(screen.queryByText(LABEL)).toBeTruthy();
     act(() => {
-      vi.advanceTimersByTime(6000);
+      // Far longer than any plausible dwell — it must still be visible.
+      vi.advanceTimersByTime(60_000);
     });
-    expect(screen.queryByText(LABEL)).toBeNull();
+    expect(screen.queryByText(LABEL)).toBeTruthy();
   });
 
-  // Regression (review SHOULD #255) — whichever source dismisses FIRST must tear
-  // down the other two, so the wheel/touchmove listeners don't linger for the
-  // whole session (the component never unmounts after hiding). After the dwell
-  // dismisses, both gesture listeners are gone, so a later scroll is inert.
-  it("removes the wheel + touchmove listeners when the dwell dismisses first", () => {
-    vi.useFakeTimers();
+  // Regression (review SHOULD #255) — the scroll-dismiss tears down BOTH gesture
+  // listeners, so the second one doesn't linger for the whole session (the
+  // component never unmounts after hiding) and a later scroll stays inert.
+  it("removes BOTH the wheel + touchmove listeners on the first dismiss", () => {
     const removed: string[] = [];
     const spy = vi
       .spyOn(window, "removeEventListener")
       .mockImplementation((type) => {
         removed.push(String(type));
       });
-    render(<ZoomHint label={LABEL} dwellMs={6000} />);
+    render(<ZoomHint label={LABEL} />);
     act(() => {
-      vi.advanceTimersByTime(6000);
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: -1 }));
     });
-    // The dwell's dismiss() detached BOTH gesture listeners (the leak fix).
     expect(removed).toContain("wheel");
     expect(removed).toContain("touchmove");
     spy.mockRestore();

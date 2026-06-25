@@ -8,11 +8,12 @@ import { useEffect, useState } from "react";
  *
  * It is **ambient, not interruptive**: a dim, bottom-centre wheel glyph + one
  * short line, `pointer-events:none` so it never blocks a click/scroll meant for
- * the canvas, ASTRO, the breadcrumb, or any other chrome (AC5). It auto-dismisses
- * on the **first** scroll/wheel/pinch gesture (AC2) — the visitor now knows the
- * gesture — or after a short **dwell** if they never scroll (AC3); either way it
- * is marked *seen* in `sessionStorage` so it doesn't reappear on a reload within
- * the session (AC3).
+ * the canvas, ASTRO, the breadcrumb, or any other chrome (AC5). It **persists
+ * until the visitor's first scroll/wheel/pinch gesture** (AC2/AC3) — there is no
+ * dwell timer (the owner reworked AC3: a short dwell hid it before it could even
+ * be noticed). Once dismissed it is marked *seen* in `sessionStorage`, so it
+ * shows once and does not reappear next session (AC3). It is subtle + non-blocking,
+ * so persisting until the gesture is fine.
  *
  * **The dismiss seam is a window-level listener, by design.** The hint listens to
  * `wheel` (+ `touchmove` for pinch) on `window` in the capture phase rather than
@@ -37,14 +38,9 @@ import { useEffect, useState } from "react";
 /** The `sessionStorage` flag marking the hint seen (one source of truth). */
 export const ZOOM_HINT_SEEN_KEY = "stardust:zoom-hint-seen";
 
-/** Default dwell before the hint auto-hides with no interaction (≤8 s, AC3). */
-export const ZOOM_HINT_DWELL_MS = 6000;
-
 type Props = {
   /** The hint copy + accessible name (i18n `zoomHint.label`), resolved by the caller. */
   label: string;
-  /** Dwell before the no-interaction auto-hide; injectable for tests. */
-  dwellMs?: number;
 };
 
 /** Has the visitor already seen the hint this session? (SSR-safe — guards `window`.) */
@@ -53,7 +49,7 @@ const alreadySeen = (): boolean => {
   try {
     return window.sessionStorage.getItem(ZOOM_HINT_SEEN_KEY) === "1";
   } catch {
-    // Private-mode / disabled storage → treat as unseen; the dwell still hides it.
+    // Private-mode / disabled storage → treat as unseen (it shows until a scroll).
     return false;
   }
 };
@@ -68,7 +64,7 @@ const markSeen = (): void => {
   }
 };
 
-export const ZoomHint = ({ label, dwellMs = ZOOM_HINT_DWELL_MS }: Props) => {
+export const ZoomHint = ({ label }: Props) => {
   // Start hidden so SSR and the first client render agree (no storage read at
   // render scope). The effect reveals it after mount when unseen this session.
   const [visible, setVisible] = useState(false);
@@ -79,37 +75,32 @@ export const ZoomHint = ({ label, dwellMs = ZOOM_HINT_DWELL_MS }: Props) => {
 
     // Observe the SAME gesture that drives the zoom — on window, capture phase,
     // passive (observe-only) so it catches the first wheel/pinch even if the
-    // loader/stage would otherwise swallow it.
+    // loader/stage would otherwise swallow it. There is NO dwell timer: the hint
+    // persists until the visitor's first scroll (the owner reworked AC3).
     const opts: AddEventListenerOptions = { capture: true, passive: true };
-    let timer: ReturnType<typeof setTimeout>;
 
-    // `dismiss` tears down ALL three sources itself (both listeners + the dwell
-    // timer), so the FIRST of {wheel, touchmove, dwell} wins and nothing fires
-    // again. Can't lean on `{once:true}` — it only auto-detaches the ONE listener
-    // that fired, leaving the others live for the whole session (the component
-    // never unmounts after hiding), so a later scroll would re-run dismiss().
-    // Idempotent: removeEventListener/clearTimeout on an already-gone target no-op.
+    // `dismiss` tears down BOTH listeners itself, so the first of {wheel,
+    // touchmove} wins and a later scroll can't re-run it. Can't lean on
+    // `{once:true}` — it only auto-detaches the ONE listener that fired, leaving
+    // the other live for the whole session (the component never unmounts after
+    // hiding). Idempotent: removeEventListener on an already-gone target no-ops.
     const dismiss = () => {
       window.removeEventListener("wheel", dismiss, opts);
       window.removeEventListener("touchmove", dismiss, opts);
-      clearTimeout(timer);
       markSeen();
       setVisible(false);
     };
 
     window.addEventListener("wheel", dismiss, opts);
     window.addEventListener("touchmove", dismiss, opts);
-    // No zoom within the dwell → fade it out anyway (it is not a fixture).
-    timer = setTimeout(dismiss, dwellMs);
 
-    // The unmount path still tears down too (e.g. a locale/key change re-runs the
-    // effect before any of the three sources fired).
+    // The unmount path tears down too (e.g. a locale/key change re-runs the
+    // effect before a gesture fired).
     return () => {
       window.removeEventListener("wheel", dismiss, opts);
       window.removeEventListener("touchmove", dismiss, opts);
-      clearTimeout(timer);
     };
-  }, [dwellMs]);
+  }, []);
 
   if (!visible) return null;
 
