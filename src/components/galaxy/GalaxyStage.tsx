@@ -31,17 +31,18 @@ import {
   lgLabels,
 } from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
-import { DISK_TILT } from "#/lib/galaxy/place";
+import { DISK_TILT, polarToXY } from "#/lib/galaxy/place";
 import {
   HOME_MILKY_WAY_ID,
   REAL_OBJECTS,
+  SOL_ID,
   solarSystemObjects,
 } from "#/lib/galaxy/realdata";
 import { interiorLayersVisible } from "#/lib/galaxy/scene-visibility";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { createD1Store } from "#/lib/galaxy/store-d1";
-import { HOME_TIER } from "#/lib/galaxy/tier-nav";
+import { availableTiersFor, HOME_TIER } from "#/lib/galaxy/tier-nav";
 import {
   arrivalNarration,
   createTierTransitionController,
@@ -312,11 +313,24 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // must stay in Andromeda. Falls back to the home MW when no galaxy is focused (the
   // crumb only shows under the MW in v1; the dynamic label lands in slice 4).
   const navGalaxyId = nav.state.galaxyId;
+  // The focused galaxy's BUILT tier set (BR22 / ADR-0016 §4, #248): threaded into
+  // the object-click seam so a Sol click at the Milky-Way tier resolves to a DIVE
+  // into the Solar System (the home set includes solarSystem); a neighbour's set
+  // excludes it, so the same seam stays a galaxy-floor dive there. `'home'` is the
+  // fallback at the LG overview, mirroring the reducer + the chrome breadcrumb.
+  const available = useMemo(
+    () => availableTiersFor(navGalaxyId ?? "home"),
+    [navGalaxyId],
+  );
   const onTierSelect = useCallback(
     (target: Tier) => {
       if (target === "localGroup") ascend();
       else if (target === "galaxy")
         diveTo(navGalaxyId ?? HOME_MILKY_WAY_ID, "galaxy");
+      // The SOL crumb is navigable above tier 3 (ADR-0016 §4, #248): it dives INTO
+      // the Solar System through the same gateway dive a Sol click takes. Only the
+      // home MW owns this tier, so the dive id is always Sol.
+      else if (target === "solarSystem") diveTo(SOL_ID, "solarSystem");
     },
     [ascend, diveTo, navGalaxyId],
   );
@@ -349,6 +363,11 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     const target = resolveDeepLink(deepLink, {
       findReal: (id) => REAL_OBJECTS.find((o) => o.id === id),
       findStar: (id) => skyRef.current.stars.find((s) => s.id === id),
+      // The home galaxy's set includes solarSystem (ADR-0016 §4, #248), so a
+      // `?at=system:sol` link can reach tier 3; the v1 default could not. A
+      // neighbour-scoped link still resolves against its own set inside the
+      // resolver (graceful — no solarSystem for a neighbour).
+      available: availableTiersFor("home"),
     });
     if (!target) return;
     if (target.dive.tier !== nav.state.tier) {
@@ -370,6 +389,14 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // The Solar-System tier (ADR-0016 §3): the deepest dive floor — Sol + the 8
   // planets, the quiet void. Layer A only; the L3 memory layer hides (BR33, §6).
   const solarView = displayedTier === "solarSystem";
+  // The home Milky Way interior is represented TWO ways: `null` (a wheel-descend
+  // from the LG leaves galaxyId unset) OR HOME_MILKY_WAY_ID (the gateway-click dive
+  // sets it). Both mean "inside the home MW" — the same rule `entryNarration` uses —
+  // so the Sol gateway (#262) renders in BOTH entry paths, not just the wheel one.
+  const inHomeMilkyWay =
+    !lgView &&
+    !solarView &&
+    (displayedGalaxyId === null || displayedGalaxyId === HOME_MILKY_WAY_ID);
   const neighbours = useMemo(
     () => (lgView ? lgGalaxies() : NO_NEIGHBOURS),
     [lgView],
@@ -510,9 +537,26 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
               {lgView && (
                 <LgInteractiveLabels
                   diveTo={nav.diveTo}
+                  available={available}
                   lore={m.lore}
                   onActiveChange={setLgHovered}
                   onNarrate={onNarrate}
+                />
+              )}
+              {/* Sol gateway marker (#262): the clickable sun-bloom that dives into
+                  the Solar System from the MW interior. Rides L2 — the MILKY WAY DISK
+                  plane (with GalaxyBackdrop) — so it scales + parallaxes WITH the disk
+                  (Sol is a real MW star, NOT memory-star content; owner: "on the Milky
+                  Way layer, not the stars layer"). HOME MW + galaxy tier only. The
+                  marker's outer div is pointer-events-none with only its button opting
+                  in; the planes above (L3/L4/L5, all pointer-events-none) pass the
+                  click down to it. */}
+              {inHomeMilkyWay && (
+                <SolGatewayMarker
+                  diveTo={nav.diveTo}
+                  available={available}
+                  lore={m.lore}
+                  tilt={displayTilt}
                 />
               )}
               {/* S2+S3: HD-2D planet spheres + pulsing Sol + orbital motion (#266).
@@ -539,10 +583,10 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 `mem-star-enter` fade-in still applies. `pointer-events` guards the
                 gap between hide commit and browser paint. */}
             <div
-              className={`galaxy-l3-wrap absolute inset-0 will-change-transform motion-reduce:transition-none ${
+              className={`galaxy-l3-wrap pointer-events-none absolute inset-0 will-change-transform motion-reduce:transition-none ${
                 interiorLayersVisible(displayedTier)
                   ? ""
-                  : "pointer-events-none invisible opacity-0"
+                  : "invisible opacity-0"
               }`}
               ref={cam.l3}
             >
@@ -551,6 +595,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 ignitingIds={ignitingIds}
                 highlightedId={highlightedId}
                 diveTo={nav.diveTo}
+                available={available}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
                 tilt={displayTilt}
@@ -584,6 +629,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 ignitingIds={ignitingIds}
                 highlightedId={highlightedId}
                 diveTo={nav.diveTo}
+                available={available}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
                 tilt={displayTilt}
@@ -605,6 +651,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 ignitingIds={ignitingIds}
                 highlightedId={highlightedId}
                 diveTo={nav.diveTo}
+                available={available}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
                 tilt={displayTilt}
@@ -685,6 +732,7 @@ const InteractiveStars = ({
   ignitingIds,
   highlightedId,
   diveTo,
+  available,
   a11yLabel,
   moodLabels,
   tilt,
@@ -694,12 +742,16 @@ const InteractiveStars = ({
   /** ADR-0018 §3: the id of the deep-link highlighted star, or null. */
   highlightedId?: string | null;
   diveTo: (id: string, tier: Tier) => void;
+  /** The focused galaxy's built tier set (#248): keeps the object-click seam on the
+   *  galaxy-tier layer ready to dive a gateway (Sol) into its child tier. A memory
+   *  star is never a gateway, so this is inert for the stars themselves. */
+  available: readonly Tier[];
   a11yLabel: string;
   moodLabels: Messages["moods"];
   /** #234: the displayed galaxy's interior disk tilt, threaded to the star projection. */
   tilt: number;
 }) => {
-  const onSelect = useObjectClick(diveTo);
+  const onSelect = useObjectClick(diveTo, available);
   return (
     <MemoryStarLayer
       stars={stars}
@@ -728,18 +780,21 @@ const InteractiveStars = ({
  */
 const LgInteractiveLabels = ({
   diveTo,
+  available,
   lore,
   onActiveChange,
   onNarrate,
 }: {
   diveTo: (id: string, tier: Tier) => void;
+  /** The focused galaxy's built tier set (#248), threaded into the gateway-dive seam. */
+  available: readonly Tier[];
   lore: Messages["lore"];
   /** Hover/focus sink (#174): the active galaxy id → the backdrop's point-cloud bloom. */
   onActiveChange: (id: string | null) => void;
   /** Object-focus narration sink (#184): a neighbour's card open → a cached AI fact. */
   onNarrate: (object: { loreKey: string }) => void;
 }) => {
-  const objectClick = useObjectClick(diveTo);
+  const objectClick = useObjectClick(diveTo, available);
   const byId = useMemo(() => {
     const home = REAL_OBJECTS.find((o) => o.id === HOME_MILKY_WAY_ID);
     return new Map(
@@ -769,5 +824,121 @@ const LgInteractiveLabels = ({
       onSelect={onSelect}
       onActiveChange={onActiveChange}
     />
+  );
+};
+
+/**
+ * The Sol gateway marker (#262 scope-gap) — the clickable sun-bloom that lets the
+ * visitor dive into the Solar System directly from the MW-interior view, without
+ * going via the breadcrumb.
+ *
+ * Visually distinct from Mom's gold memory star (also gold): Sol renders as a
+ * REAL-object gateway marker — a larger warm amber bloom with a sun-ray ring glyph
+ * and a reveal-on-hover/focus label reading "Sol · her home · one of ~200 billion".
+ * Mom's star is a memory-star jewel on the L5 dedication plane; Sol is a real object
+ * on the L3 interior plane, sized and colored per the `realdata` spec.
+ *
+ * Must live inside a `<CardHost>` (reads the card context via `useObjectClick`).
+ * Pointer-safe: the outer wrapper is `pointer-events-none`; only the `<button>` opts
+ * back in, so the full-bleed marker never swallows clicks on memory stars beneath it.
+ *
+ * Position: `polarToXY(sol.placement.r=0.5, sol.placement.angle=0.42, tilt)` —
+ * the same projection the memory star layer uses, so Sol sits on the MW disk exactly
+ * where the realdata places it (#/lib/galaxy/realdata, SOL_ID).
+ */
+const SolGatewayMarker = ({
+  diveTo,
+  available,
+  lore,
+  tilt,
+}: {
+  diveTo: (id: string, tier: Tier) => void;
+  /** The focused galaxy's built tier set (#248) — drives the dive resolution. */
+  available: readonly Tier[];
+  lore: Messages["lore"];
+  /** The displayed galaxy's interior disk tilt (#234) — Sol projects at this angle. */
+  tilt: number;
+}) => {
+  const sol = REAL_OBJECTS.find((o) => o.id === SOL_ID);
+  const objectClick = useObjectClick(diveTo, available);
+  const [active, setActive] = useState(false);
+  if (!sol) return null;
+  const { x, y } = polarToXY(sol.placement.r, sol.placement.angle, tilt);
+  return (
+    // The outer wrapper is pointer-events-none so the full-bleed absolute container
+    // never eats clicks on memory stars beneath (the button opts back in below).
+    <div data-sol-gateway className="pointer-events-none absolute inset-0">
+      {/* The Sol bloom button — pointer-events-auto so ONLY this button is interactive. */}
+      <button
+        type="button"
+        aria-label={`${lore.sol.name} · ${lore.sol.sublabel}`}
+        className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f5d6a0]/40"
+        style={{
+          left: `${Math.round(x)}px`,
+          top: `${Math.round(y)}px`,
+          // Hit-target: generous 48×48 px so it's comfortably clickable.
+          width: "48px",
+          height: "48px",
+        }}
+        onPointerEnter={() => setActive(true)}
+        onPointerLeave={() => setActive(false)}
+        onFocus={() => setActive(true)}
+        onBlur={() => setActive(false)}
+        onClick={() => objectClick(sol)}
+      >
+        {/* The sun-bloom glyph: a warm gold radial soft-glow ring that reads as
+            the Sun / a gateway, distinct from Mom's jewel (a solid filled circle).
+            Two concentric circles: outer (the ray ring) + inner (the core). */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          {/* A soft warm-gold bloom — SUBTLE: reads as a slightly-brighter star
+              sitting in the arm, not a hard ringed disk. Smooth falloff to
+              transparent, no concentric box-shadow rings (owner: "looked odd"). */}
+          <span
+            className="absolute rounded-full"
+            style={{
+              width: "18px",
+              height: "18px",
+              background:
+                "radial-gradient(circle, #f5d6a0cc 0%, #f5d6a038 36%, transparent 72%)",
+            }}
+          />
+          {/* The warm core: a small soft point, a touch brighter than its neighbours. */}
+          <span
+            className="absolute rounded-full"
+            style={{
+              width: "4px",
+              height: "4px",
+              background: "#fff8e8",
+              boxShadow: "0 0 4px 1px #f5d6a080",
+            }}
+          />
+        </span>
+      </button>
+      {/* The reveal label — hover/focus-driven, same pattern as LgGalaxyLabels.
+          `data-sol-label` lets the test query it without coupling to class names. */}
+      <div
+        aria-hidden="true"
+        data-sol-label
+        className={`pointer-events-none absolute -translate-x-1/2 text-center transition-opacity duration-200 motion-reduce:transition-none ${
+          active ? "opacity-100" : "opacity-0"
+        }`}
+        style={{
+          left: `${Math.round(x)}px`,
+          // Label floats above the bloom.
+          top: `${Math.round(y) - 32}px`,
+          transform: "translateX(-50%) translateY(-100%)",
+        }}
+      >
+        <em className="block font-serif text-[18px] lowercase italic leading-tight text-[#f5d6a0]">
+          {lore.sol.name}
+        </em>
+        <span className="mt-[3px] block whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.2em] text-[#f5d6a0]/70">
+          {lore.sol.sublabel}
+        </span>
+      </div>
+    </div>
   );
 };

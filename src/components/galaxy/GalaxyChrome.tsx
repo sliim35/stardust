@@ -5,8 +5,9 @@ import type { Tier } from "#/lib/galaxy/types";
 import { getMessages, interpolate, useLocale } from "#/lib/i18n";
 import type { Messages } from "#/lib/i18n/types";
 
-/** The tiers a breadcrumb click can navigate to in v1 (`solarSystem` = #127). */
-const NAVIGABLE = new Set<Tier>(["localGroup", "galaxy"]);
+/** The tiers a breadcrumb click can navigate to — every tier is built now, incl.
+ *  the Solar System (the SOL crumb dives in above tier 3, ADR-0016 §4, #248). */
+const NAVIGABLE = new Set<Tier>(["localGroup", "galaxy", "solarSystem"]);
 
 /** `text-eyebrow` = the 10px/0.2em mono chrome-label token (@theme). The
  *  `uppercase` transform is the CSS-only root-cause fix for the title-case bug
@@ -57,8 +58,9 @@ const segmentLabel = (
  * does — easing/hysteresis upstream, #125), and is capped at 3 segments
  * (Miller's Law, `MAX_BREADCRUMB_SEGMENTS`). It is a real `<nav>`: the active
  * segment is `aria-current="location"` and inert; the other *reachable* tiers are
- * buttons that navigate (`onTierSelect` → ascend / dive in the stage); SOL stays
- * the dim deferred tail (#127) — never interactive in v1. Every segment shares
+ * buttons that navigate (`onTierSelect` → ascend / dive in the stage); SOL is now
+ * one of them — a navigable button that dives into the Solar System above tier 3
+ * (ADR-0016 §4, #248), active (aria-current) once in-tier. Every segment shares
  * one font family + one case, so the active segment differs by COLOUR ONLY
  * (`text-accent` vs `text-dim-3`, Von Restorff) — not by size, case, or underline.
  *
