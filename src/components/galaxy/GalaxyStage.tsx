@@ -8,7 +8,11 @@ import {
 } from "react";
 import type { BackdropPoint } from "#/lib/galaxy/backdrop";
 import { MW_PLACEMENT } from "#/lib/galaxy/backdrop";
-import { figuresInSky, hoverAffordanceFor } from "#/lib/galaxy/constellation";
+import {
+  figureMemberIds,
+  figuresInSky,
+  hoverAffordanceFor,
+} from "#/lib/galaxy/constellation";
 import { type DeepLinkSearch, resolveDeepLink } from "#/lib/galaxy/deep-link";
 import { createFocusController } from "#/lib/galaxy/focus";
 import {
@@ -360,6 +364,32 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     () => (lgView ? [] : figuresInSky(sky.stars, displayTilt)),
     [lgView, sky.stars, displayTilt],
   );
+  // The L4 foreground figure plane (#243): partition the sky once into the stars that
+  // belong to a renderable figure (the members — promoted to L4 with their overlay) and
+  // the loose stars (free — stay on L3). `figureMemberIds` mirrors `figuresInSky`'s own
+  // validation, so a member is on L4 iff its figure draws; deep/cross-mood/lone-group
+  // stars (ADR-0014) fall to `freeStars`. The split is pure → SSR markup is deterministic
+  // and the connect-lines stay locked to their jewels at rest (RAF off → both planes at
+  // translate 0). Tilt-independent (membership is geometry-free), so it doesn't recompute
+  // on a neighbour's foreshortening change.
+  // Three-way split (#243 + owner follow-up 2026-06-24): Mom's singular `deep` star
+  // (ADR-0010 §1) rides the L5 dedication plane ALONE so it parallaxes the most and
+  // reads as the closest, most prominent point; figure members ride L4 with their
+  // overlay; the loose stars stay on L3. `deep` is checked first — `figureMemberIds`
+  // already excludes deep stars (a deep star is never a figure member), so the order
+  // only documents intent. Pure → SSR markup deterministic.
+  const { deepStars, memberStars, freeStars } = useMemo(() => {
+    const memberIds = figureMemberIds(sky.stars);
+    const deep: MemoryStar[] = [];
+    const members: MemoryStar[] = [];
+    const free: MemoryStar[] = [];
+    for (const star of sky.stars) {
+      if (star.deep) deep.push(star);
+      else if (memberIds.has(star.id)) members.push(star);
+      else free.push(star);
+    }
+    return { deepStars: deep, memberStars: members, freeStars: free };
+  }, [sky.stars]);
   // The far layers keep the reduced-motion-safe opacity transition; ambient figures
   // don't dim the sky (the old hover-reveal dim is retired with the redesign).
   const dimClass =
@@ -426,12 +456,39 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 tier it fades with the threshold swap (motion-reduce snaps) and
                 drops its pointer + keyboard affordances (visibility removes the
                 star buttons from the tab order; pointer-events guards the fade
-                window). */}
+                window). It now holds the FREE (non-figure) stars only — the
+                figure members + their overlay ride the L4 plane below (#243). */}
             <div
               className={`galaxy-l3-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
                 lgView ? "pointer-events-none invisible opacity-0" : ""
               }`}
               ref={cam.l3}
+            >
+              <InteractiveStars
+                stars={freeStars}
+                ignitingIds={ignitingIds}
+                diveTo={nav.diveTo}
+                a11yLabel={m.a11y.memoryStar}
+                moodLabels={m.moods}
+                tilt={displayTilt}
+              />
+            </div>
+            {/* L4 — the foreground figure plane (#243): the emotion figures + their
+                member stars, promoted to a near depth tier so they float above the
+                loose stars + the disk. The ConstellationOverlay shares THIS wrapper
+                with its members so the per-plane parallax shifts the lines + jewels as
+                one rigid unit — the connect-lines stay welded to the dots at every
+                pointer/zoom and align under reduced motion (line-lock by construction).
+                ALWAYS `pointer-events-none` (the member stars opt back in via
+                `.mem-star`): the wrapper is full-bleed `inset-0` over L3, so if it
+                captured the pointer it would swallow every click on the loose stars
+                beneath — the Mom-unclickable regression. The LG gate only adds the
+                visibility fade (memory interior hides on the Local-Group overview). */}
+            <div
+              className={`pointer-events-none galaxy-l4-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
+                lgView ? "invisible opacity-0" : ""
+              }`}
+              ref={cam.l4}
             >
               {figures.map((f) => (
                 <ConstellationOverlay
@@ -443,7 +500,27 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 />
               ))}
               <InteractiveStars
-                stars={sky.stars}
+                stars={memberStars}
+                ignitingIds={ignitingIds}
+                diveTo={nav.diveTo}
+                a11yLabel={m.a11y.memoryStar}
+                moodLabels={m.moods}
+                tilt={displayTilt}
+              />
+            </div>
+            {/* L5 — the dedication plane (#243 follow-up, owner 2026-06-24): Mom's
+                singular gold `deep` star (ADR-0010 §1) rides this nearest plane ALONE
+                so it parallaxes the MOST and reads as the closest, most prominent point
+                in the galaxy. Same always-`pointer-events-none` wrapper (Mom's star
+                opts back in) + the same LG visibility gate as L4/L3. */}
+            <div
+              className={`pointer-events-none galaxy-l5-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
+                lgView ? "invisible opacity-0" : ""
+              }`}
+              ref={cam.l5}
+            >
+              <InteractiveStars
+                stars={deepStars}
                 ignitingIds={ignitingIds}
                 diveTo={nav.diveTo}
                 a11yLabel={m.a11y.memoryStar}

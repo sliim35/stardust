@@ -85,6 +85,10 @@ export type ConstellationSegment = { from: Point; to: Point };
  * Anything else is excluded, never bound. Sorted by `createdAt` ascending (ties
  * broken by `id`) so the order is total + stable — the Nth member always binds to
  * the same open anchor regardless of input array order. Pure; never mutates input.
+ *
+ * Module-private, but the single source of membership truth: the L4 partition
+ * (`figureMemberIds`) reuses it in-module so the set of promoted stars can never
+ * disagree with which members `figuresInSky` actually draws (#243).
  */
 const validMembers = (
   members: readonly MemoryStar[],
@@ -93,6 +97,15 @@ const validMembers = (
   members
     .filter((s) => s.mood === figure.emotion && !s.deep)
     .sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1));
+
+/**
+ * The distinct, non-empty `group` keys present in `stars` — the same grouping
+ * `figuresInSky` / `memberAnchorPoints` iterate. Factored (#243) so every figure
+ * walk starts from one definition of "which groups exist".
+ */
+const groupKeysIn = (stars: readonly MemoryStar[]): string[] => [
+  ...new Set(stars.map((s) => s.group).filter((g): g is string => !!g)),
+];
 
 /**
  * Bind members to anchors by stable `createdAt`-ascending order (ties by `id`),
@@ -217,10 +230,7 @@ export const figuresInSky = (
   stars: readonly MemoryStar[],
   tilt: number = DISK_TILT,
 ): FigureRender[] => {
-  const groups = [
-    ...new Set(stars.map((s) => s.group).filter((g): g is string => !!g)),
-  ];
-  return groups.flatMap((group) => {
+  return groupKeysIn(stars).flatMap((group) => {
     const figure = figureForGroup(group);
     if (figure === null) return [];
     const members = validMembers(stars, figure);
@@ -241,6 +251,31 @@ export const figuresInSky = (
 };
 
 /**
+ * The set of star ids that belong to a RENDERABLE figure — the stars promoted to the
+ * L4 foreground figure plane (#243). It MIRRORS `figuresInSky`'s own grouping +
+ * validation exactly (same `groupKeysIn` walk, same `figureForGroup` resolution, same
+ * `validMembers` rules, same `>= GHOST_MIN_MEMBERS` renderable gate, reusing the very
+ * same helpers) — so the promoted set can NEVER disagree with which figures
+ * `figuresInSky` actually draws. A star is a member iff its figure renders AND it
+ * survives `validMembers` (deep / cross-mood / lone-group stars are never members —
+ * ADR-0014), so those stars stay free on L3. Tilt-independent (membership is
+ * geometry-free). Pure; never mutates input.
+ */
+export const figureMemberIds = (
+  stars: readonly MemoryStar[],
+): ReadonlySet<string> => {
+  const ids = new Set<string>();
+  for (const group of groupKeysIn(stars)) {
+    const figure = figureForGroup(group);
+    if (figure === null) continue;
+    const members = validMembers(stars, figure);
+    if (members.length < GHOST_MIN_MEMBERS) continue; // not renderable → not promoted
+    for (const m of members) ids.add(m.id);
+  }
+  return ids;
+};
+
+/**
  * Each figure MEMBER's id → the stage point of the anchor it binds to, at `tilt`. The
  * figure is the source of truth for where its members sit — NOT their stored `(r, angle)`,
  * which freezes at write time and goes stale if the silhouette is later re-placed (e.g.
@@ -257,10 +292,7 @@ export const memberAnchorPoints = (
   tilt: number = DISK_TILT,
 ): Record<string, Point> => {
   const out: Record<string, Point> = {};
-  const groups = [
-    ...new Set(stars.map((s) => s.group).filter((g): g is string => !!g)),
-  ];
-  for (const group of groups) {
+  for (const group of groupKeysIn(stars)) {
     const figure = figureForGroup(group);
     if (figure === null) continue;
     const filled = assignAnchors(validMembers(stars, figure), figure.anchors);

@@ -505,6 +505,161 @@ describe("GalaxyStage — emotion figures render ambiently (owner Claude Design 
   });
 });
 
+describe("GalaxyStage — figures ride the L4 foreground parallax plane (#243)", () => {
+  // A renderable joyful figure (3 same-emotion members) injected as user stars so
+  // the MW disk has real figure members; Mom's deep star rides the L5 dedication plane.
+  // The split puts figure members + the ConstellationOverlay on L4, loose stars on L3,
+  // and Mom's singular deep star alone on L5 (the nearest plane).
+  const joyMembers = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `j${i}`,
+      text: `joy ${i}`,
+      mood: "joyful" as const,
+      color: "#f6d36b",
+      r: 0.5,
+      angle: i,
+      brightness: 0.7,
+      createdAt: 100 + i,
+      group: "joyful",
+    }));
+
+  const renderWithFigure = (n = 3) => {
+    stubReducedMotion(true);
+    render(<GalaxyStage userStars={joyMembers(n)} />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // dive into the MW
+    return stage;
+  };
+
+  it("renders an L4 wrapper inside the camera, stacked above L3", () => {
+    renderWithFigure();
+    const camera = document.querySelector(
+      ".galaxy-stage__camera",
+    ) as HTMLElement;
+    const l3 = camera.querySelector(".galaxy-l3-wrap") as HTMLElement;
+    const l4 = camera.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    expect(l3).not.toBeNull();
+    expect(l4).not.toBeNull();
+    // L4 is a sibling of L3 inside the camera, ordered AFTER it (stacked above).
+    expect(l4.parentElement).toBe(camera);
+    expect(
+      l3.compareDocumentPosition(l4) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("renders three memory-star layers — free on L3, figure members on L4, Mom on L5", () => {
+    renderWithFigure();
+    const l3 = document.querySelector(".galaxy-l3-wrap") as HTMLElement;
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    const l5 = document.querySelector(".galaxy-l5-wrap") as HTMLElement;
+    // Three distinct MemoryStarLayer instances (one per plane: L3 free, L4 members, L5 Mom).
+    expect(document.querySelectorAll(".galaxy-l3")).toHaveLength(3);
+    expect(l3.querySelector(".galaxy-l3")).not.toBeNull();
+    expect(l4.querySelector(".galaxy-l3")).not.toBeNull();
+    expect(l5.querySelector(".galaxy-l3")).not.toBeNull();
+    // The 3 joyful figure members ride L4 (none leak onto L3 or L5)…
+    expect(l4.querySelectorAll('.mem-star[data-mood="joyful"]')).toHaveLength(
+      3,
+    );
+    expect(l3.querySelectorAll('.mem-star[data-mood="joyful"]')).toHaveLength(
+      0,
+    );
+    expect(l5.querySelectorAll('.mem-star[data-mood="joyful"]')).toHaveLength(
+      0,
+    );
+    // …and Mom's deep star (never a member) rides the L5 dedication plane, off L3/L4.
+    expect(
+      l5.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
+    ).toHaveLength(1);
+    expect(
+      l3.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
+    ).toHaveLength(0);
+    expect(
+      l4.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
+    ).toHaveLength(0);
+  });
+
+  it("rides Mom's deep star on an L5 plane stacked above L4 (owner #243 follow-up)", () => {
+    renderWithFigure();
+    const camera = document.querySelector(
+      ".galaxy-stage__camera",
+    ) as HTMLElement;
+    const l4 = camera.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    const l5 = camera.querySelector(".galaxy-l5-wrap") as HTMLElement;
+    expect(l5).not.toBeNull();
+    // L5 is a sibling of L4 inside the camera, ordered AFTER it (the nearest plane).
+    expect(l5.parentElement).toBe(camera);
+    expect(
+      l4.compareDocumentPosition(l5) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("moves the ConstellationOverlay onto L4 with its members", () => {
+    renderWithFigure();
+    const l3 = document.querySelector(".galaxy-l3-wrap") as HTMLElement;
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    expect(l4.querySelector(".galaxy-constellation")).not.toBeNull();
+    expect(l3.querySelector(".galaxy-constellation")).toBeNull();
+  });
+
+  it("keeps the L4/L5 foreground wrappers pointer-transparent so they never swallow lower-plane stars (Mom-unclickable regression #243)", () => {
+    // The figure (L4) + Mom (L5) planes are full-bleed `inset-0` ABOVE L3. If their
+    // wrapper captured the pointer it would eat every click over the loose stars
+    // beneath — which is exactly how Mom's star became unclickable. The wrappers must
+    // stay `pointer-events-none` (the member/Mom stars opt back in via `.mem-star`).
+    renderWithFigure();
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    const l5 = document.querySelector(".galaxy-l5-wrap") as HTMLElement;
+    expect(l4.className).toContain("pointer-events-none");
+    expect(l5.className).toContain("pointer-events-none");
+  });
+
+  it("carries the same Local-Group hide gate as L3 (L4 + L5 hide on the LG overview)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage userStars={joyMembers(3)} />);
+    // At the LG landing the memory interior (all planes) hides.
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    const l5 = document.querySelector(".galaxy-l5-wrap") as HTMLElement;
+    expect(l4.className).toContain("invisible");
+    expect(l4.className).toContain("opacity-0");
+    expect(l5.className).toContain("invisible");
+    expect(l5.className).toContain("opacity-0");
+    // Diving into the MW lifts the visibility gate, but the wrappers stay
+    // pointer-transparent (that is always-on now, not part of the LG gate).
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 });
+    expect(l4.className).not.toContain("invisible");
+    expect(l5.className).not.toContain("invisible");
+    expect(l4.className).toContain("pointer-events-none");
+    expect(l5.className).toContain("pointer-events-none");
+  });
+
+  it("keeps both layers interactive — clicking a figure member on L4 opens its card", () => {
+    renderWithFigure();
+    const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
+    const member = l4.querySelector<HTMLButtonElement>(
+      '.mem-star[data-mood="joyful"] button',
+    );
+    expect(member).not.toBeNull();
+    fireEvent.click(member as HTMLElement);
+    expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
+  });
+
+  it("clicking Mom's star on L5 opens her card (the unclickable-regression guard #243)", () => {
+    // The whole point of the pointer-events fix: the full-bleed L4/L5 wrappers must NOT
+    // swallow the click. Mom rides L5 as the topmost plane, so this is the strongest guard
+    // that a foreground plane stays click-through to its own star.
+    renderWithFigure();
+    const l5 = document.querySelector(".galaxy-l5-wrap") as HTMLElement;
+    const mom = l5.querySelector<HTMLButtonElement>(
+      '.mem-star[data-mood="nostalgic"] button',
+    );
+    expect(mom).not.toBeNull();
+    fireEvent.click(mom as HTMLElement);
+    expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
+  });
+});
+
 describe("GalaxyStage — wayfinding deep-links (#129)", () => {
   // All snap-path (reduced motion): the dive + the focus land without racing
   // GSAP's ticker — the eased flights themselves are pinned in

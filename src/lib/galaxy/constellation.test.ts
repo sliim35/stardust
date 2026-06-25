@@ -444,6 +444,80 @@ describe("hoverAffordanceFor — what hover lights (interaction spec §3)", () =
   });
 });
 
+describe("figureMemberIds — the set of stars promoted to the L4 figure plane (#243)", () => {
+  // The pure predicate GalaxyStage partitions on: every star bound into a
+  // RENDERABLE figure (the same grouping/validation `figuresInSky` draws). It must
+  // never disagree with what `figuresInSky` actually paints.
+  const joyMembers = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      mkStar({ id: `j${i}`, mood: "joyful", group: "joyful", createdAt: i }),
+    );
+
+  it("includes every valid member of a renderable figure (≥ GHOST_MIN_MEMBERS)", () => {
+    const ids = constellation.figureMemberIds(joyMembers(3));
+    expect(ids.has("j0")).toBe(true);
+    expect(ids.has("j1")).toBe(true);
+    expect(ids.has("j2")).toBe(true);
+    expect(ids.size).toBe(3);
+  });
+
+  it("omits a lone (1-member) group — it never renders a figure", () => {
+    const ids = constellation.figureMemberIds(joyMembers(1));
+    expect(ids.has("j0")).toBe(false);
+    expect(ids.size).toBe(0);
+  });
+
+  it("excludes a deep star (Mom's irina) — it is never a figure member (ADR-0014)", () => {
+    const stars = [
+      ...joyMembers(3),
+      mkStar({ id: "irina", mood: "joyful", group: "joyful", deep: true }),
+    ];
+    const ids = constellation.figureMemberIds(stars);
+    expect(ids.has("irina")).toBe(false);
+    expect(ids.has("j0")).toBe(true);
+  });
+
+  it("excludes a cross-mood star wearing the group (rule 1)", () => {
+    const stars = [
+      ...joyMembers(3),
+      mkStar({ id: "intruder", mood: "tender", group: "joyful" }),
+    ];
+    const ids = constellation.figureMemberIds(stars);
+    expect(ids.has("intruder")).toBe(false);
+    expect(ids.size).toBe(3);
+  });
+
+  it("agrees with figuresInSky on which figures render (the provable-match invariant)", () => {
+    // A mixed fixture: a renderable joyful figure (3 valid), a lone tender group
+    // (omitted), a deep + a cross-mood intruder (excluded).
+    const stars = [
+      ...joyMembers(3),
+      mkStar({ id: "t0", mood: "tender", group: "tender", createdAt: 10 }), // lone → no figure
+      mkStar({ id: "deep", mood: "joyful", group: "joyful", deep: true }),
+      mkStar({ id: "x", mood: "courage", group: "joyful" }),
+    ];
+    const ids = constellation.figureMemberIds(stars);
+    // Only the 3 joyful members ride L4.
+    expect([...ids].sort()).toEqual(["j0", "j1", "j2"]);
+    // …and that's exactly the membership of every figure figuresInSky draws.
+    const drawn = constellation.figuresInSky(stars).map((f) => f.group);
+    expect(drawn).toEqual(["joyful"]); // the lone tender group is not drawn
+  });
+
+  it("promotes a figure at exactly GHOST_MIN_MEMBERS (n=2 boundary) — both ride L4", () => {
+    const ids = constellation.figureMemberIds(joyMembers(2));
+    expect(ids.has("j0")).toBe(true);
+    expect(ids.has("j1")).toBe(true);
+    expect(ids.size).toBe(2);
+  });
+
+  it("returns a Set", () => {
+    // `figureMemberIds` is typed `ReadonlySet<string>` (TS enforces immutability at
+    // compile time); at runtime it is a plain Set.
+    expect(constellation.figureMemberIds(joyMembers(2))).toBeInstanceOf(Set);
+  });
+});
+
 describe("retired #200 back-compat shims (#227 AC3)", () => {
   it("no longer exports the deprecated constellationNodes / constellationSegments", () => {
     // The shims bridged GalaxyStage through the anchor-model rewrite; with the host

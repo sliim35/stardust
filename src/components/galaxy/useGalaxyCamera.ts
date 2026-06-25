@@ -98,6 +98,12 @@ type CameraRefs = {
   l1: RefObject<HTMLDivElement | null>;
   l2: RefObject<HTMLDivElement | null>;
   l3: RefObject<HTMLDivElement | null>;
+  /** The foreground figure plane (#243) — the emotion figures + their member stars
+   * ride it at `PARALLAX_MAX.l4`. */
+  l4: RefObject<HTMLDivElement | null>;
+  /** The dedication plane (#243 follow-up) — Mom's singular `deep` star rides it
+   * ALONE at `PARALLAX_MAX.l5` (the very nearest, most-moving rate). */
+  l5: RefObject<HTMLDivElement | null>;
   cam: RefObject<HTMLDivElement | null>;
   /** The scene root. */
   stage: RefObject<HTMLDivElement | null>;
@@ -129,6 +135,8 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
   const l1 = useRef<HTMLDivElement>(null);
   const l2 = useRef<HTMLDivElement>(null);
   const l3 = useRef<HTMLDivElement>(null);
+  const l4 = useRef<HTMLDivElement>(null);
+  const l5 = useRef<HTMLDivElement>(null);
   const cam = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const fit = useRef<HTMLDivElement>(null);
@@ -401,8 +409,10 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
         l1: { x: 0, y: 0 },
         l2: { x: 0, y: 0 },
         l3: { x: 0, y: 0 },
+        l4: { x: 0, y: 0 },
+        l5: { x: 0, y: 0 },
       };
-      const els = { l1, l2, l3 } as const;
+      const els = { l1, l2, l3, l4, l5 } as const;
 
       const frame = (ms: number) => {
         const t = ms * 0.001;
@@ -419,7 +429,7 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
           : pointer.current.y;
         const tgt = parallaxOffsets({ x: px, y: py }, { w: vw, h: vh });
 
-        for (const key of ["l1", "l2", "l3"] as const) {
+        for (const key of ["l1", "l2", "l3", "l4", "l5"] as const) {
           cur[key].x += (tgt[key].x - cur[key].x) * 0.06;
           cur[key].y += (tgt[key].y - cur[key].y) * 0.06;
           const el = els[key].current;
@@ -445,6 +455,8 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
     l1,
     l2,
     l3,
+    l4,
+    l5,
     cam,
     stage,
     fit,
