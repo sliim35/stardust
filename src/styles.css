@@ -313,13 +313,17 @@ body {
    empty (deliberate negative space); the breadcrumb stays top-left. */
 .galaxy-astro {
   position: absolute;
-  left: max(24px, env(safe-area-inset-left));
+  /* A compact BOTTOM-RIGHT dock (owner 2026-06-25: the goal corner is down-right):
+     the sprite sits in the corner, the panel extends LEFT from him. The dock stays
+     ≤ ~58% of the viewport so the canvas + the left side stay breathing room. */
   right: max(24px, env(safe-area-inset-right));
   bottom: max(24px, env(safe-area-inset-bottom));
+  width: min(58%, 760px);
   z-index: 4; /* above stars/captions, below the palette switcher (6) + panels */
   pointer-events: none; /* decorative; never captures mouse/touch */
-  /* Flex row: the wide panel on the left, the sprite at the bottom-right edge.
-     The panel + sprite together span the bottom; align them to the panel's base. */
+  /* Flex row: the panel on the left, the sprite at the bottom-right corner. The
+     hub inherits the ACTIVE SKY PALETTE accent (owner: colour must match the theme)
+     — no fixed accent override here. */
   display: flex;
   flex-direction: row;
   align-items: flex-end;
