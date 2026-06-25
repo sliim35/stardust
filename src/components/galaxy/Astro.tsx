@@ -10,11 +10,11 @@ import { PixelAstronaut } from "./PixelAstronaut";
 import { useAstroFace } from "./useAstroFace";
 
 /**
- * ASTRO (#70 + #72) — the galaxy's quiet host, pinned in the reserved bottom-right
- * slot. A sibling of `<GalaxyChrome />` in the viewport-fixed `.galaxy-chrome-overlay`
- * (#76 lifted it out of `.galaxy-stage__fit` so it holds a fixed readable size in the
- * corner like the title, rather than shrinking with the stage; it never took the
- * camera/parallax).
+ * ASTRO (#70 + #72 + redesign 2026-06-25) — the galaxy's quiet host, pinned in the
+ * reserved bottom-right slot. A sibling of `<GalaxyChrome />` in the viewport-fixed
+ * `.galaxy-chrome-overlay` (#76 lifted it out of `.galaxy-stage__fit` so it holds a
+ * fixed readable size in the corner like the title, rather than shrinking with the
+ * stage; it never took the camera/parallax).
  *
  * The sprite is decorative pixel-art chrome: `aria-hidden`, gently bobbing — never a
  * tab stop. The *words* carry meaning (#72), so the speech bubble — not the figure —
@@ -26,11 +26,16 @@ import { useAstroFace } from "./useAstroFace";
  * `message` prop, else the greeting), so the bubble renders identically server- and
  * client-side on first paint — no `useEffect` visibility flip, no hydration mismatch.
  *
- * The sprite wrapper stays `pointer-events: none` (clicks pass through to the stars);
- * only the click hit-area opts back in (`pointer-events: auto`) as a focusable,
- * keyboard-activatable `<button aria-label>` — the unified click trigger. Placement,
- * the bob/drift, the small-screen hide, and the reduced-motion gate all live in
- * `.galaxy-astro*` CSS (src/styles.css).
+ * **Dock recomposition (redesign 2026-06-25, design spec §A–D):** The `.galaxy-astro`
+ * frame is now a **flex-column dock** — three peer surfaces stacked:
+ *   1. Speech bubble (at the top, with an ASTRO tag + a ▽ tail pointing DOWN at the
+ *      sprite beneath it — the tail lands on his head, making him the visible speaker).
+ *   2. The `AstroHub` (pill rail + disclosed search) as a peer of the bubble.
+ *   3. The sprite button at the bottom.
+ * The bubble is no longer `position: absolute` floating above; it's in normal flow
+ * inside the dock. This re-tethers the tail to ASTRO without per-frame tracking
+ * (dock variant b, SSR-safe — ADR-0003). The pill rail has its own right-edge fade
+ * affordance; search is a disclosed mode (`aria-expanded` tracks real state).
  *
  * #71 — expressions: `useAstroFace` drives the ambient idle-blink + the
  * click → emotion change. The single `onClick` is the shared trigger seam: it
@@ -38,11 +43,11 @@ import { useAstroFace } from "./useAstroFace";
  * two layers stay one interaction. The face mood feeds `PixelAstronaut`'s `mood`
  * prop; the figure never shifts — only the glowing pixel-eyes change.
  *
- * Layout: `.galaxy-astro` is the **stable, un-animated corner frame** — the bubble
- * is a direct child anchored to that frame, so the reading position stays steady
- * while only the sprite bobs/drifts beneath it (`__bob` carries `astro-bob`, `__drift`
- * the secondary wander). The sprite is rendered at `GALAXY_ASTRO_SCALE` (the single
- * size knob), bigger than the prototype default so it sits with the bubble.
+ * The sprite wrapper stays `pointer-events: none` (clicks pass through to the stars);
+ * only the click hit-area opts back in (`pointer-events: auto`) as a focusable,
+ * keyboard-activatable `<button aria-label>` — the unified click trigger. Placement,
+ * the bob/drift, the small-screen hide, and the reduced-motion gate all live in
+ * `.galaxy-astro*` CSS (src/styles.css).
  */
 
 type Props = {
@@ -164,8 +169,14 @@ export const Astro = ({
   // not already composing.
   const showAdd = canAddStar && onStarAdded != null && !composing;
 
+  // Dock layout (redesign 2026-06-25): the frame is now a flex-column dock.
+  // Order: bubble (speech, top) → hub (pills + search, peer) → sprite (bottom).
+  // The bubble's ▽ tail in CSS points DOWN toward the sprite below it — the tail
+  // lands on ASTRO's head because the dock keeps the gap small. (Variant b: static
+  // tail, SSR-safe — no per-frame tracking needed.)
   return (
     <div className="galaxy-astro">
+      {/* 1. Speech bubble — speech-only; the ASTRO tag + tail make him the speaker. */}
       {(text != null || composing) && (
         <AstroBubble message={composing ? null : text} onDismiss={onDismiss}>
           {composing ? (
@@ -182,11 +193,12 @@ export const Astro = ({
           ) : null}
         </AstroBubble>
       )}
-      {/* #250 (ADR-0017) — the always-visible interaction hub (search + pills),
-          hosted in this frame above the sprite. Its spoken responses route through
-          the same `narration` bubble via `onSpeak` (wired to `showNarration`), so
-          there is no second a11y speech surface (the #72 invariant). */}
+      {/* 2. Interaction hub — pill rail + disclosed search, peer of the bubble.
+          Its spoken responses route through the same bubble's aria-live region via
+          `onSpeak` (wired to `showNarration`) — no second a11y speech surface (#72). */}
       {hub && <AstroHub {...hub} />}
+      {/* 3. Pixel ASTRO sprite — at the bottom of the dock; the bubble's ▽ tail
+          in CSS originates on the bubble's bottom edge and points at his head. */}
       <button
         type="button"
         className="galaxy-astro__hit"

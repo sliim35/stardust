@@ -11,39 +11,34 @@ import { getMessages, interpolate, useLocale } from "#/lib/i18n";
 import type { NarrateInput } from "#/server/narrate";
 
 /**
- * AstroHub (#250, ADR-0017) — ASTRO's single interaction surface, hosted inside
- * `Astro.tsx`'s `.galaxy-astro` frame. Two affordances:
+ * AstroHub (#250 + redesign) — ASTRO's single interaction surface. Three peer
+ * surfaces in the dock (not one stack):
  *
- * 1. **An always-visible compact search combobox** — the `StarSearch` (#113)
- *    combobox a11y wiring extracted *verbatim* (`role="combobox"`,
- *    `aria-expanded`/`controls`/`activedescendant` over a `role="listbox"` of
- *    `role="option"` buttons, the `<output aria-live>` count, Arrow/Enter/Escape).
- *    Search stays `searchStars(stars, query)` → on select `onSelect(id)` (the #111
- *    `focusStar` primitive, unchanged) AND ASTRO speaks the found/notFound line.
- * 2. **A row of fast-action pills** — real `<button>`s from the pure `pillsFor(ctx)`
- *    selector (`astro-pills.ts`), in a labelled `role="group"`. A `nav` pill drives
- *    the existing tier-nav spine (`onTierSelect` / `onDive`); a `prompt` pill makes
- *    ASTRO speak ONE bubble response (`speakLore` → `narrate` with the
- *    `lore[key].line` fallback; `sayLine` → the canned `astroHub.lines.*` line) —
- *    NO chat thread / multi-turn state / new backend (ADR-0017 §4/§6).
+ * 1. **Pill rail** — a horizontally scrollable row of fast-action buttons with a
+ *    right-edge gradient fade affordance so nothing clips. Nav pills drive the
+ *    tier-nav spine; prompt pills make ASTRO speak ONE bubble response. The rail is
+ *    a PEER of the search surface — NOT nested inside the speech bubble.
+ * 2. **Disclosed search** — a slim combobox that is COLLAPSED by default
+ *    (`aria-expanded="false"`). Focus/click expands it into the full combobox +
+ *    live count + first result. Escape or clear collapses it back. `aria-expanded`
+ *    tracks the real disclosure state (not hardcoded `"true"`).
+ *    Active only where memory stars live (`showSearch`).
+ * 3. **Spoken responses** route through the `AstroBubble` aria-live region via
+ *    `onSpeak` (the `showNarration` seam, last-writer-wins through `Astro`) — no
+ *    second live region (the #72 invariant).
  *
- * The spoken response is announced by the EXISTING `AstroBubble` `aria-live` region
- * via `onSpeak` (the `showNarration` seam, last-writer-wins through `Astro`) — no
- * second live region (the #72 invariant).
- *
- * **Composition (owner pick, 2026-06-25):** the FIXED contract (always-visible
- * input, combobox semantics, real-button pills, pointer-events discipline) plus the
- * chosen layout — the **pill row on top**, then the search input, then a **compact
- * count + first-result** (not the full browsable listbox). On `max-[620px]` the pill
- * row scrolls horizontally. (ADR-0017 §1 spec'd a code-first composition bake-off;
- * the owner picked this one and the toggle scaffold + the other layouts were removed.)
+ * **Composition (redesign 2026-06-25):** the pill rail + search field are peers
+ * of the speech bubble — they live OUTSIDE the bubble in the dock. The hub renders
+ * the rail + search; Astro.tsx renders the bubble independently. This decouples the
+ * three surfaces so the bubble stays speech-only and the rail never clips inside the
+ * bubble's max-width.
  *
  * SSR/Workers-safe (ADR-0003): no module-scope clock/random; ids via `useId`; the
  * `narrate` fetch fires only in a click handler (request scope). i18n (#103): all
  * copy from the `search.*` + `astroHub.*` catalog, never inline. Styling (#75):
  * Tailwind utilities reading `@theme` tokens; no hardcoded hex. Pointer-events
- * (#243/#245): the hub is a frame-hosted child whose interactive elements carry
- * `pointer-events-auto` so they stay clickable under any `pointer-events:none` host.
+ * (#243/#245): interactive elements carry `pointer-events-auto` so they stay
+ * clickable under any `pointer-events:none` host.
  */
 
 export type AstroHubProps = {
@@ -91,6 +86,9 @@ export const AstroHub = ({
   // The active option's index in `results`, or -1 for "none active" (Enter then
   // falls back to the first result — the common "type and hit Enter" path).
   const [active, setActive] = useState(-1);
+  // Search disclosure state — false = collapsed slim affordance; true = expanded
+  // combobox + results. `aria-expanded` tracks this (redesign: was hardcoded "true").
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const results = useMemo(() => searchStars(stars, query), [stars, query]);
   const pills = useMemo(() => pillsFor(ctx), [ctx]);
@@ -114,11 +112,28 @@ export const AstroHub = ({
     if (!star) return;
     onSelect(star.id);
     onSpeak(interpolate(hub.found, { name: star.name ?? star.text }));
+    // Collapse the search after a successful selection.
+    setSearchOpen(false);
+    setQuery("");
+    setActive(-1);
   };
 
   const onQueryChange = (value: string) => {
     setQuery(value);
     setActive(-1); // a new query resets the roving cursor
+  };
+
+  const onSearchFocus = () => {
+    setSearchOpen(true);
+  };
+
+  const onSearchBlur = () => {
+    // Collapse on blur only if no query — a user who typed something should keep
+    // the results visible. The results list uses onMouseDown preventDefault so
+    // clicking a result doesn't trigger blur before the click fires.
+    if (query === "") {
+      setSearchOpen(false);
+    }
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -127,7 +142,11 @@ export const AstroHub = ({
         // Type-and-Enter on a no-match: ASTRO says "nothing found" (BR37/AC4).
         e.preventDefault();
         onSpeak(hub.notFound);
-      } else if (e.key === "Escape") onQueryChange("");
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onQueryChange("");
+        setSearchOpen(false);
+      }
       return;
     }
     switch (e.key) {
@@ -153,6 +172,7 @@ export const AstroHub = ({
       case "Escape": {
         e.preventDefault();
         onQueryChange("");
+        setSearchOpen(false);
         break;
       }
     }
@@ -196,7 +216,7 @@ export const AstroHub = ({
         type="text"
         role="combobox"
         aria-label={m.label}
-        aria-expanded="true"
+        aria-expanded={searchOpen ? "true" : "false"}
         aria-controls={listboxId}
         aria-describedby={statusId}
         aria-activedescendant={activeId}
@@ -204,6 +224,8 @@ export const AstroHub = ({
         placeholder={m.placeholder}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
+        onFocus={onSearchFocus}
+        onBlur={onSearchBlur}
         onKeyDown={onKeyDown}
         className="pointer-events-auto w-full rounded border border-accent-soft bg-surface px-3 py-2 pr-9 font-mono text-count text-text placeholder:text-dim-3 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
       />
@@ -211,7 +233,10 @@ export const AstroHub = ({
         <button
           type="button"
           aria-label={m.clear}
-          onClick={() => onQueryChange("")}
+          onClick={() => {
+            onQueryChange("");
+            setSearchOpen(false);
+          }}
           className="pointer-events-auto absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center border-0 bg-transparent p-0 font-mono text-[14px] leading-none text-dim-2 transition-colors duration-200 hover:text-text focus-visible:rounded-snug focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent motion-reduce:transition-none"
         >
           <span aria-hidden="true">×</span>
@@ -232,85 +257,96 @@ export const AstroHub = ({
     </output>
   );
 
-  // The compact result list — the count line above + the FIRST result only (the
-  // chosen "B" composition keeps the corner light). The listbox is always present
-  // (the combobox `aria-controls` target); the roving cursor stays on the input via
-  // `aria-activedescendant`, and the option is a real <button> out of the tab order
-  // (the ARIA 1.2 combobox pattern, extracted verbatim from #113).
-  const listEl = (
-    <div
-      id={listboxId}
-      role="listbox"
-      aria-label={m.results}
-      className="m-0 flex max-h-[24vh] list-none flex-col gap-px overflow-y-auto p-0"
-    >
-      {results.slice(0, 1).map((star, i) => {
-        const isActive = i === active;
-        return (
+  // The pill rail wrapper — an overflow-hidden relative container with a right-edge
+  // gradient fade affordance (always-on mask) so the rail reads as scrollable and
+  // nothing clips. The `data-pill-rail` attribute is the test/QA selector hook.
+  // `[scrollbar-width:none]` keeps the scrollbar invisible; the fade takes its role.
+  const pillRailEl = (
+    <div data-pill-rail className="relative overflow-hidden">
+      {/* Right-edge gradient fade — always visible, pointer-events:none so it
+          doesn't block clicks. The fade fades out the last ~32px of the rail,
+          signalling overflow / "more to scroll" without relying on OS scrollbars. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 z-10 h-full w-8 bg-gradient-to-l from-[var(--color-space-deep)] to-transparent"
+      />
+      {/* A `<fieldset>` + sr-only `<legend>` is the semantic labelled-control group (it
+          carries the implicit `role="group"` the ADR §5 calls for, with the legend as its
+          accessible name) — the SAME native pattern `PaletteSwitcher` uses, and what
+          Biome's `useSemanticElements` requires over a `role="group"` div. On `max-[620px]`
+          the row scrolls horizontally so the pills never wrap/clip in the corner. */}
+      <fieldset className="m-0 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto border-0 p-0 pb-0.5 pr-8 [scrollbar-width:none]">
+        <legend className="sr-only">{hub.pillGroup}</legend>
+        {pills.map((pill) => (
           <button
+            key={pill.id}
             type="button"
-            key={star.id}
-            id={optionId(i)}
-            role="option"
-            aria-selected={isActive}
-            aria-label={labelFor(star)}
-            tabIndex={-1}
-            onMouseEnter={() => setActive(i)}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => choose(i)}
-            className={`pointer-events-auto flex cursor-pointer flex-col items-start gap-[2px] border-0 bg-transparent px-3 py-2 text-left transition-colors duration-150 motion-reduce:transition-none ${
-              isActive ? "bg-accent-soft" : "hover:bg-accent-soft"
+            onClick={() => onPill(pill)}
+            className={`pointer-events-auto inline-flex shrink-0 cursor-pointer items-center rounded-full border px-2.5 py-1 font-sans text-eyebrow font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${
+              pill.kind === "nav"
+                ? "border-accent-soft text-accent hover:bg-accent-soft"
+                : "border-dim-3 text-dim-2 hover:border-accent-soft hover:text-text"
             }`}
           >
-            {star.name && (
-              <span className="font-sans text-count text-text">
-                {star.name}
-              </span>
-            )}
-            <span className="max-w-full truncate font-serif text-eyebrow text-dim-2">
-              {star.text}
-            </span>
+            {hub.pills[pill.labelKey]}
           </button>
-        );
-      })}
+        ))}
+      </fieldset>
     </div>
   );
 
-  // A `<fieldset>` + sr-only `<legend>` is the semantic labelled-control group (it
-  // carries the implicit `role="group"` the ADR §5 calls for, with the legend as its
-  // accessible name) — the SAME native pattern `PaletteSwitcher` uses, and what
-  // Biome's `useSemanticElements` requires over a `role="group"` div. On `max-[620px]`
-  // the row scrolls horizontally so the pills never wrap/clip in the corner.
-  const pillRow = (
-    <fieldset className="m-0 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto border-0 p-0 pb-0.5 [scrollbar-width:none]">
-      <legend className="sr-only">{hub.pillGroup}</legend>
-      {pills.map((pill) => (
-        <button
-          key={pill.id}
-          type="button"
-          onClick={() => onPill(pill)}
-          className={`pointer-events-auto inline-flex shrink-0 cursor-pointer items-center rounded-full border px-2.5 py-1 font-sans text-eyebrow font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${
-            pill.kind === "nav"
-              ? "border-accent-soft text-accent hover:bg-accent-soft"
-              : "border-dim-3 text-dim-2 hover:border-accent-soft hover:text-text"
-          }`}
-        >
-          {hub.pills[pill.labelKey]}
-        </button>
-      ))}
-    </fieldset>
-  );
-
-  // The owner-picked composition: the pill row on top, then (where memory stars live)
-  // the search input → compact count → first result.
+  // Three peer surfaces: the pill rail, and (where memory stars live) the disclosed
+  // search. The bubble is a sibling ABOVE in Astro.tsx's dock — not nested here.
+  //
+  // The listbox is ALWAYS rendered (the combobox `aria-controls` target must be in
+  // the DOM for the ARIA relationship to be valid). When search is collapsed, it
+  // renders empty (no options). The status/count only renders when search is open.
   return (
     <div className="flex w-[min(320px,72vw)] flex-col gap-row">
-      {pillRow}
+      {pillRailEl}
       {showSearch && (
         <>
           {inputEl}
-          {statusEl}
-          {listEl}
+          {/* Count + results visible only when search is disclosed */}
+          {searchOpen && statusEl}
+          {/* Listbox stays in DOM for ARIA contract; empty when closed */}
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label={m.results}
+            className="m-0 flex max-h-[24vh] list-none flex-col gap-px overflow-y-auto p-0"
+          >
+            {searchOpen &&
+              results.slice(0, 1).map((star, i) => {
+                const isActive = i === active;
+                return (
+                  <button
+                    type="button"
+                    key={star.id}
+                    id={optionId(i)}
+                    role="option"
+                    aria-selected={isActive}
+                    aria-label={labelFor(star)}
+                    tabIndex={-1}
+                    onMouseEnter={() => setActive(i)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => choose(i)}
+                    className={`pointer-events-auto flex cursor-pointer flex-col items-start gap-[2px] border-0 bg-transparent px-3 py-2 text-left transition-colors duration-150 motion-reduce:transition-none ${
+                      isActive ? "bg-accent-soft" : "hover:bg-accent-soft"
+                    }`}
+                  >
+                    {star.name && (
+                      <span className="font-sans text-count text-text">
+                        {star.name}
+                      </span>
+                    )}
+                    <span className="max-w-full truncate font-serif text-eyebrow text-dim-2">
+                      {star.text}
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
         </>
       )}
     </div>

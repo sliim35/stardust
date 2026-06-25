@@ -999,6 +999,9 @@ describe("GalaxyStage — discovery search → focus-on-star (#113)", () => {
   it("selecting a result frames that star — the camera lands on its focus-on-star framing", async () => {
     renderDivedIntoMilkyWay();
     const input = screen.getByRole("combobox", { name: en.search.label });
+    // Focus the input first to expand the disclosed search (redesign: search is
+    // collapsed by default, expanding on focus to show results).
+    fireEvent.focus(input);
     // Mom's "for mom" star is the only seeded memory star now.
     fireEvent.change(input, { target: { value: "for mom" } });
     fireEvent.click(screen.getByRole("option", { name: "Go to for mom" }));

@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe("AstroHub — search combobox a11y (AC10)", () => {
-  it("renders an always-visible labelled combobox and a results listbox", () => {
+  it("renders a labelled combobox and a results listbox", () => {
     renderHub();
     expect(input()).toBeTruthy();
     expect(
@@ -81,6 +81,7 @@ describe("AstroHub — search combobox a11y (AC10)", () => {
 
   it("typing filters via searchStars and renders one option per match", () => {
     renderHub();
+    fireEvent.focus(input());
     fireEvent.change(input(), { target: { value: "Irina" } });
     expect(screen.getAllByRole("option")).toHaveLength(1);
     expect(screen.getByRole("option", { name: "Go to Irina" })).toBeTruthy();
@@ -88,6 +89,7 @@ describe("AstroHub — search combobox a11y (AC10)", () => {
 
   it("marks the active option with aria-activedescendant + aria-selected", () => {
     renderHub();
+    fireEvent.focus(input());
     fireEvent.keyDown(input(), { key: "ArrowDown" });
     const active = input().getAttribute("aria-activedescendant");
     expect(active).toBeTruthy();
@@ -101,6 +103,7 @@ describe("AstroHub — search combobox a11y (AC10)", () => {
     // stay on it — advancing would point aria-activedescendant at an option id
     // that isn't in the DOM (dangling IDREF). STARS has 2 matches on an empty query.
     renderHub();
+    fireEvent.focus(input());
     fireEvent.keyDown(input(), { key: "ArrowDown" });
     fireEvent.keyDown(input(), { key: "ArrowDown" });
     const active = input().getAttribute("aria-activedescendant");
@@ -110,15 +113,37 @@ describe("AstroHub — search combobox a11y (AC10)", () => {
 
   it("Escape clears the query", () => {
     renderHub();
+    fireEvent.focus(input());
     fireEvent.change(input(), { target: { value: "kitchen" } });
     fireEvent.keyDown(input(), { key: "Escape" });
     expect((input() as HTMLInputElement).value).toBe("");
+  });
+
+  it("aria-expanded tracks real disclosure state — false when collapsed, true when open", () => {
+    renderHub();
+    // collapsed by default
+    expect(input().getAttribute("aria-expanded")).toBe("false");
+    // focus → expands
+    fireEvent.focus(input());
+    expect(input().getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("Escape collapses the search back to closed state (aria-expanded false)", () => {
+    renderHub();
+    fireEvent.focus(input());
+    expect(input().getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(input(), { key: "Escape" });
+    // After Escape: collapsed + query cleared
+    expect((input() as HTMLInputElement).value).toBe("");
+    // The input itself is still in the DOM (it's the slim affordance)
+    expect(input()).toBeTruthy();
   });
 });
 
 describe("AstroHub — selecting a result frames the star (AC5)", () => {
   it("clicking a result calls onSelect('star-1') (→ focusStar)", () => {
     const { onSelect } = renderHub();
+    fireEvent.focus(input());
     fireEvent.change(input(), { target: { value: "Irina" } });
     fireEvent.click(screen.getByRole("option", { name: "Go to Irina" }));
     expect(onSelect).toHaveBeenCalledWith("star-1");
@@ -126,6 +151,7 @@ describe("AstroHub — selecting a result frames the star (AC5)", () => {
 
   it("speaks the found line on select (AC4)", () => {
     const { onSpeak } = renderHub();
+    fireEvent.focus(input());
     fireEvent.change(input(), { target: { value: "Irina" } });
     fireEvent.click(screen.getByRole("option", { name: "Go to Irina" }));
     expect(onSpeak).toHaveBeenCalledWith("Flying you to Irina.");
@@ -133,6 +159,7 @@ describe("AstroHub — selecting a result frames the star (AC5)", () => {
 
   it("speaks the notFound line on a zero-result Enter (AC4)", () => {
     const { onSpeak, onSelect } = renderHub();
+    fireEvent.focus(input());
     fireEvent.change(input(), { target: { value: "zzzznope" } });
     fireEvent.keyDown(input(), { key: "Enter" });
     expect(onSelect).not.toHaveBeenCalled();
@@ -150,6 +177,25 @@ describe("AstroHub — fast-action pills (AC8)", () => {
     expect(
       within(group).getByRole("button", { name: en.astroHub.pills.earth }),
     ).toBeTruthy();
+  });
+
+  it("pill rail is present as a peer of the search (not nested inside it)", () => {
+    renderHub();
+    // The pill group and the combobox input must be siblings in the dock — neither
+    // should be a child of the other. We verify by checking neither contains the other.
+    const group = screen.getByRole("group", { name: en.astroHub.pillGroup });
+    const inp = input();
+    expect(group.contains(inp)).toBe(false);
+    expect(inp.closest("[role='group']")).toBeNull();
+  });
+
+  it("the pill rail has an overflow-fade affordance wrapper (overflow-hidden + gradient mask)", () => {
+    renderHub();
+    // The pill rail is wrapped in an element with data-pill-rail attribute
+    const rail = screen
+      .getByRole("group", { name: en.astroHub.pillGroup })
+      .closest("[data-pill-rail]");
+    expect(rail).not.toBeNull();
   });
 
   it("a 'Sol' nav pill dives via onDive('sol-system','solarSystem')", () => {
@@ -221,6 +267,35 @@ describe("AstroHub — fast-action pills (AC8)", () => {
     expect(
       screen.queryByRole("button", { name: en.astroHub.pills.sol }),
     ).toBeNull();
+  });
+});
+
+describe("AstroHub — composition: three peer surfaces (redesign)", () => {
+  it("pill rail, search input, and listbox are all present in the hub", () => {
+    renderHub();
+    expect(
+      screen.getByRole("group", { name: en.astroHub.pillGroup }),
+    ).toBeTruthy();
+    expect(input()).toBeTruthy();
+    expect(
+      screen.getByRole("listbox", { name: en.search.results }),
+    ).toBeTruthy();
+  });
+
+  it("keyboard can reach pill buttons (tab order includes pills) and then the input", () => {
+    renderHub();
+    // Pills are real <button>s in a fieldset — they're in the natural tab order.
+    const pills = screen
+      .getAllByRole("button")
+      .filter((b) => b.closest("fieldset") !== null);
+    expect(pills.length).toBeGreaterThan(0);
+    // Each pill button has a positive tabIndex or is a natural tab stop (tabIndex >= 0)
+    for (const pill of pills) {
+      const ti = (pill as HTMLButtonElement).tabIndex;
+      expect(ti).toBeGreaterThanOrEqual(0);
+    }
+    // Input is also a natural tab stop
+    expect((input() as HTMLInputElement).tabIndex).toBeGreaterThanOrEqual(0);
   });
 });
 

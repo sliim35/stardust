@@ -297,26 +297,32 @@ body {
   will-change: transform;
 }
 
-/* ASTRO (#70 + #72) — the mascot in the reserved bottom-right slot. A sibling of
-   .galaxy-chrome in the viewport-fixed .galaxy-chrome-overlay: #76 lifted it out
-   of .galaxy-stage__fit so it holds a fixed readable size like the title rather
-   than shrinking with the stage (the offsets below are now viewport px, not
-   stage px). Decorative chrome: clicks pass through.
+/* ASTRO (#70 + #72 + redesign 2026-06-25) — the mascot's bottom-right speaker dock.
+   A sibling of .galaxy-chrome in the viewport-fixed .galaxy-chrome-overlay: #76
+   lifted it out of .galaxy-stage__fit so it holds a fixed readable size like the
+   title rather than shrinking with the stage.
 
-   #71/#72 — the bubble is DECOUPLED from the bob: .galaxy-astro is a STABLE,
-   un-animated corner frame so the speech bubble (its direct child) holds a steady
-   reading position while only the sprite moves beneath it. The bob lives on
-   .galaxy-astro__bob and the secondary drift on .galaxy-astro__drift (nested, they
-   compose without fighting — the prototype technique). The bigger sprite
-   (GALAXY_ASTRO_SCALE = 112px) sits in the corner; offsets give it + the bubble room. */
+   DOCK LAYOUT (redesign 2026-06-25, design spec §A–D):
+   .galaxy-astro is now a flex-column "speaker dock" — three peer surfaces:
+     1. The speech bubble (flex item, at the top of the dock).
+     2. The AstroHub (pill rail + disclosed search, peer of the bubble).
+     3. The sprite button at the bottom.
+   The bubble is NO LONGER position:absolute floating above the frame — it is in
+   normal flex flow. Its ▽ tail in CSS points DOWN toward the sprite below it,
+   landing on ASTRO's head (dock variant b: static tail, SSR-safe; no per-frame
+   tracking). The dock keeps the bubble+sprite gap small so proximity + the tail
+   both read as "spoken by" (the comics/game-UI rule). */
 .galaxy-astro {
   position: absolute;
   right: max(48px, env(safe-area-inset-right)); /* offset from the viewport right edge */
-  /* Border-hugging (owner relayout 2026-06-10): the bottom-center count is gone,
-     so ASTRO drops toward the edge — close, but with bob/shadow room. */
   bottom: max(24px, env(safe-area-inset-bottom));
   z-index: 4; /* above stars/captions, below the palette switcher (6) + panels */
   pointer-events: none; /* decorative; never captures mouse/touch */
+  /* Flex column: bubble → hub → sprite, aligned to the right edge of the dock. */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 .galaxy-astro__bob {
   display: block;
@@ -351,25 +357,18 @@ body {
   border-radius: var(--radius);
 }
 
-/* ASTRO's speech bubble (#72) — soft-glow glass chrome (NOT pixel-art). DECOUPLED
-   from the bob (#71/#72): it is a direct child of the STABLE .galaxy-astro frame
-   (not the bobbing sprite), so the reading position stays steady while ASTRO bobs
-   beneath it. Anchored top-right to that fixed frame (`right:0`), it no longer
-   shifts with the sprite's drift or message length relative to the figure. Mirrors
-   the read-panel surface: dark translucent bg, backdrop blur, 1px accent border,
-   serif italic body. It still rides inside .galaxy-astro, so it inherits the
-   z-index and the ≤720px hide (the bubble is tied to ASTRO's visibility). */
+/* ASTRO's speech bubble (redesign 2026-06-25) — soft-glow glass chrome (NOT
+   pixel-art). NOW IN NORMAL FLOW inside the flex-column .galaxy-astro dock — it is
+   no longer position:absolute. It renders at the top of the dock; the hub and sprite
+   sit below it as peer flex children. This makes ASTRO the visible speaker: the ▽
+   tail below the bubble lands on his head because the dock keeps the gap small.
+
+   Soft-glow chrome unchanged: --color-surface bg, backdrop blur, 1px accent border,
+   glow shadow. Rides inside .galaxy-astro so it inherits the z-index + ≤720px hide. */
 .galaxy-astro__bubble {
-  position: absolute;
-  /* Sit well clear above the (un-bobbing) sprite frame — a roomier gap so the
-     bigger panel + the longer connector breathe over the mascot (Fix 2). The
-     anchor is the STABLE .galaxy-astro frame, so it never bobs with the sprite. */
-  bottom: calc(100% + 34px);
-  right: 0;
+  position: relative; /* in normal flow, not absolute */
   width: max-content;
-  /* A more substantial panel for the larger ≥16px body — the future AI-chat
-     surface (Fix 1): wider + more padding so the bigger text breathes. */
-  max-width: 340px;
+  max-width: min(340px, 80vw);
   padding: 16px 38px 16px 20px; /* extra right padding clears the dismiss × */
   background: var(--color-surface);
   backdrop-filter: blur(6px);
@@ -379,19 +378,48 @@ body {
   box-shadow: 0 0 22px var(--color-accent-soft);
   animation: astro-bubble-in 0.32s ease-out both;
 }
-/* A subtle connector — a short soft-glow stem dropping from the bubble toward the
-   corner, NOT a literal ▽ tail (the sprite now bobs under a fixed bubble, so a tail
-   that points at an exact figure position would drift off-target). It reads as a
-   gentle tether to ASTRO's corner without tracking the bob. */
+/* The ASTRO speaker tag — mono eyebrow above the text; aria-hidden (the live
+   region speaks the text, not the tag). */
+.galaxy-astro__bubble-tag {
+  display: block;
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  opacity: 0.8;
+}
+/* ▽ tail — a real downward-pointing triangle (clip-path) originating at the bottom
+   of the bubble, pointing DOWN toward ASTRO's head below. The tail reads as "spoken
+   by" because: (1) it points at the speaker, (2) proximity — the dock keeps the gap
+   small (6px between bubble bottom + tail height + hub gap + sprite). This replaces
+   the non-tracking 2px stem of the original design (the tail now has a clear target). */
 .galaxy-astro__bubble::after {
   content: "";
   position: absolute;
-  top: 100%;
-  right: 22px;
-  width: 2px;
-  height: 26px; /* longer stem to span the wider bubble↔sprite gap (Fix 2) */
-  background: linear-gradient(var(--color-accent), transparent);
-  opacity: 0.7;
+  bottom: -8px; /* just below the bubble's bottom border */
+  right: 20px;  /* aligned toward ASTRO's head position */
+  width: 16px;
+  height: 8px;
+  background: var(--color-accent);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  opacity: 0.85;
+}
+/* ::before — a matching surface-coloured triangle to "fill" the tail interior
+   (covers the border, making the tail read as a solid ▽ cut from the bubble). */
+.galaxy-astro__bubble::before {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  right: 21px;
+  width: 14px;
+  height: 7px;
+  background: var(--color-surface);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  z-index: 1;
 }
 .galaxy-astro__bubble-text {
   display: block;

@@ -42,6 +42,11 @@ type Props = {
 
 export const AstroBubble = ({ message = null, children, onDismiss }: Props) => (
   <div className="galaxy-astro__bubble pointer-events-auto">
+    {/* Speaker tag — identifies ASTRO as the author of the bubble so the tail
+        tether reads as "spoken by". Mono eyebrow style, accent colour. */}
+    <span className="galaxy-astro__bubble-tag" aria-hidden="true">
+      ASTRO
+    </span>
     {message != null && (
       <output className="galaxy-astro__bubble-text" aria-live="polite">
         {message}
