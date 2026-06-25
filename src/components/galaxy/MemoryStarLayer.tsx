@@ -54,7 +54,7 @@ export const MemoryStarLayer = ({
   const ordered = [...stars].sort((a, b) => a.createdAt - b.createdAt);
 
   return (
-    <div className="galaxy-l3">
+    <div className="galaxy-l3 absolute inset-0 pointer-events-none">
       {ordered.map((star) => (
         <MemoryStarView
           key={star.id}

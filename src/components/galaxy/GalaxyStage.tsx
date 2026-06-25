@@ -426,7 +426,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
         {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
             the farthest/slowest parallax plane). Decorative. */}
         <div
-          className={`absolute inset-0 [will-change:transform] ${dimClass}`}
+          className={`absolute inset-0 will-change-transform ${dimClass}`}
           ref={cam.l1}
           aria-hidden="true"
         >
@@ -441,7 +441,10 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           style={{ "--stage-scale": scale } as CSSProperties}
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
-            <div className={`galaxy-l2-wrap ${dimClass}`} ref={cam.l2}>
+            <div
+              className={`galaxy-l2-wrap absolute inset-0 will-change-transform ${dimClass}`}
+              ref={cam.l2}
+            >
               <GalaxyBackdrop
                 backdrop={backdrop}
                 homePlacement={lgView ? LG_MW_PLACEMENT : MW_PLACEMENT}
@@ -473,7 +476,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 window). It now holds the FREE (non-figure) stars only — the
                 figure members + their overlay ride the L4 plane below (#243). */}
             <div
-              className={`galaxy-l3-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
+              className={`galaxy-l3-wrap absolute inset-0 will-change-transform transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
                 lgView || solarView
                   ? "pointer-events-none invisible opacity-0"
                   : ""
@@ -501,7 +504,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 beneath — the Mom-unclickable regression. The LG gate only adds the
                 visibility fade (memory interior hides on the Local-Group overview). */}
             <div
-              className={`pointer-events-none galaxy-l4-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
+              className={`pointer-events-none galaxy-l4-wrap absolute inset-0 will-change-transform transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
                 lgView ? "invisible opacity-0" : ""
               }`}
               ref={cam.l4}
@@ -530,7 +533,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 in the galaxy. Same always-`pointer-events-none` wrapper (Mom's star
                 opts back in) + the same LG visibility gate as L4/L3. */}
             <div
-              className={`pointer-events-none galaxy-l5-wrap transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
+              className={`pointer-events-none galaxy-l5-wrap absolute inset-0 will-change-transform transition-[opacity,visibility] duration-500 motion-reduce:transition-none ${
                 lgView ? "invisible opacity-0" : ""
               }`}
               ref={cam.l5}
