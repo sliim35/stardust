@@ -122,6 +122,11 @@
   --astro-boot: #404048; /* boots */
   --astro-visor: #1a2238; /* visor dark band — fixed navy, all skies */
   --astro-eye-cream: #fff6d0; /* warm cream the eye-hotspot mixes toward — sky-independent (#71) */
+
+  /* Deep-link arrival highlight ring (ADR-0018 §3) — owner-tunable knobs; the
+     ring CSS lives near the `memHighlight` keyframe below. */
+  --mem-highlight-duration: 2.4s;
+  --mem-highlight-ring-scale: 2.4; /* how far the ring expands (× bloom) */
 }
 
 * {
@@ -482,8 +487,7 @@ body {
 }
 
 /* L2 — the disk (static base + live overlay canvases). */
-.galaxy-l2,
-.galaxy-l2-wrap {
+.galaxy-l2 {
   position: absolute;
   inset: 0;
   will-change: transform;
@@ -505,34 +509,6 @@ body {
 }
 .galaxy-l2__hover[data-active] {
   opacity: 1;
-}
-
-/* L3 — the loose (non-figure) memory stars. */
-.galaxy-l3-wrap {
-  position: absolute;
-  inset: 0;
-  will-change: transform;
-}
-.galaxy-l3 {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-/* L4 — the foreground figure plane (#243): the emotion figures + their member stars,
-   stacked above L3 (later in source order, same inset-0 footprint → it paints on top)
-   and parallaxing more (PARALLAX_MAX.l4) so the figures read as a near tier. */
-.galaxy-l4-wrap {
-  position: absolute;
-  inset: 0;
-  will-change: transform;
-}
-/* L5 — the dedication plane (#243 follow-up): Mom's singular gold `deep` star rides
-   it ALONE, stacked above L4 (same inset-0 footprint, paints on top) and parallaxing
-   the MOST (PARALLAX_MAX.l5) so it reads as the nearest, most prominent point. */
-.galaxy-l5-wrap {
-  position: absolute;
-  inset: 0;
-  will-change: transform;
 }
 
 .mem-star {
@@ -820,6 +796,48 @@ body {
   }
 }
 
+/* ── Deep-link arrival highlight ring (ADR-0018 §3) ──────────────────────────
+   Owner-tunable knobs (QA will show variants):
+   - Shape: ring (default) — a concentric circle expanding out from the bloom
+   - Duration: --mem-highlight-duration (default 2.4s — the HIGHLIGHT_MS constant)
+   - Count: one-shot (default — animation-iteration-count: 1)
+   The ring uses the star's own --star-color so it matches the star's palette.
+   `motion-reduce:` variant at the bottom of this block holds a static ring then
+   fades — no pulse animation. The `--mem-highlight-*` knobs live in the main
+   `:root` block above (one consolidated `:root`). */
+
+/* The highlight ring: a ::before pseudo-element on the star body so it sits in
+   the same layer as the bloom without affecting the hit target or DOM tab order.
+   Uses the bloom size as the base; expands outward with a fade-out tail. */
+.mem-star[data-highlighted] .mem-star__body::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--bloom);
+  height: var(--bloom);
+  transform: translate(-50%, -50%) scale(1);
+  border-radius: 50%;
+  border: 1.5px solid var(--star-color);
+  opacity: 0;
+  animation: memHighlight var(--mem-highlight-duration) cubic-bezier(0.2, 0.6, 0.3, 1) 1 both;
+}
+
+@keyframes memHighlight {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  60% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(var(--mem-highlight-ring-scale));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(var(--mem-highlight-ring-scale));
+  }
+}
+
 /* ASTRO idle float (#70): a gentle bob + a slower drift. Weightless, two-stop —
    never bounces, never springs (the brand rule). Fixed px in the viewport
    overlay (#76 — no longer scales with the fit). */
@@ -859,6 +877,21 @@ body {
   .mem-star[data-kind="deep"] .mem-star__body,
   .mem-star[data-igniting] .mem-star__body {
     animation: none;
+  }
+  /* Reduced-motion highlight: static ring that holds then fades — no pulse.
+     Overrides the expanding animation with a fade-only that respects the knob. */
+  .mem-star[data-highlighted] .mem-star__body::before {
+    animation: memHighlightStatic var(--mem-highlight-duration) ease-out 1 both;
+  }
+  @keyframes memHighlightStatic {
+    0%, 60% {
+      opacity: 0.8;
+      transform: translate(-50%, -50%) scale(1.5);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1.5);
+    }
   }
   /* Mom's halo breathe snaps off under reduced motion (the glow stays steady). */
   .mem-star[data-kind="deep"] .mem-star__halo {

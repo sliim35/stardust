@@ -30,7 +30,7 @@ vi.mock("#/components/galaxy/useTierNav", async (importOriginal) => {
 import { GalaxyStage } from "#/components/galaxy/GalaxyStage";
 import { gsap } from "#/components/galaxy/gsap-setup";
 import { cameraTransform } from "#/lib/galaxy/camera";
-import { resolveFocusTarget } from "#/lib/galaxy/focus";
+import { DEEPLINK_FRAMING_ZOOM, resolveFocusTarget } from "#/lib/galaxy/focus";
 import { buildSeedSky } from "#/lib/galaxy/seed";
 import { en } from "#/lib/i18n/messages/en";
 
@@ -736,8 +736,11 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
   // The seeded sky is deterministic, so the expected star framing is derived
   // from the same pure math the camera paints with (the #166 house pattern).
   const seeded = buildSeedSky();
+  // ADR-0018 §3: deep-link arrivals focus at DEEPLINK_FRAMING_ZOOM (1.15), not
+  // the default close-up zoom (1.8). Pass it explicitly so the expectation matches
+  // the actual camera move the stage drives.
   const framingOf = (id: string): string => {
-    const target = resolveFocusTarget(seeded, id);
+    const target = resolveFocusTarget(seeded, id, DEEPLINK_FRAMING_ZOOM);
     if (!target) throw new Error(`seed star missing: ${id}`);
     return cameraTransform(target);
   };
@@ -755,9 +758,10 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
   });
 
   // AC2 — `?star=<id>` resolves the star across tiers: dives to its containing
-  // tier, then the camera lands exactly on the star's eased-focus framing. The
-  // focus is FLUSHED ON ARRIVE (focusing mid-flight would kill the #167
-  // timeline and strand the scene swap), so the framing assertion waits.
+  // tier, then the camera lands exactly on the star's eased-focus framing
+  // (at DEEPLINK_FRAMING_ZOOM — ADR-0018 §3). The focus is FLUSHED ON ARRIVE
+  // (focusing mid-flight would kill the #167 timeline and strand the scene swap),
+  // so the framing assertion waits.
   it("?star=<id> dives to the star's tier and lands the camera on its framing", async () => {
     stubReducedMotion(true);
     render(<GalaxyStage deepLink={{ star: starId }} />);
@@ -767,6 +771,22 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
     ) as HTMLElement;
     expect(camEl).not.toBeNull();
     await waitFor(() => expect(camEl.style.transform).toBe(framingOf(starId)));
+  });
+
+  // ADR-0018 §3 — the deep-link arrival also HIGHLIGHTS the target star: the
+  // `highlightId` seam threads GalaxyStage → MemoryStarLayer → MemoryStarView,
+  // which renders `data-highlighted` so the CSS ring cue fires. Pin the wiring
+  // (the pure seam is covered in highlight.test.ts; this proves the prop reaches
+  // the DOM on arrival).
+  it("?star=<id> marks the arrived star with data-highlighted for the ring cue", async () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ star: starId }} />);
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll(".mem-star[data-highlighted]"),
+      ).toHaveLength(1),
+    );
   });
 
   // `at` + `star` compose: the place owns the dive, the star rides the arrival.

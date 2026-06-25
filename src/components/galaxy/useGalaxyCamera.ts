@@ -13,6 +13,7 @@ import {
   focusCamera,
   resolveFocusTarget,
 } from "#/lib/galaxy/focus";
+import { lgPositionFor } from "#/lib/galaxy/lg-composition";
 import { DISK_TILT } from "#/lib/galaxy/place";
 import { HOME_TIER } from "#/lib/galaxy/tier-nav";
 import {
@@ -314,7 +315,11 @@ export const useGalaxyCamera = (options: Options = {}): CameraRefs => {
         }
       }
       killTransition(); // a third-tier retarget (#127) never leaves a live timeline
-      const plan = planTierTransition(from, to);
+      // ADR-0018 §1: pass the galaxy's LG-stage position so the dive originates
+      // FROM where the galaxy visually sits on screen, not the MW centre anchor.
+      // `lgPositionFor` returns GALAXY_CENTER for the home MW — no behaviour change.
+      const galaxyPos = lgPositionFor(galaxyId);
+      const plan = planTierTransition(from, to, galaxyPos);
       if (!plan) return; // same tier / unbuilt tier (#127) degrades to a no-op
       gsap.killTweensOf(camera); // the intro/focus tween never fights the timeline
       if (mq.matches) {

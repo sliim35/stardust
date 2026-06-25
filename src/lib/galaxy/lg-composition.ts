@@ -31,7 +31,7 @@ import {
 } from "#/lib/galaxy/backdrop";
 import type { Camera } from "#/lib/galaxy/camera";
 import { type PlacedGalaxy, placementFor } from "#/lib/galaxy/galaxy-render";
-import { GALAXY_CENTER, GALAXY_R } from "#/lib/galaxy/place";
+import { GALAXY_CENTER, GALAXY_R, type Point } from "#/lib/galaxy/place";
 import {
   HOME_MILKY_WAY_ID,
   localGroupNeighbours,
@@ -315,4 +315,46 @@ export const lgLabels = (): readonly LgLabel[] => {
     ...(home ? [labelFor(home, LG_MW_PLACEMENT)] : []),
     ...lgGalaxies().map(({ object, place }) => labelFor(object, place)),
   ];
+};
+
+// ─── §1 ADR-0018: galaxy-position-aware LG-side framing ───────────────────────
+
+/**
+ * The LG-side camera framing that **recenters on a galaxy's LG-stage position**
+ * at the LG zoom (ADR-0018 §1 — off-center dive anchor fix).
+ *
+ * Derived the same way `LG_FRAMING` is: `camera = W − (S − stage-centre)/zoom`
+ * where `S` is the screen position we want `galaxyPos` to appear at (i.e. the
+ * same screen position the MW occupies in `LG_FRAMING` — so the dive "frames"
+ * a neighbour exactly where the MW is framed in the standard LG view).
+ *
+ * **Home no-op**: when `galaxyPos === GALAXY_CENTER`, the result is byte-identical
+ * to `LG_FRAMING` — the home MW dive is unchanged.
+ */
+export const lgFramingForGalaxy = (galaxyPos: Point): Camera => {
+  // The screen position the galaxy should appear at (same anchor as the MW in LG_FRAMING).
+  // screen = stage-centre + zoom · (world − camera) → rearranged:
+  // camera = world − (screen − stage-centre) / zoom
+  const screenX = GALAXY_CENTER.x + LG_ZOOM * (GALAXY_CENTER.x - LG_FRAMING.cx);
+  const screenY = GALAXY_CENTER.y + LG_ZOOM * (GALAXY_CENTER.y - LG_FRAMING.cy);
+  return {
+    cx: galaxyPos.x - (screenX - GALAXY_CENTER.x) / LG_ZOOM,
+    cy: galaxyPos.y - (screenY - GALAXY_CENTER.y) / LG_ZOOM,
+    zoom: LG_ZOOM,
+  };
+};
+
+/**
+ * Pure lookup: galaxy id → its LG-stage position (world px) used as the
+ * dive-origin anchor in `planTierTransition` (ADR-0018 §1).
+ *
+ * - Home MW → `GALAXY_CENTER` (the tier-invariant world centre).
+ * - A known neighbour → its `lgPlacementFor` `{cx, cy}`.
+ * - `null` or unknown id → `GALAXY_CENTER` (graceful fallback, same as home).
+ */
+export const lgPositionFor = (galaxyId: string | null): Point => {
+  if (galaxyId === null || galaxyId === HOME_MILKY_WAY_ID) return GALAXY_CENTER;
+  const neighbours = lgGalaxies();
+  const found = neighbours.find(({ object }) => object.id === galaxyId);
+  return found ? { x: found.place.cx, y: found.place.cy } : GALAXY_CENTER;
 };

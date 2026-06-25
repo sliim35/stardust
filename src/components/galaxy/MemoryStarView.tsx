@@ -33,6 +33,12 @@ type Props = {
   star: MemoryStar;
   position: Point;
   igniting?: boolean;
+  /**
+   * True when this star is the deep-link arrival highlight target (ADR-0018 §3).
+   * Adds `data-highlighted` so the CSS ring cue fires. The clear timer lives in
+   * `GalaxyStage` — this prop is presentation-only here.
+   */
+  highlighted?: boolean;
   /** When set, the star becomes an accessible click target (slice E, #153). */
   onSelect?: (star: MemoryStar) => void;
   /** i18n fallback aria-label for unnamed stars (the egg). */
@@ -53,6 +59,7 @@ export const MemoryStarView = ({
   star,
   position,
   igniting = false,
+  highlighted = false,
   onSelect,
   a11yLabel,
   onHoverChange,
@@ -89,6 +96,7 @@ export const MemoryStarView = ({
       }`}
       data-kind={tw.kind}
       data-igniting={igniting || undefined}
+      data-highlighted={highlighted || undefined}
       data-egg={star.egg || undefined}
       data-mood={star.mood}
       data-dimmed={dimmed || undefined}
