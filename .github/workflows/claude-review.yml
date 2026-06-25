@@ -54,6 +54,17 @@ jobs:
             - HONOR prior `reviewer-stardust-project[bot]` replies: if a nit was rejected there
               (e.g. "not codified"), do NOT raise it again.
 
+            ## Close the loop on YOUR OWN prior review — clear what's been fixed
+            Your past reviews post as `claude[bot]`. Each round, BEFORE posting anything new,
+            reconcile your previous round against the new commits:
+            - List your prior `claude[bot]` reviews + inline threads
+              (`gh api repos/${{ github.repository }}/pulls/<n>/reviews`; reviewThreads GraphQL).
+            - For every prior finding the new commits ADDRESS: reply "Addressed in <sha>" and
+              resolve that thread (GraphQL `resolveReviewThread`). Do not silently drop it.
+            - Leave open ONLY the prior findings that are still genuinely unaddressed.
+            Never leave a stale change-request standing once its concern is resolved — clearing
+            your own prior verdict is part of the job, not optional.
+
             ## What to flag
             1. Correctness bugs / edge cases.
             2. Security issues.
@@ -65,7 +76,24 @@ jobs:
                something is codified, do NOT flag it.
 
             Be concise. Skip praise. Post findings as inline review comments on the changed
-            lines. If this round's changes need nothing, post a single one-line "LGTM".
+            lines.
+
+            ## End the round with the RIGHT review event — a bare comment never clears a block
+            GitHub treats your standing verdict as your most recent APPROVE or CHANGES_REQUESTED
+            review; a COMMENTED review (a bare "LGTM") is ignored for the decision and does NOT
+            supersede an earlier CHANGES_REQUESTED. So finish every round with exactly ONE review
+            submitted via `gh api repos/${{ github.repository }}/pulls/<n>/reviews`, event chosen
+            to match the live state:
+            - Blocking findings still unresolved this round  → `-f event=REQUEST_CHANGES`.
+            - No blocking findings remain (incl. after the owner addressed a prior round)
+              → `-f event=APPROVE -f body="LGTM — prior changes addressed."` This APPROVE is the
+              ONLY thing that clears your earlier CHANGES_REQUESTED. If GitHub rejects the APPROVE,
+              fall back to dismissing the stale review:
+              `gh api -X PUT repos/${{ github.repository }}/pulls/<n>/reviews/<review_id>/dismissals
+              -f message="Addressed in <sha>" -f event=DISMISS`.
+            - Only non-blocking nits remain → `-f event=APPROVE`, nits as inline comments.
+            Never close a round on a COMMENTED "LGTM" while a CHANGES_REQUESTED of yours is open —
+            that leaves the PR blocked forever, which is the exact bug this section prevents.
           # --model sonnet keeps routine reviews cheap; switch the line below to
           # --model opus for deeper reasoning on complex or critical PRs.
           claude_args: |
