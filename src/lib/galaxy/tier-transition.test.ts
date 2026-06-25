@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FRAMING } from "#/lib/galaxy/focus";
 import { LG_FRAMING } from "#/lib/galaxy/lg-composition";
+import { GALAXY_CENTER } from "#/lib/galaxy/place";
 import { ANDROMEDA_ID, HOME_MILKY_WAY_ID } from "#/lib/galaxy/realdata";
 import {
   arrivalNarration,
@@ -27,8 +28,18 @@ describe("framingForTier — the pure per-tier resting camera (#125)", () => {
     expect(lg?.zoom).toBeGreaterThan(0);
   });
 
-  it("has no framing for the deferred Solar-System tier (#127) — null, no throw", () => {
-    expect(framingForTier("solarSystem")).toBeNull();
+  // #248 (AC1) — the Solar-System tier is now BUILT: it rests on a real Camera
+  // centred on GALAXY_CENTER (the world-invariant centre Sol is authored at) at
+  // zoom ≥ 1, so the dive into Sol lands on the same world centre the MW did.
+  it("rests the Solar-System tier on GALAXY_CENTER at zoom ≥ 1 (#248 AC1)", () => {
+    const ss = framingForTier("solarSystem");
+    expect(ss).not.toBeNull();
+    expect(ss?.cx).toBe(GALAXY_CENTER.x);
+    expect(ss?.cy).toBe(GALAXY_CENTER.y);
+    // zoom ≥ 1, and strictly DEEPER than the galaxy rest so the descent reads as
+    // a zoom-in (AC4) rather than a pure scene-swap with no camera move.
+    expect(ss?.zoom).toBeGreaterThanOrEqual(1);
+    expect(ss?.zoom).toBeGreaterThan(DEFAULT_FRAMING.zoom);
   });
 
   it("returns a fresh copy each call — callers can never mutate the authored framing", () => {
@@ -96,9 +107,31 @@ describe("planTierTransition — the pure targets the timeline tweens toward", (
     expect(planTierTransition("galaxy", "galaxy")).toBeNull();
   });
 
-  it("declines plans into/out of the unbuilt Solar-System tier (#127) — no throw", () => {
-    expect(planTierTransition("galaxy", "solarSystem")).toBeNull();
-    expect(planTierTransition("solarSystem", "galaxy")).toBeNull();
+  // #248 (AC4) — the galaxy → Solar-System dive now PLANS (the tier is built): a
+  // descend onto the solarSystem rest, zoom-in by construction.
+  it("plans the MW → Solar-System descend onto the tier-3 rest (#248 AC4)", () => {
+    const plan = planTierTransition("galaxy", "solarSystem");
+    expect(plan).not.toBeNull();
+    expect(plan?.from).toBe("galaxy");
+    expect(plan?.to).toBe("solarSystem");
+    expect(plan?.direction).toBe("descend");
+    expect(plan?.rest).toEqual(framingForTier("solarSystem"));
+    // The threshold zoom sits strictly between the galaxy rest and the deeper
+    // solarSystem rest — the scene swaps mid zoom-in.
+    const ss = framingForTier("solarSystem");
+    if (!plan || !ss) throw new Error("plan/framing missing");
+    expect(plan.threshold.zoom).toBeGreaterThan(DEFAULT_FRAMING.zoom);
+    expect(plan.threshold.zoom).toBeLessThan(ss.zoom);
+  });
+
+  // #248 (AC6) — the reverse Solar-System → galaxy ascend plans symmetrically and
+  // crosses the SAME threshold framing (no jump on a mid-flight reverse).
+  it("plans the Solar-System → MW ascend, symmetric with the descend (#248 AC6)", () => {
+    const up = planTierTransition("solarSystem", "galaxy");
+    const down = planTierTransition("galaxy", "solarSystem");
+    expect(up?.direction).toBe("ascend");
+    expect(up?.rest).toEqual(DEFAULT_FRAMING);
+    expect(up?.threshold).toEqual(down?.threshold);
   });
 });
 

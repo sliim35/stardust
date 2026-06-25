@@ -31,12 +31,13 @@ import { DISK_TILT } from "#/lib/galaxy/place";
 import {
   HOME_MILKY_WAY_ID,
   REAL_OBJECTS,
+  SOL_ID,
   solarSystemObjects,
 } from "#/lib/galaxy/realdata";
 import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { createD1Store } from "#/lib/galaxy/store-d1";
-import { HOME_TIER } from "#/lib/galaxy/tier-nav";
+import { availableTiersFor, HOME_TIER } from "#/lib/galaxy/tier-nav";
 import {
   arrivalNarration,
   createTierTransitionController,
@@ -267,11 +268,24 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // must stay in Andromeda. Falls back to the home MW when no galaxy is focused (the
   // crumb only shows under the MW in v1; the dynamic label lands in slice 4).
   const navGalaxyId = nav.state.galaxyId;
+  // The focused galaxy's BUILT tier set (BR22 / ADR-0016 §4, #248): threaded into
+  // the object-click seam so a Sol click at the Milky-Way tier resolves to a DIVE
+  // into the Solar System (the home set includes solarSystem); a neighbour's set
+  // excludes it, so the same seam stays a galaxy-floor dive there. `'home'` is the
+  // fallback at the LG overview, mirroring the reducer + the chrome breadcrumb.
+  const available = useMemo(
+    () => availableTiersFor(navGalaxyId ?? "home"),
+    [navGalaxyId],
+  );
   const onTierSelect = useCallback(
     (target: Tier) => {
       if (target === "localGroup") ascend();
       else if (target === "galaxy")
         diveTo(navGalaxyId ?? HOME_MILKY_WAY_ID, "galaxy");
+      // The SOL crumb is navigable above tier 3 (ADR-0016 §4, #248): it dives INTO
+      // the Solar System through the same gateway dive a Sol click takes. Only the
+      // home MW owns this tier, so the dive id is always Sol.
+      else if (target === "solarSystem") diveTo(SOL_ID, "solarSystem");
     },
     [ascend, diveTo, navGalaxyId],
   );
@@ -304,6 +318,11 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     const target = resolveDeepLink(deepLink, {
       findReal: (id) => REAL_OBJECTS.find((o) => o.id === id),
       findStar: (id) => skyRef.current.stars.find((s) => s.id === id),
+      // The home galaxy's set includes solarSystem (ADR-0016 §4, #248), so a
+      // `?at=system:sol` link can reach tier 3; the v1 default could not. A
+      // neighbour-scoped link still resolves against its own set inside the
+      // resolver (graceful — no solarSystem for a neighbour).
+      available: availableTiersFor("home"),
     });
     if (!target) return;
     if (target.dive.tier !== nav.state.tier) {
@@ -460,6 +479,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
               {lgView && (
                 <LgInteractiveLabels
                   diveTo={nav.diveTo}
+                  available={available}
                   lore={m.lore}
                   onActiveChange={setLgHovered}
                   onNarrate={onNarrate}
@@ -484,6 +504,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 stars={freeStars}
                 ignitingIds={ignitingIds}
                 diveTo={nav.diveTo}
+                available={available}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
                 tilt={displayTilt}
@@ -519,6 +540,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 stars={memberStars}
                 ignitingIds={ignitingIds}
                 diveTo={nav.diveTo}
+                available={available}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
                 tilt={displayTilt}
@@ -539,6 +561,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 stars={deepStars}
                 ignitingIds={ignitingIds}
                 diveTo={nav.diveTo}
+                available={available}
                 a11yLabel={m.a11y.memoryStar}
                 moodLabels={m.moods}
                 tilt={displayTilt}
@@ -617,6 +640,7 @@ const InteractiveStars = ({
   stars,
   ignitingIds,
   diveTo,
+  available,
   a11yLabel,
   moodLabels,
   tilt,
@@ -624,12 +648,16 @@ const InteractiveStars = ({
   stars: readonly MemoryStar[];
   ignitingIds: ReadonlySet<string>;
   diveTo: (id: string, tier: Tier) => void;
+  /** The focused galaxy's built tier set (#248): keeps the object-click seam on the
+   *  galaxy-tier layer ready to dive a gateway (Sol) into its child tier. A memory
+   *  star is never a gateway, so this is inert for the stars themselves. */
+  available: readonly Tier[];
   a11yLabel: string;
   moodLabels: Messages["moods"];
   /** #234: the displayed galaxy's interior disk tilt, threaded to the star projection. */
   tilt: number;
 }) => {
-  const onSelect = useObjectClick(diveTo);
+  const onSelect = useObjectClick(diveTo, available);
   return (
     <MemoryStarLayer
       stars={stars}
@@ -657,18 +685,21 @@ const InteractiveStars = ({
  */
 const LgInteractiveLabels = ({
   diveTo,
+  available,
   lore,
   onActiveChange,
   onNarrate,
 }: {
   diveTo: (id: string, tier: Tier) => void;
+  /** The focused galaxy's built tier set (#248), threaded into the gateway-dive seam. */
+  available: readonly Tier[];
   lore: Messages["lore"];
   /** Hover/focus sink (#174): the active galaxy id → the backdrop's point-cloud bloom. */
   onActiveChange: (id: string | null) => void;
   /** Object-focus narration sink (#184): a neighbour's card open → a cached AI fact. */
   onNarrate: (object: { loreKey: string }) => void;
 }) => {
-  const objectClick = useObjectClick(diveTo);
+  const objectClick = useObjectClick(diveTo, available);
   const byId = useMemo(() => {
     const home = REAL_OBJECTS.find((o) => o.id === HOME_MILKY_WAY_ID);
     return new Map(

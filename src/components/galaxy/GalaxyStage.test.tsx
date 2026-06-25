@@ -479,6 +479,75 @@ describe("GalaxyStage — node-aware breadcrumb derived from the live galaxyId (
   });
 });
 
+describe("GalaxyStage — Sol gateway + dive into the Solar-System tier (#248)", () => {
+  const crumbs = () => within(screen.getByRole("navigation"));
+
+  // AC5 — scroll-descend reaches tier 3 with no extra code: from the LG overview
+  // two wheel-up steps walk LG → galaxy → solarSystem (the wheel cooldown is
+  // mocked away above). The AU scale net is the ground-truth that tier 3 landed.
+  it("scroll-descend from the LG overview reaches the Solar-System tier (AC5)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy (into the MW)
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    fireEvent.wheel(stage, { deltaY: -12 }); // galaxy → solarSystem (into Sol)
+    expect(screen.getByText("1 AU")).toBeTruthy(); // tier-3 AU scale net
+    expect(screen.queryByText("100k ly")).toBeNull();
+    expect(
+      crumbs()
+        .getByText(en.chrome.breadcrumb.solarSystem)
+        .getAttribute("aria-current"),
+    ).toBe("location");
+  });
+
+  // AC6 — from tier 3, a wheel-down ascend returns to the galaxy tier (the SOL
+  // crumb goes inactive, the MW scale net returns): the reverse timeline.
+  it("scroll-ascend from the Solar System returns to the galaxy tier (AC6)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy
+    fireEvent.wheel(stage, { deltaY: -12 }); // galaxy → solarSystem
+    expect(screen.getByText("1 AU")).toBeTruthy();
+    fireEvent.wheel(stage, { deltaY: 12 }); // solarSystem → galaxy (ascend)
+    expect(screen.getByText("100k ly")).toBeTruthy(); // back at the MW net
+    expect(screen.queryByText("1 AU")).toBeNull();
+    // The home MW crumb is the active segment again; SOL is no longer current.
+    expect(
+      crumbs().getByText(en.lore.milkyWay.name).getAttribute("aria-current"),
+    ).toBe("location");
+    expect(
+      crumbs()
+        .getByText(en.chrome.breadcrumb.solarSystem)
+        .getAttribute("aria-current"),
+    ).toBeNull();
+  });
+
+  // AC6 — the SOL crumb, navigable above tier 3, dives into the Solar System; the
+  // MILKY WAY crumb then ascends back out — the breadcrumb spine round-trips.
+  it("the SOL breadcrumb dives in and MILKY WAY ascends back out (AC3/AC6)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // into the MW (galaxy tier)
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    // SOL is a navigable button above tier 3 → dives into the Solar System.
+    fireEvent.click(
+      crumbs().getByRole("button", {
+        name: en.chrome.breadcrumb.solarSystem,
+      }),
+    );
+    expect(screen.getByText("1 AU")).toBeTruthy();
+    // MILKY WAY (the galaxy crumb) is the ascent button at tier 3 → back to galaxy.
+    fireEvent.click(
+      crumbs().getByRole("button", { name: en.lore.milkyWay.name }),
+    );
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    expect(screen.queryByText("1 AU")).toBeNull();
+  });
+});
+
 describe("GalaxyStage — emotion figures render ambiently (owner Claude Design #232)", () => {
   // Figures are AMBIENT (no hover reveal): an authored figure with ≥2 members of an
   // emotion shows a dashed ghost + hollow open-slot rings + solid lines between filled
@@ -727,6 +796,24 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
     render(<GalaxyStage deepLink={{}} />);
     expect(screen.getByText("2.5 Mly")).toBeTruthy();
     expect(screen.queryByText("100k ly")).toBeNull();
+  });
+
+  // #248 (deep-link fix flagged by #247 QA) — the stage now threads
+  // availableTiersFor('home') into resolveDeepLink, so `?at=system:sol` reaches
+  // the Solar-System tier (the v1 default set could not). The AU scale net + the
+  // active SOL crumb are the ground-truth that the dive landed on tier 3.
+  it("?at=system:sol dives into the Solar System on load (#248)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ at: "system:sol" }} />);
+    expect(screen.getByText("1 AU")).toBeTruthy(); // solarSystem scale net
+    expect(screen.queryByText("100k ly")).toBeNull(); // not the MW net
+    expect(screen.queryByText("2.5 Mly")).toBeNull(); // not the LG net
+    const nav = within(screen.getByRole("navigation"));
+    expect(
+      nav
+        .getByText(en.chrome.breadcrumb.solarSystem)
+        .getAttribute("aria-current"),
+    ).toBe("location");
   });
 });
 
