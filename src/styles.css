@@ -84,6 +84,23 @@
   --radius-snug: 2px;
   --radius: 4px;
   --radius-pill: 99px;
+
+  /* Scroll-hint glyph tilt/bob (#251) → the `animate-zoom-hint-tilt` utility,
+     applied as `motion-safe:animate-zoom-hint-tilt` on the glyph so it freezes
+     under prefers-reduced-motion (AC4). A gentle, understated up→down bob + a
+     1° tilt that suggests the scroll gesture — never a bounce (the brand rule,
+     matching astro-bob's two-stop ease-in-out feel). Defining the @keyframes
+     inside @theme lets Tailwind v4 hoist it when the utility is used. */
+  --animate-zoom-hint-tilt: zoom-hint-tilt 1.8s ease-in-out infinite;
+  @keyframes zoom-hint-tilt {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    50% {
+      transform: translateY(2px) rotate(1deg);
+    }
+  }
 }
 
 :root {
