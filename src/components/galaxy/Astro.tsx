@@ -5,6 +5,7 @@ import type { MemoryStar } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import { AstroBubble } from "./AstroBubble";
 import { AstroComposer } from "./AstroComposer";
+import { AstroHub, type AstroHubProps } from "./AstroHub";
 import { PixelAstronaut } from "./PixelAstronaut";
 import { useAstroFace } from "./useAstroFace";
 
@@ -67,6 +68,13 @@ type Props = {
   onStarAdded?: (star: MemoryStar) => void;
   /** Show the add-star CTA — true at the Milky-Way tier, where memory stars live (#183). */
   canAddStar?: boolean;
+  /**
+   * #250 (ADR-0017) — the ASTRO interaction hub (always-visible compact search +
+   * fast-action pill row) hosted inside this frame. Absent (tests of the bare
+   * mascot) → no hub renders. The hub's spoken responses route through this same
+   * frame's `narration` bubble via its `onSpeak` sink (wired to `showNarration`).
+   */
+  hub?: AstroHubProps;
 };
 
 /**
@@ -86,6 +94,7 @@ export const Astro = ({
   onNarrationDismiss,
   onStarAdded,
   canAddStar = false,
+  hub,
 }: Props) => {
   const m = getMessages(useLocale());
   // Seed deterministically so SSR + the client agree on first paint (auto-greet
@@ -173,6 +182,11 @@ export const Astro = ({
           ) : null}
         </AstroBubble>
       )}
+      {/* #250 (ADR-0017) — the always-visible interaction hub (search + pills),
+          hosted in this frame above the sprite. Its spoken responses route through
+          the same `narration` bubble via `onSpeak` (wired to `showNarration`), so
+          there is no second a11y speech surface (the #72 invariant). */}
+      {hub && <AstroHub {...hub} />}
       <button
         type="button"
         className="galaxy-astro__hit"

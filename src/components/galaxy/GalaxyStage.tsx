@@ -52,6 +52,7 @@ import {
 import type { MemoryStar, Tier } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import type { Messages } from "#/lib/i18n/types";
+import { narrateFn } from "#/server/narrate";
 import { BackdropTint } from "./BackdropTint";
 import { CardHost } from "./CardHost";
 import { ChromeOverlay } from "./ChromeOverlay";
@@ -60,7 +61,6 @@ import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { LgGalaxyLabels } from "./LgGalaxyLabels";
 import { MemoryStarLayer } from "./MemoryStarLayer";
-import { StarSearch } from "./StarSearch";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { useObjectClick } from "./useObjectClick";
 import { useObjectNarration } from "./useObjectNarration";
@@ -619,43 +619,32 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           // speaks the confirmation in its own bubble.
           onStarAdded={(star) => store.addStar(star)}
           canAddStar={!lgView && !solarView}
+          // The ASTRO interaction hub (#250, ADR-0017) — search + tier-aware pill
+          // row, hosted INSIDE ASTRO's frame (replaces the old top-right
+          // `SearchChromeMount`). The search part shows only where memory stars live
+          // (`showSearch`, the old `{!lgView && !solarView}` gate); the pill row is
+          // tier-aware (`pillsFor(ctx)`) and always shows. Both reuse the unchanged
+          // #111/#113 primitives + the existing tier-nav + narration seams: a select
+          // eases the camera (`focusStar`) AND speaks via `showNarration`; a nav pill
+          // dispatches the same `onTierSelect`/`nav.diveTo` spine the breadcrumb uses;
+          // a prompt pill speaks ONE bubble (`speakLore` → `narrateFn`, fallback
+          // `lore.line`; `sayLine` → a canned catalog line) — never a chat backend.
+          hub={{
+            stars: sky.stars,
+            ctx: { tier: nav.state.tier, galaxyId: nav.state.galaxyId },
+            variant: deepLink?.hub,
+            showSearch: !lgView && !solarView,
+            onSelect: (id) => focus.focusStar(id),
+            onTierSelect,
+            onDive: nav.diveTo,
+            onSpeak: showNarration,
+            narrate: (input) => narrateFn({ data: input }),
+          }}
         />
-        {/* Discovery search (#113) — a viewport-fixed chrome panel that finds a
-            memory star by text/mood/colour and frames it via the focus-on-star
-            primitive (#111). Lives only at the Milky-Way tier: memory stars are
-            MW-interior content (the L3 layer hides on the Local-Group overview),
-            so the index is meaningless there. Selecting a result eases the camera
-            onto the star — the same primitive the deep-link path uses. */}
-        {!lgView && !solarView && (
-          <SearchChromeMount
-            stars={sky.stars}
-            onSelect={(id) => focus.focusStar(id)}
-          />
-        )}
       </CardHost>
     </div>
   );
 };
-
-/**
- * The discovery search panel (#113) mounted as viewport-fixed chrome — a child of
- * the stage so it reads the live sky + the focus controller. Positioned top-right
- * (reflows to a left-anchored row below 620px); selecting a result eases the camera
- * onto the star via the focus-on-star primitive (#111). Extracted as a named
- * component per the chrome convention (#92): the stage declares *what* composes the
- * scene, this owns *how* the panel is placed.
- */
-const SearchChromeMount = ({
-  stars,
-  onSelect,
-}: {
-  stars: readonly MemoryStar[];
-  onSelect: (id: string) => void;
-}) => (
-  <div className="pointer-events-none fixed top-[max(70px,calc(env(safe-area-inset-top)+48px))] right-[max(28px,env(safe-area-inset-right))] z-[55] flex max-[620px]:left-[max(28px,env(safe-area-inset-left))] max-[620px]:justify-end">
-    <StarSearch stars={stars} onSelect={onSelect} />
-  </div>
-);
 
 /**
  * The L3 memory layer made interactive — a child of `<CardHost>` so it can read the

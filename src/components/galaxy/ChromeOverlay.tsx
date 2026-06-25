@@ -1,6 +1,7 @@
 import type { MemoryStar, Palette, Tier } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import { Astro } from "./Astro";
+import type { AstroHubProps } from "./AstroHub";
 import { GalaxyChrome } from "./GalaxyChrome";
 import { PaletteSwitcher } from "./PaletteSwitcher";
 import { ScaleNet } from "./ScaleNet";
@@ -29,6 +30,8 @@ type Props = {
   onStarAdded?: (star: MemoryStar) => void;
   /** Show the add-star CTA — true at the Milky-Way tier (#183). */
   canAddStar?: boolean;
+  /** #250 (ADR-0017) — the ASTRO interaction hub bundle, forwarded into ASTRO's frame. */
+  hub?: AstroHubProps;
 };
 
 /**
@@ -60,6 +63,7 @@ export const ChromeOverlay = ({
   onNarrationDismiss,
   onStarAdded,
   canAddStar = false,
+  hub,
 }: Props) => {
   const m = getMessages(useLocale());
   return (
@@ -75,6 +79,7 @@ export const ChromeOverlay = ({
         onNarrationDismiss={onNarrationDismiss}
         onStarAdded={onStarAdded}
         canAddStar={canAddStar}
+        hub={hub}
       />
       <PaletteSwitcher value={palette} onChange={onPaletteChange} />
       <ScaleNet tier={tier} label={m.scaleNet.label} />
