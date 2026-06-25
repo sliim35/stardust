@@ -12,6 +12,7 @@ vi.mock("#/lib/i18n", async (importOriginal) => ({
 
 import { AstroHub } from "#/components/galaxy/AstroHub";
 import type { PillContext } from "#/lib/galaxy/astro-pills";
+import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
 import type { MemoryStar } from "#/lib/galaxy/types";
 import { en } from "#/lib/i18n/messages/en";
 import { ru } from "#/lib/i18n/messages/ru";
@@ -165,6 +166,16 @@ describe("AstroHub — fast-action pills (AC8)", () => {
       screen.getByRole("button", { name: en.astroHub.pills.back }),
     );
     expect(onTierSelect).toHaveBeenCalledWith("localGroup");
+  });
+
+  it("a 'Milky Way' nav pill (shown only at the Local Group) dives via onDive(HOME_GALAXY_ID,'galaxy') (AC8/F4)", () => {
+    const { onDive } = renderHub({
+      ctx: { tier: "localGroup", galaxyId: null },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: en.astroHub.pills.milkyWay }),
+    );
+    expect(onDive).toHaveBeenCalledWith(HOME_GALAXY_ID, "galaxy");
   });
 
   it("a 'sayLine' prompt pill speaks the canned catalog line", () => {
