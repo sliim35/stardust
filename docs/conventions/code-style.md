@@ -1,7 +1,7 @@
 ---
 title: Code-style & conventions guide
 updated: 2026-06-14
-last_learned: "#234 (2026-06-22)"  # watermark — guide is a tracked/public file for the CI auto-reviewer (PR #203). #217: codified the code-comments rule. #232/#234: code-comments rule re-scoped from length → content (it was mass-false-flagging WHY-comments by line count); rescued the stranded #232 dev/ops-script i18n exemption.
+last_learned: "#257 (2026-06-24)"  # watermark — guide is a tracked/public file for the CI auto-reviewer (PR #203). #217: codified the code-comments rule. #232/#234: code-comments rule re-scoped from length → content (it was mass-false-flagging WHY-comments by line count); rescued the stranded #232 dev/ops-script i18n exemption. #254: 0 threads. #255: CI bot flagged listener-self-teardown pattern; no human reply — no new rule codified yet. #257: 0 human review threads; no new rules distilled.
 maintained_by: reviewer (md-review-pr)
 ---
 
