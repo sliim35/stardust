@@ -131,14 +131,17 @@ export const AstroHub = ({
       return;
     }
     switch (e.key) {
+      // The compact layout renders only the first result (`results.slice(0, 1)`),
+      // so the roving cursor is clamped to {-1, 0} — advancing past index 0 would
+      // point `aria-activedescendant` at an option that isn't in the DOM (dangling IDREF).
       case "ArrowDown": {
         e.preventDefault();
-        setActive((i) => (i + 1) % results.length);
+        setActive(0);
         break;
       }
       case "ArrowUp": {
         e.preventDefault();
-        setActive((i) => (i <= 0 ? results.length - 1 : i - 1));
+        setActive(-1);
         break;
       }
       case "Enter": {
@@ -301,7 +304,7 @@ export const AstroHub = ({
   // The owner-picked composition: the pill row on top, then (where memory stars live)
   // the search input → compact count → first result.
   return (
-    <div className="galaxy-astro__hub flex w-[min(320px,72vw)] flex-col gap-row">
+    <div className="flex w-[min(320px,72vw)] flex-col gap-row">
       {pillRow}
       {showSearch && (
         <>

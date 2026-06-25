@@ -95,6 +95,18 @@ describe("AstroHub — search combobox a11y (AC10)", () => {
     ).toBe("true");
   });
 
+  it("keeps aria-activedescendant on a rendered option after repeated ArrowDown (F1)", () => {
+    // The compact layout renders only the first result; the roving cursor must
+    // stay on it — advancing would point aria-activedescendant at an option id
+    // that isn't in the DOM (dangling IDREF). STARS has 2 matches on an empty query.
+    renderHub();
+    fireEvent.keyDown(input(), { key: "ArrowDown" });
+    fireEvent.keyDown(input(), { key: "ArrowDown" });
+    const active = input().getAttribute("aria-activedescendant");
+    expect(active).toBeTruthy();
+    expect(document.getElementById(active as string)).not.toBeNull();
+  });
+
   it("Escape clears the query", () => {
     renderHub();
     fireEvent.change(input(), { target: { value: "kitchen" } });
