@@ -472,7 +472,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
         {/* Layer A — full-bleed space: nebula tint + L1 starfield (carries cam.l1,
             the farthest/slowest parallax plane). Decorative. */}
         <div
-          className={`absolute inset-0 [will-change:transform] ${dimClass}`}
+          className={`absolute inset-0 will-change-transform ${dimClass}`}
           ref={cam.l1}
           aria-hidden="true"
         >
@@ -487,7 +487,10 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           style={{ "--stage-scale": scale } as CSSProperties}
         >
           <div className="galaxy-stage__camera" ref={cam.cam}>
-            <div className={`galaxy-l2-wrap ${dimClass}`} ref={cam.l2}>
+            <div
+              className={`galaxy-l2-wrap absolute inset-0 will-change-transform ${dimClass}`}
+              ref={cam.l2}
+            >
               <GalaxyBackdrop
                 backdrop={backdrop}
                 homePlacement={lgView ? LG_MW_PLACEMENT : MW_PLACEMENT}
@@ -521,7 +524,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 `mem-star-enter` fade-in still applies. `pointer-events` guards the
                 gap between hide commit and browser paint. */}
             <div
-              className={`galaxy-l3-wrap motion-reduce:transition-none ${
+              className={`galaxy-l3-wrap absolute inset-0 will-change-transform motion-reduce:transition-none ${
                 interiorLayersVisible(displayedTier)
                   ? ""
                   : "pointer-events-none invisible opacity-0"
@@ -545,7 +548,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 synced visibility as L3 — instant hide on ascend, no independent
                 CSS clock. */}
             <div
-              className={`pointer-events-none galaxy-l4-wrap motion-reduce:transition-none ${
+              className={`pointer-events-none galaxy-l4-wrap absolute inset-0 will-change-transform motion-reduce:transition-none ${
                 interiorLayersVisible(displayedTier)
                   ? ""
                   : "invisible opacity-0"
@@ -575,7 +578,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 singular gold `deep` star (ADR-0010 §1) rides this nearest plane ALONE.
                 ADR-0018 §2: same threshold-synced visibility as L3/L4. */}
             <div
-              className={`pointer-events-none galaxy-l5-wrap motion-reduce:transition-none ${
+              className={`pointer-events-none galaxy-l5-wrap absolute inset-0 will-change-transform motion-reduce:transition-none ${
                 interiorLayersVisible(displayedTier)
                   ? ""
                   : "invisible opacity-0"
