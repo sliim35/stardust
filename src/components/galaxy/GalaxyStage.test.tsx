@@ -48,14 +48,29 @@ const stubReducedMotion = (matches: boolean) => {
     }) as MediaQueryList;
 };
 
+// A galaxy-tier memory star injected as userStars for tests that need a .mem-star
+// in the Milky Way interior. Mom (irina) moved to the Solar System (owner 2026-06-25)
+// so the seeded sky now has no memory stars visible in the MW — inject one explicitly.
+const MW_USER_STAR = {
+  id: "test-mw-star",
+  text: "a test memory",
+  mood: "joyful" as const,
+  color: "#f3c24e",
+  r: 0.5,
+  angle: 1.0,
+  brightness: 0.7,
+  createdAt: 100,
+};
+
 /**
  * Land (LG overview, owner decision 2026-06-06) and dive into the MW tier with
  * one scroll-up step — the reduced-motion snap path, so the swap lands
  * synchronously (the eased path is pinned in useGalaxyCamera.test.tsx).
+ * Injects a galaxy-tier userStar so the MW has at least one .mem-star to click.
  */
-const renderDivedIntoMilkyWay = () => {
+const renderDivedIntoMilkyWay = (userStars = [MW_USER_STAR]) => {
   stubReducedMotion(true);
-  render(<GalaxyStage />);
+  render(<GalaxyStage userStars={userStars} />);
   const stage = document.querySelector(".galaxy-stage") as HTMLElement;
   expect(stage).not.toBeNull();
   fireEvent.wheel(stage, { deltaY: -12 }); // scroll up → descend INTO the MW
@@ -64,7 +79,7 @@ const renderDivedIntoMilkyWay = () => {
 
 describe("GalaxyStage — click → card wiring (#153)", () => {
   it("clicking a memory star (after the first dive) opens its memory card", () => {
-    renderDivedIntoMilkyWay();
+    renderDivedIntoMilkyWay(); // injects a galaxy-tier star so the MW has .mem-star
     // The seeded sky renders memory stars as accessible hit-buttons inside `.mem-star`.
     const star = document.querySelector<HTMLButtonElement>(".mem-star button");
     expect(star).not.toBeNull();
@@ -282,12 +297,14 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     }
   });
 
-  it("entering the home Milky Way keeps its seeded stars + the unchanged MW arrival line (AC5)", () => {
+  it("entering the home Milky Way shows its galaxy-tier stars + the unchanged MW arrival line (AC5)", () => {
+    // Mom (irina) moved to the Solar System (owner 2026-06-25), so the seed has no
+    // MW-interior memory stars. Inject one galaxy-tier star so the MW disk is non-empty.
     stubReducedMotion(true);
-    render(<GalaxyStage />);
+    render(<GalaxyStage userStars={[MW_USER_STAR]} />);
     fireEvent.click(lgTarget("milkyWay"));
     expect(screen.getByText("100k ly")).toBeTruthy();
-    // The MW keeps its seeded memory corpus (the empty-galaxy swap never strands it)…
+    // The MW shows galaxy-tier memory stars (the injected user star is visible)…
     expect(memStars().length).toBeGreaterThan(0);
     // …and the entry narration is the existing MW-worded arrival line, not a lore line.
     expect(screen.getByText(en.astroNarration.onArrival.galaxy)).toBeTruthy();
@@ -669,8 +686,10 @@ describe("GalaxyStage — Sol gateway visible + clickable in the MW interior (#2
   });
 
   it("Sol gateway does not interfere with clicking a memory star on the same plane", () => {
+    // Inject a galaxy-tier star so the MW has a .mem-star to verify click-through.
+    // Mom (irina) moved to the Solar System (owner 2026-06-25) so the seed has no MW stars.
     stubReducedMotion(true);
-    render(<GalaxyStage />);
+    render(<GalaxyStage userStars={[MW_USER_STAR]} />);
     const stage = document.querySelector(".galaxy-stage") as HTMLElement;
     fireEvent.wheel(stage, { deltaY: -12 }); // into the MW
     // Memory stars remain clickable → the Sol marker's container must be pointer-safe.
@@ -699,11 +718,12 @@ describe("GalaxyStage — emotion figures render ambiently (owner Claude Design 
     expect(document.querySelector(".galaxy-constellation")).toBeNull();
   });
 
-  it("Mom's deep star renders as a lone jewel, never part of a figure", () => {
+  it("Mom's deep star is absent in the MW interior — she now lives in the Solar System (owner 2026-06-25)", () => {
+    // Mom moved to solarSystem tier; the MW interior has no nostalgic deep star.
     renderDivedIntoMilkyWay();
     expect(
       document.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
   });
 });
 
@@ -749,12 +769,15 @@ describe("GalaxyStage — figures ride the L4 foreground parallax plane (#243)",
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it("renders three memory-star layers — free on L3, figure members on L4, Mom on L5", () => {
+  it("renders three memory-star layers — free on L3, figure members on L4, L5 empty in MW (Mom moved to Solar System)", () => {
+    // Mom (irina) moved to the Solar System (owner 2026-06-25). In the MW interior:
+    // L3 has free stars, L4 has figure members, L5 plane exists but has no stars
+    // (Mom is no longer a galaxy-tier deep star). Mom renders at the solar tier instead.
     renderWithFigure();
     const l3 = document.querySelector(".galaxy-l3-wrap") as HTMLElement;
     const l4 = document.querySelector(".galaxy-l4-wrap") as HTMLElement;
     const l5 = document.querySelector(".galaxy-l5-wrap") as HTMLElement;
-    // Three distinct MemoryStarLayer instances (one per plane: L3 free, L4 members, L5 Mom).
+    // Three MemoryStarLayer instances still render (one per plane), even if L5 is empty.
     expect(document.querySelectorAll(".galaxy-l3")).toHaveLength(3);
     expect(l3.querySelector(".galaxy-l3")).not.toBeNull();
     expect(l4.querySelector(".galaxy-l3")).not.toBeNull();
@@ -769,10 +792,10 @@ describe("GalaxyStage — figures ride the L4 foreground parallax plane (#243)",
     expect(l5.querySelectorAll('.mem-star[data-mood="joyful"]')).toHaveLength(
       0,
     );
-    // …and Mom's deep star (never a member) rides the L5 dedication plane, off L3/L4.
+    // …and Mom's nostalgic deep star is NOT on L5 (she's in the Solar System now).
     expect(
       l5.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     expect(
       l3.querySelectorAll('.mem-star[data-mood="nostalgic"]'),
     ).toHaveLength(0);
@@ -847,13 +870,27 @@ describe("GalaxyStage — figures ride the L4 foreground parallax plane (#243)",
     expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
   });
 
-  it("clicking Mom's star on L5 opens her card (the unclickable-regression guard #243)", () => {
-    // The whole point of the pointer-events fix: the full-bleed L4/L5 wrappers must NOT
-    // swallow the click. Mom rides L5 as the topmost plane, so this is the strongest guard
-    // that a foreground plane stays click-through to its own star.
+  it("Mom's star is absent from L5 in the MW interior — she renders at the Solar System tier (owner 2026-06-25)", () => {
+    // Mom moved from L5 (MW interior) to the Solar System tier (owner 2026-06-25).
+    // The L5 plane exists but carries no nostalgic deep star in the MW view.
     renderWithFigure();
     const l5 = document.querySelector(".galaxy-l5-wrap") as HTMLElement;
     const mom = l5.querySelector<HTMLButtonElement>(
+      '.mem-star[data-mood="nostalgic"] button',
+    );
+    expect(mom).toBeNull(); // Mom is NOT on L5 in the MW anymore
+  });
+
+  it("Mom's star is clickable → opens her memory card at the Solar System tier (owner 2026-06-25)", () => {
+    // Mom is now rendered inside the solarView block. Dive to the Solar System and
+    // verify her .mem-star button is present and clickable.
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy (MW)
+    fireEvent.wheel(stage, { deltaY: -12 }); // galaxy → solarSystem
+    expect(screen.getByText("1 AU")).toBeTruthy(); // confirm solar tier
+    const mom = document.querySelector<HTMLButtonElement>(
       '.mem-star[data-mood="nostalgic"] button',
     );
     expect(mom).not.toBeNull();
@@ -892,13 +929,18 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
 
   // AC2 — `?star=<id>` resolves the star across tiers: dives to its containing
   // tier, then the camera lands exactly on the star's eased-focus framing
-  // (at DEEPLINK_FRAMING_ZOOM — ADR-0018 §3). The focus is FLUSHED ON ARRIVE
-  // (focusing mid-flight would kill the #167 timeline and strand the scene swap),
-  // so the framing assertion waits.
-  it("?star=<id> dives to the star's tier and lands the camera on its framing", async () => {
+  // (at DEEPLINK_FRAMING_ZOOM — ADR-0018 §3). The focus is FLUSHED ON ARRIVE.
+  //
+  // OWNER 2026-06-25: Mom (irina) is now at the solarSystem tier, so ?star=irina
+  // dives all the way to the Solar System (scale net = "1 AU"). The camera focus
+  // uses store.getSky() (all stars, not just galaxy-tier) so Mom is findable.
+  it("?star=<id> dives to the star's tier — Solar System for Mom (owner 2026-06-25)", async () => {
     stubReducedMotion(true);
     render(<GalaxyStage deepLink={{ star: starId }} />);
-    expect(screen.getByText("100k ly")).toBeTruthy();
+    // Mom is at solarSystem tier → dive lands on the Solar-System scale net.
+    expect(screen.getByText("1 AU")).toBeTruthy();
+    expect(screen.queryByText("100k ly")).toBeNull();
+    expect(screen.queryByText("2.5 Mly")).toBeNull();
     const camEl = document.querySelector(
       ".galaxy-stage__camera",
     ) as HTMLElement;
@@ -906,15 +948,13 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
     await waitFor(() => expect(camEl.style.transform).toBe(framingOf(starId)));
   });
 
-  // ADR-0018 §3 — the deep-link arrival also HIGHLIGHTS the target star: the
-  // `highlightId` seam threads GalaxyStage → MemoryStarLayer → MemoryStarView,
-  // which renders `data-highlighted` so the CSS ring cue fires. Pin the wiring
-  // (the pure seam is covered in highlight.test.ts; this proves the prop reaches
-  // the DOM on arrival).
-  it("?star=<id> marks the arrived star with data-highlighted for the ring cue", async () => {
+  // ADR-0018 §3 — the deep-link arrival HIGHLIGHTS the target star. Mom is at the
+  // solarSystem tier and renders there, so data-highlighted DOES appear at the solar tier.
+  it("?star=<id> marks Mom's star with data-highlighted at the Solar System tier", async () => {
     stubReducedMotion(true);
     render(<GalaxyStage deepLink={{ star: starId }} />);
-    expect(screen.getByText("100k ly")).toBeTruthy();
+    // Mom is at solarSystem tier — confirm the Solar System was reached.
+    expect(screen.getByText("1 AU")).toBeTruthy();
     await waitFor(() =>
       expect(
         document.querySelectorAll(".mem-star[data-highlighted]"),
@@ -923,14 +963,18 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
   });
 
   // `at` + `star` compose: the place owns the dive, the star rides the arrival.
-  it("?at=galaxy:home&star=<id> dives and the star focus rides the arrival", async () => {
+  // ?at=galaxy:home lands in the MW; Mom (starId) is solarSystem-tier, so she
+  // does NOT appear in the MW memory layer (the sky filters to galaxy-tier stars).
+  // The dive settles at the MW tier.
+  it("?at=galaxy:home dives to the MW tier; Mom is not in the MW galaxy view so no focus", () => {
     stubReducedMotion(true);
     render(<GalaxyStage deepLink={{ at: "galaxy:home", star: starId }} />);
+    // The at-param controls the dive: land in the MW, not the Solar System.
     expect(screen.getByText("100k ly")).toBeTruthy();
-    const camEl = document.querySelector(
-      ".galaxy-stage__camera",
-    ) as HTMLElement;
-    await waitFor(() => expect(camEl.style.transform).toBe(framingOf(starId)));
+    // Mom's star is NOT in the MW tier view, so no highlighted star mounts there.
+    expect(
+      document.querySelectorAll(".mem-star[data-highlighted]"),
+    ).toHaveLength(0);
   });
 
   // AC3 — invalid ids fall back gracefully: the default LG landing, no
@@ -968,19 +1012,21 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
         .getAttribute("aria-current"),
     ).toBe("location");
   });
+
+  // S4 (#266): clicking a planet opens its LORE card (the same openCard seam
+  // galaxies use — RealObject → lore skin). Reduced motion renders the planets
+  // static, so the labelled button is findable + clickable.
+  it("clicking a planet in the Solar System opens its lore card (#266 S4)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ at: "system:sol" }} />);
+    expect(screen.getByText("1 AU")).toBeTruthy(); // on the Solar-System tier
+    fireEvent.click(screen.getByRole("button", { name: en.lore.earth.name }));
+    // The lore card overlay mounts its dismiss scrim (CardHost) — same as a star/galaxy.
+    expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
+  });
 });
 
 describe("GalaxyStage — discovery search → focus-on-star (#113)", () => {
-  // Reuse the deep-link suite's pure framing helpers: selecting a search result
-  // must land the camera on exactly the focus-on-star (#111) framing — the same
-  // math the deep-link path lands on, proving the search reuses the primitive.
-  const seeded = buildSeedSky();
-  const framingOf = (id: string): string => {
-    const target = resolveFocusTarget(seeded, id);
-    if (!target) throw new Error(`seed star missing: ${id}`);
-    return cameraTransform(target);
-  };
-
   // The search lives at the Milky-Way tier (the memory stars' home); it is absent
   // on the Local-Group landing where the memory layer hides.
   it("the search combobox is hidden on the Local-Group landing, present after diving into the Milky Way", () => {
@@ -997,18 +1043,32 @@ describe("GalaxyStage — discovery search → focus-on-star (#113)", () => {
   });
 
   it("selecting a result frames that star — the camera lands on its focus-on-star framing", async () => {
+    // Mom (irina) is now at the Solar System tier — inject a galaxy-tier user star
+    // so the MW sky has a searchable star. MW_USER_STAR has text "a test memory".
     renderDivedIntoMilkyWay();
     const input = screen.getByRole("combobox", { name: en.search.label });
-    // Focus the input first to expand the disclosed search (redesign: search is
-    // collapsed by default, expanding on focus to show results).
+    // Focus first — the redesigned search is disclosed (collapsed until focus, #250).
     fireEvent.focus(input);
-    // Mom's "for mom" star is the only seeded memory star now.
-    fireEvent.change(input, { target: { value: "for mom" } });
-    fireEvent.click(screen.getByRole("option", { name: "Go to for mom" }));
+    // Mom moved to the Solar System (#266), so the MW interior has no seeded star —
+    // `renderDivedIntoMilkyWay` injects MW_USER_STAR ("a test memory") to find here.
+    fireEvent.change(input, { target: { value: "a test memory" } });
+    fireEvent.click(
+      screen.getByRole("option", { name: "Go to a test memory" }),
+    );
     const camEl = document.querySelector(
       ".galaxy-stage__camera",
     ) as HTMLElement;
     expect(camEl).not.toBeNull();
-    await waitFor(() => expect(camEl.style.transform).toBe(framingOf("irina")));
+    // Framing is computed against a seed that includes the injected user star.
+    // Build a sky just for framing math: one star with MW_USER_STAR's coords.
+    const userSky = { stars: [MW_USER_STAR] } as Parameters<
+      typeof resolveFocusTarget
+    >[0];
+    const target = resolveFocusTarget(userSky, MW_USER_STAR.id);
+    if (!target)
+      throw new Error(`user star missing from framing: ${MW_USER_STAR.id}`);
+    await waitFor(() =>
+      expect(camEl.style.transform).toBe(cameraTransform(target)),
+    );
   });
 });
