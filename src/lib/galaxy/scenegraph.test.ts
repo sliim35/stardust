@@ -18,6 +18,10 @@ import {
 import { buildSeedSky } from "#/lib/galaxy/seed";
 import type { MemoryStar, Placement } from "#/lib/galaxy/types";
 
+// Mom (irina) now lives at the solarSystem tier (owner 2026-06-25). This constant
+// is used across the tests below to assert or exclude her where needed.
+const MOM_ID = "irina";
+
 const UNIVERSE_SEED = 7777;
 
 describe("buildLocalGroup", () => {
@@ -71,34 +75,70 @@ describe("buildLocalGroup", () => {
     for (const s of sky.stars) expect(homeStarIds.has(s.id)).toBe(true);
   });
 
-  it("defaults home-galaxy stars to placement { tier:'galaxy', parentId:'home' }", () => {
+  it("defaults home-galaxy stars to placement { tier:'galaxy', parentId:'home' } (except Mom)", () => {
     const home = buildLocalGroup(UNIVERSE_SEED).galaxies.find(
       (g) => g.id === HOME_GALAXY_ID,
     );
+    // Mom (irina) lives at the solarSystem tier (owner 2026-06-25) — her explicit
+    // placement is preserved by withHomePlacement's `??` guard. Every OTHER home star
+    // gets defaulted to the galaxy tier.
     for (const s of home?.stars ?? []) {
-      expect(s.placement?.tier).toBe("galaxy");
-      expect(s.placement?.parentId).toBe(HOME_GALAXY_ID);
-      // placement mirrors the star's own polar coords
-      expect(s.placement?.r).toBe(s.r);
-      expect(s.placement?.angle).toBe(s.angle);
+      if (s.id === MOM_ID) {
+        // Mom keeps her solar placement.
+        expect(s.placement?.tier).toBe("solarSystem");
+        expect(s.placement?.parentId).toBe(SOL_SYSTEM_ID);
+      } else {
+        expect(s.placement?.tier).toBe("galaxy");
+        expect(s.placement?.parentId).toBe(HOME_GALAXY_ID);
+        // placement mirrors the star's own polar coords
+        expect(s.placement?.r).toBe(s.r);
+        expect(s.placement?.angle).toBe(s.angle);
+      }
     }
   });
 
-  it("seats the seeded Irina memory star on the home galaxy (#126 AC3)", () => {
+  it("seats the seeded Irina memory star on the home galaxy — now at the solarSystem tier (owner 2026-06-25)", () => {
     const home = buildLocalGroup(UNIVERSE_SEED).galaxies.find(
       (g) => g.id === HOME_GALAXY_ID,
     );
     const byId = new Map((home?.stars ?? []).map((s) => [s.id, s]));
-    // Mom's lone gold star must live on home, with a home placement.
-    for (const id of ["irina"]) {
-      const s = byId.get(id);
-      expect(
-        s,
-        `seeded star "${id}" should live on the home galaxy`,
-      ).toBeDefined();
-      expect(s?.placement?.tier).toBe("galaxy");
-      expect(s?.placement?.parentId).toBe(HOME_GALAXY_ID);
-    }
+    // Mom's lone gold star IS still present on the home galaxy's star list (the store
+    // merges all stars at this level), but her PLACEMENT is now solarSystem — "her home"
+    // is Sol. `starsForView` routes her to the solar-tier view, not the MW interior.
+    const irina = byId.get(MOM_ID);
+    expect(
+      irina,
+      `seeded star "${MOM_ID}" should be in the home galaxy's list`,
+    ).toBeDefined();
+    expect(irina?.placement?.tier).toBe("solarSystem");
+    expect(irina?.placement?.parentId).toBe(SOL_SYSTEM_ID);
+  });
+
+  it("starsForView('galaxy','home') does NOT include Mom — she lives in the Solar System now", () => {
+    const home = buildLocalGroup(UNIVERSE_SEED).galaxies.find(
+      (g) => g.id === HOME_GALAXY_ID,
+    );
+    const galaxyTierStars = starsForView(
+      home?.stars ?? [],
+      "galaxy",
+      HOME_GALAXY_ID,
+    );
+    expect(galaxyTierStars.some((s) => s.id === MOM_ID)).toBe(false);
+  });
+
+  it("starsForView('solarSystem', SOL_SYSTEM_ID) includes Mom (her new home)", () => {
+    const home = buildLocalGroup(UNIVERSE_SEED).galaxies.find(
+      (g) => g.id === HOME_GALAXY_ID,
+    );
+    const solarStars = starsForView(
+      home?.stars ?? [],
+      "solarSystem",
+      SOL_SYSTEM_ID,
+    );
+    expect(solarStars.some((s) => s.id === MOM_ID)).toBe(true);
+    const mom = solarStars.find((s) => s.id === MOM_ID);
+    expect(mom?.deep).toBe(true);
+    expect(mom?.color).toBe("#f5d6a0"); // gold reservation preserved
   });
 
   // ── ADR-0010: the Local Group is now the REAL Local Group (no procedural g#) ──
@@ -283,8 +323,12 @@ describe("buildSolarSystem — the real-data adapter (ADR-0016 §1, AC5)", () =>
   });
 });
 
-// ── BR33/ADR-0016 §6 — NO Memory Stars at tier 3 (structural pin, AC7) ─────────
-describe("no memory stars at the Solar-System tier (BR33, ADR-0016 §6)", () => {
+// ── Memory Stars at the Solar-System tier (owner 2026-06-25: Mom moved here) ─────
+// Mom (irina) is now the ONE intentional solarSystem-tier memory star. The BR33
+// "no memory stars at tier 3" invariant is retired for Mom specifically — her
+// dedicated gold star belongs at Sol ("her home"). User-added stars still default
+// to the galaxy tier; only the seed's explicit placement routes her to tier 3.
+describe("Mom's dedication star lives at the Solar-System tier (owner 2026-06-25)", () => {
   const star = (id: string, placement: Placement): MemoryStar => ({
     id,
     text: id,
@@ -297,12 +341,21 @@ describe("no memory stars at the Solar-System tier (BR33, ADR-0016 §6)", () => 
     placement,
   });
 
-  it("starsForView(.., 'solarSystem', SOL_SYSTEM_ID) is empty for the whole seeded corpus", () => {
+  it("starsForView(.., 'solarSystem', SOL_SYSTEM_ID) returns ONLY Mom from the seeded corpus", () => {
     const seeded = buildSeedSky().stars;
-    expect(starsForView(seeded, "solarSystem", SOL_SYSTEM_ID)).toEqual([]);
-    // …and for the live home node (the only galaxy that descends to tier 3).
+    const solarStars = starsForView(seeded, "solarSystem", SOL_SYSTEM_ID);
+    expect(solarStars).toHaveLength(1);
+    expect(solarStars[0]?.id).toBe(MOM_ID);
+    expect(solarStars[0]?.deep).toBe(true);
+    // …and for the live home node.
     const home = homeGalaxyOf(buildLocalGroup(UNIVERSE_SEED));
-    expect(starsForView(home.stars, "solarSystem", SOL_SYSTEM_ID)).toEqual([]);
+    const homeSolarStars = starsForView(
+      home.stars,
+      "solarSystem",
+      SOL_SYSTEM_ID,
+    );
+    expect(homeSolarStars).toHaveLength(1);
+    expect(homeSolarStars[0]?.id).toBe(MOM_ID);
   });
 
   it("the tier-3 object set is exactly Sol + 8 planets, all star|planet, none a gateway", () => {
@@ -315,11 +368,9 @@ describe("no memory stars at the Solar-System tier (BR33, ADR-0016 §6)", () => 
     }
   });
 
-  it("never adopts a stray tier-3 star even if one is authored (the filter is structural)", () => {
-    // A hypothetical mis-placed memory star at tier 3 must NOT leak into the
-    // no-memory view — the invariant is enforced by the filter, not by the data
-    // happening to be empty. starsForView keys on placement, so a tier-3 star
-    // would only ever match a tier-3 query (which the renderer never mounts).
+  it("starsForView filter is structural — a stray tier-3 star never leaks into the galaxy-tier view", () => {
+    // The filter is structural: a stray mis-placed star only matches a tier-3 query.
+    // The galaxy-tier render never sees it (it only queries 'galaxy' view).
     const seeded = buildSeedSky().stars;
     const strayId = "stray-tier3";
     const withStray = [
@@ -337,8 +388,24 @@ describe("no memory stars at the Solar-System tier (BR33, ADR-0016 §6)", () => 
         (s) => s.id === strayId,
       ),
     ).toBe(false);
-    // …and the seeded corpus authors NO tier-3 star in the first place.
-    expect(seeded.some((s) => s.placement?.tier === "solarSystem")).toBe(false);
+    // …and only the stray (not Mom) is truly "stray" — Mom has an explicit placement.
+    expect(
+      seeded.some(
+        (s) => s.placement?.tier === "solarSystem" && s.id !== MOM_ID,
+      ),
+    ).toBe(false);
+  });
+
+  it("Mom's solar placement r/angle are well clear of every planet orbit", () => {
+    const mom = buildSeedSky().stars.find((s) => s.id === MOM_ID);
+    expect(mom?.placement?.tier).toBe("solarSystem");
+    // Mom is between Saturn (r≈0.755) and Uranus (r≈0.858) in the radial.
+    expect(mom?.r).toBeGreaterThan(0.75);
+    expect(mom?.r).toBeLessThan(0.9);
+    // Her angle (≈250°) is between Neptune (≈216°) and Jupiter (≈284°) — the outer void.
+    const angleDeg = ((mom?.angle ?? 0) * 180) / Math.PI;
+    expect(angleDeg).toBeGreaterThan(215);
+    expect(angleDeg).toBeLessThan(285);
   });
 });
 

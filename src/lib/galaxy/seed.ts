@@ -13,6 +13,7 @@
  * for the seed corpus only; nothing here recolors a star supplied later.
  */
 
+import { SOL_SYSTEM_ID } from "#/lib/galaxy/realdata";
 import { hashStr, mulberry32 } from "#/lib/galaxy/rng";
 import type {
   ConstellationFigure,
@@ -549,13 +550,18 @@ export const CONSTELLATIONS = Object.fromEntries(
 ) as unknown as Record<Emotion, ConstellationFigure>;
 
 // ── Mom's lone gold star — the ONLY hardcoded star (everything else from D1) ────
-// Owner 2026-06-22: the seed carries ONLY Mom's dedication star; every other star is
-// a real memory persisted in D1 (ADR-0012), merged in by `createD1Store`. For dev/demo,
-// `scripts/prefill-stars.ts` seeds D1 with a handful of memories. Mom stays UNGROUPED
-// (ADR-0010 §1 + the Mom's-star treatment 2026-06-06) — the gold dedication star never
-// joins a mood constellation; her `name`/`text` resolve from the i18n catalog (no inline
-// copy). Irina is the brightest of the whole sky (brightness 1, the unique max — #146),
-// sits near bottom-centre (r 0.92, angle ≈ π/2), reserving the pale gold `#f5d6a0`.
+// Owner 2026-06-25: Mom's memorial moved to the Solar System ("her home" is Sol).
+// She sits in the outer void between Neptune (≈216°) and Jupiter (≈284°) at r=0.82
+// — well clear of every planet orbit, a singular gold dedication point floating in
+// the quiet dark near Sol. `placement` pins her to the solar tier so `starsForView`
+// routes her to the Solar-System view, NOT the MW interior (ADR-0008 §5 default).
+// `(r, angle)` mirror the placement so any legacy flat-read stays consistent.
+//
+// Previous position: MW interior, r 0.92, angle ≈ π/2 (bottom-centre of the disk).
+// New position: Solar System, r 0.82, angle ≈ 4.363 rad (250° — between Neptune and
+// Jupiter, outer void).
+const DEEP_STAR_SOLAR_R = 0.82;
+const DEEP_STAR_SOLAR_ANGLE = (250 * Math.PI) / 180; // ≈ 4.363 rad
 const DEEP_STAR = {
   id: "irina",
   copyKey: "irina",
@@ -563,10 +569,16 @@ const DEEP_STAR = {
   who: null,
   mood: "nostalgic",
   color: "#f5d6a0",
-  r: 0.92,
-  angle: 1.571,
+  r: DEEP_STAR_SOLAR_R,
+  angle: DEEP_STAR_SOLAR_ANGLE,
   brightness: 1,
   createdAt: 1700000000000,
+  placement: {
+    tier: "solarSystem" as const,
+    parentId: SOL_SYSTEM_ID,
+    r: DEEP_STAR_SOLAR_R,
+    angle: DEEP_STAR_SOLAR_ANGLE,
+  },
 } as const;
 
 /**

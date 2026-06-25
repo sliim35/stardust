@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ANDROMEDA_ID } from "#/lib/galaxy/realdata";
+import { ANDROMEDA_ID, SOL_SYSTEM_ID } from "#/lib/galaxy/realdata";
 import {
   buildLocalGroup,
   HOME_GALAXY_ID,
@@ -7,6 +7,9 @@ import {
 } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import type { GalaxySky, MemoryStar } from "#/lib/galaxy/types";
+
+// Mom (irina) lives at the solarSystem tier (owner 2026-06-25).
+const MOM_ID = "irina";
 
 const sampleStar = (over: Partial<MemoryStar> = {}): MemoryStar => {
   return {
@@ -176,13 +179,19 @@ describe("createInMemoryStore — universe seam (ADR-0008)", () => {
     );
   });
 
-  it("getUniverse defaults every home-galaxy star to a home placement", () => {
+  it("getUniverse defaults home-galaxy stars to a home placement (Mom keeps her solar placement)", () => {
     const u = createInMemoryStore().getUniverse?.();
     const home = u?.localGroup.galaxies.find((g) => g.id === HOME_GALAXY_ID);
     expect((home?.stars ?? []).length).toBeGreaterThan(0);
     for (const s of home?.stars ?? []) {
-      expect(s.placement?.tier).toBe("galaxy");
-      expect(s.placement?.parentId).toBe(HOME_GALAXY_ID);
+      if (s.id === MOM_ID) {
+        // Mom keeps her explicit solarSystem placement (owner 2026-06-25).
+        expect(s.placement?.tier).toBe("solarSystem");
+        expect(s.placement?.parentId).toBe(SOL_SYSTEM_ID);
+      } else {
+        expect(s.placement?.tier).toBe("galaxy");
+        expect(s.placement?.parentId).toBe(HOME_GALAXY_ID);
+      }
     }
   });
 
@@ -195,17 +204,32 @@ describe("createInMemoryStore — universe seam (ADR-0008)", () => {
     expect((home?.stars ?? []).some((s) => s.id === "fresh-home")).toBe(true);
   });
 
-  it("skyFor('home') equals getSky() — the flat contract is the home projection", () => {
+  it("skyFor('home') returns only galaxy-tier stars (Mom is excluded — she lives in the Solar System)", () => {
+    // Mom (irina) now lives at the solarSystem tier (owner 2026-06-25). skyFor('home')
+    // filters to galaxy-tier stars for the MW interior view, so Mom is absent there.
+    // getSky() still returns ALL stars (the flat unfiltered contract).
     const store = createInMemoryStore();
-    expect(store.skyFor?.(HOME_GALAXY_ID)).toEqual(store.getSky());
+    const skyForHome = store.skyFor?.(HOME_GALAXY_ID);
+    expect(skyForHome?.stars.some((s) => s.id === MOM_ID)).toBe(false);
+    expect(store.getSky().stars.some((s) => s.id === MOM_ID)).toBe(true);
   });
 
-  it("skyFor('home') stays equal to getSky() after a star is added (#126 AC1 — stage parity)", () => {
-    // The stage reads its GalaxySky via skyFor('home') instead of getSky(); the two
-    // must remain byte-identical so routing through the projection is render-invisible.
+  it("skyFor('home') stays consistent with the galaxy-tier view after a star is added (#126 AC1)", () => {
+    // A galaxy-tier star added to the home view should surface in skyFor('home').
     const store = createInMemoryStore();
-    store.addStar(sampleStar({ id: "parity-1" }));
-    expect(store.skyFor?.(HOME_GALAXY_ID)).toEqual(store.getSky());
+    store.addStar(
+      sampleStar({
+        id: "parity-1",
+        placement: {
+          tier: "galaxy",
+          parentId: HOME_GALAXY_ID,
+          r: 0.5,
+          angle: 1,
+        },
+      }),
+    );
+    const skyForHome = store.skyFor?.(HOME_GALAXY_ID);
+    expect(skyForHome?.stars.some((s) => s.id === "parity-1")).toBe(true);
   });
 
   it("homeNode() is the live home GalaxyNode of the Local Group (#126 AC2)", () => {
@@ -220,17 +244,24 @@ describe("createInMemoryStore — universe seam (ADR-0008)", () => {
     expect(home).toEqual(fromUniverse);
   });
 
-  it("homeNode() carries the live seeded stars with home placement (#126 AC3)", () => {
+  it("homeNode() carries the live seeded stars; Mom keeps her solar placement (#126 AC3)", () => {
     const store = createInMemoryStore();
     const skyIds = store
       .getSky()
       .stars.map((s) => s.id)
       .sort();
     const home = store.homeNode?.();
+    // All store stars are present on the home node…
     expect((home?.stars ?? []).map((s) => s.id).sort()).toEqual(skyIds);
+    // …but placement rules differ: Mom is solarSystem, others default to galaxy.
     for (const s of home?.stars ?? []) {
-      expect(s.placement?.tier).toBe("galaxy");
-      expect(s.placement?.parentId).toBe(HOME_GALAXY_ID);
+      if (s.id === MOM_ID) {
+        expect(s.placement?.tier).toBe("solarSystem");
+        expect(s.placement?.parentId).toBe(SOL_SYSTEM_ID);
+      } else {
+        expect(s.placement?.tier).toBe("galaxy");
+        expect(s.placement?.parentId).toBe(HOME_GALAXY_ID);
+      }
     }
   });
 
@@ -241,16 +272,22 @@ describe("createInMemoryStore — universe seam (ADR-0008)", () => {
     expect(ids).toContain("fresh-home-node");
   });
 
-  it("starsForView('galaxy','home') returns the seeded home stars", () => {
+  it("starsForView('galaxy','home') excludes Mom (she's solarSystem tier now)", () => {
+    // Mom (irina) lives at solarSystem tier — starsForView('galaxy','home') must NOT
+    // include her. The seeded sky is Mom-only, so the galaxy view is empty at launch.
     const store = createInMemoryStore();
-    const viewIds = (store.starsForView?.("galaxy", HOME_GALAXY_ID) ?? [])
-      .map((s) => s.id)
-      .sort();
-    const skyIds = store
-      .getSky()
-      .stars.map((s) => s.id)
-      .sort();
-    expect(viewIds).toEqual(skyIds);
+    const galaxyViewIds = (
+      store.starsForView?.("galaxy", HOME_GALAXY_ID) ?? []
+    ).map((s) => s.id);
+    expect(galaxyViewIds).not.toContain(MOM_ID);
+  });
+
+  it("starsForView('solarSystem', SOL_SYSTEM_ID) returns Mom from the seeded store", () => {
+    const store = createInMemoryStore();
+    const solarIds = (
+      store.starsForView?.("solarSystem", SOL_SYSTEM_ID) ?? []
+    ).map((s) => s.id);
+    expect(solarIds).toContain(MOM_ID);
   });
 
   it("a newly added star surfaces in its placement's view", () => {

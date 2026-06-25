@@ -36,10 +36,11 @@ import {
   HOME_MILKY_WAY_ID,
   REAL_OBJECTS,
   SOL_ID,
+  SOL_SYSTEM_ID,
   solarSystemObjects,
 } from "#/lib/galaxy/realdata";
 import { interiorLayersVisible } from "#/lib/galaxy/scene-visibility";
-import { HOME_GALAXY_ID } from "#/lib/galaxy/scenegraph";
+import { HOME_GALAXY_ID, starsForView } from "#/lib/galaxy/scenegraph";
 import { createInMemoryStore } from "#/lib/galaxy/store";
 import { createD1Store } from "#/lib/galaxy/store-d1";
 import { availableTiersFor, HOME_TIER } from "#/lib/galaxy/tier-nav";
@@ -125,6 +126,9 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   const [store] = useState(() =>
     userStars ? createD1Store(userStars) : createInMemoryStore(),
   );
+  // Stable reference to store.getSky so the camera + solar-star memo + deep-link
+  // effect can read ALL tiers (including solarSystem Mom) without Biome dep warnings.
+  const storGetSky = store.getSky;
   // Which galaxy the scene currently shows (BR22-frame #198): the home MW on landing,
   // re-keyed at the tier-transition threshold so a neighbour entry swaps to ITS disk.
   // `null` ≡ the home MW (skyFor('home') ≡ getSky() byte-for-byte) — the back-compat
@@ -294,7 +298,9 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
 
   const cam = useGalaxyCamera({
     focus,
-    getSky: () => skyRef.current,
+    // Use all stars (including solar-tier) for camera focus resolution — the galaxy-tier
+    // sky (skyRef.current) excludes Mom (irina) after her move to the Solar System.
+    getSky: storGetSky,
     getDisplayTilt: () => displayTiltRef.current,
     transitions,
     onTransitionEvent,
@@ -362,7 +368,9 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     deepLinkConsumed.current = true;
     const target = resolveDeepLink(deepLink, {
       findReal: (id) => REAL_OBJECTS.find((o) => o.id === id),
-      findStar: (id) => skyRef.current.stars.find((s) => s.id === id),
+      // Use getSky() (all tiers) so a solar-tier star like Mom (irina) is findable.
+      // skyRef.current is scoped to the galaxy tier and excludes solarSystem stars.
+      findStar: (id) => storGetSky().stars.find((s) => s.id === id),
       // The home galaxy's set includes solarSystem (ADR-0016 §4, #248), so a
       // `?at=system:sol` link can reach tier 3; the v1 default could not. A
       // neighbour-scoped link still resolves against its own set inside the
@@ -378,7 +386,7 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
       focus.focusStar(target.star, DEEPLINK_FRAMING_ZOOM);
       highlight.highlight(target.star);
     }
-  }, [deepLink, nav, focus, highlight]);
+  }, [deepLink, nav, focus, highlight, storGetSky]);
 
   // The scene swap (#125 → composed by I-2 #112): at the Local-Group tier the
   // disk paints the FINAL-proof composition — the MW shrunk (LG_MW_PLACEMENT) +
@@ -460,23 +468,36 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
   // translate 0). Tilt-independent (membership is geometry-free), so it doesn't recompute
   // on a neighbour's foreshortening change.
   // Three-way split (#243 + owner follow-up 2026-06-24): Mom's singular `deep` star
-  // (ADR-0010 §1) rides the L5 dedication plane ALONE so it parallaxes the most and
-  // reads as the closest, most prominent point; figure members ride L4 with their
-  // overlay; the loose stars stay on L3. `deep` is checked first — `figureMemberIds`
-  // already excludes deep stars (a deep star is never a figure member), so the order
-  // only documents intent. Pure → SSR markup deterministic.
+  // (ADR-0010 §1) is now in the Solar System (owner 2026-06-25) — she never appears
+  // in the MW interior layers (L3/L4/L5). The split only iterates GALAXY-TIER stars so
+  // Mom's solarSystem placement excludes her from deepStars here. Figure members ride
+  // L4 with their overlay; the loose stars stay on L3. Pure → SSR markup deterministic.
+  // `solarStars` is the separate Solar-System memory set (currently only Mom).
   const { deepStars, memberStars, freeStars } = useMemo(() => {
     const memberIds = figureMemberIds(sky.stars);
     const deep: MemoryStar[] = [];
     const members: MemoryStar[] = [];
     const free: MemoryStar[] = [];
-    for (const star of sky.stars) {
+    // Only consider galaxy-tier stars for the MW interior planes (L3/L4/L5).
+    // Stars with solarSystem placement (e.g. Mom) are handled separately below.
+    const galaxyStars = starsForView(sky.stars, "galaxy", HOME_GALAXY_ID);
+    for (const star of galaxyStars) {
       if (star.deep) deep.push(star);
       else if (memberIds.has(star.id)) members.push(star);
       else free.push(star);
     }
     return { deepStars: deep, memberStars: members, freeStars: free };
   }, [sky.stars]);
+  // Solar-System memory stars (owner 2026-06-25): Mom's dedication star now lives here.
+  // Computed from getSky() (ALL tiers) because sky.stars is scoped to galaxy-tier
+  // stars only (skyFor/filterStarsForView), which excludes Mom's solarSystem placement.
+  // `sky` is intentional: it's the reactive trigger for re-computation when store
+  // changes — even though the actual read goes through storGetSky() (all-tiers).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sky is a reactive trigger
+  const solarStars = useMemo(
+    () => starsForView(storGetSky().stars, "solarSystem", SOL_SYSTEM_ID),
+    [sky, storGetSky],
+  );
   // The far layers keep the reduced-motion-safe opacity transition; ambient figures
   // don't dim the sky (the old hover-reveal dim is retired with the redesign).
   const dimClass =
@@ -573,6 +594,27 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                   }}
                   onNarrate={onNarrate}
                 />
+              )}
+              {/* Mom's dedication star in the Solar System (owner 2026-06-25): a
+                  singular gold deep-star rendered alongside the planets at the solar
+                  tier. Pointer-events-none wrapper; the mem-star button opts back in
+                  (the L4 plane pattern — same as SolarSystemLayer). Uses the same
+                  InteractiveStars seam as the MW interior so Mom's card + ignite +
+                  highlight behaviors are unchanged. Tilt is ignored at tier 3 (no
+                  disk foreshortening — the solar view is face-on), so we pass 0. */}
+              {solarView && solarStars.length > 0 && (
+                <div className="pointer-events-none absolute inset-0">
+                  <InteractiveStars
+                    stars={solarStars}
+                    ignitingIds={ignitingIds}
+                    highlightedId={highlightedId}
+                    diveTo={nav.diveTo}
+                    available={available}
+                    a11yLabel={m.a11y.memoryStar}
+                    moodLabels={m.moods}
+                    tilt={0}
+                  />
+                </div>
               )}
             </div>
             {/* The L3 memory layer is MW-interior content: at the Local-Group
