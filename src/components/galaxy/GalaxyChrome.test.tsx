@@ -183,3 +183,119 @@ describe("GalaxyChrome — clickable breadcrumb nav (owner 2026-06-10)", () => {
     expect(buttons[0]?.textContent).toBe(en.chrome.breadcrumb.localGroup);
   });
 });
+
+// ── #249 redesign — top-left, uppercase, left-anchored, colour-only active ──────
+// These assert structure/classes (not pixel positions): jsdom has no layout, so
+// the contract is the Tailwind class surface that drives placement + transform.
+describe("GalaxyChrome — breadcrumb redesign (#249, BR35/BR36)", () => {
+  const navOf = (locale = en) =>
+    screen.getByRole("navigation", { name: locale.chrome.breadcrumbNav });
+
+  // AC2 — every segment carries the `uppercase` transform, so the title-case
+  // `lore.name` ("The Milky Way") RENDERS as THE MILKY WAY without mutating the
+  // catalog string (the DOM text content stays title-case; CSS does the casing).
+  it("AC2 — the galaxy segment is uppercased by CSS, catalog string untouched", () => {
+    render(<GalaxyChrome count={3} tier="galaxy" galaxyId="home" />);
+    const galaxy = screen.getByText(en.lore.milkyWay.name);
+    // The DOM text is the unmodified title-case catalog string …
+    expect(galaxy.textContent).toBe("The Milky Way");
+    // … and the visual uppercase comes from the Tailwind transform, not a
+    // pre-uppercased string.
+    expect(galaxy.className).toContain("uppercase");
+  });
+
+  // AC2 — the transform is uniform across the whole trail (active span, the
+  // navigable ascent button, and the deferred SOL tail all carry `uppercase`).
+  it("AC2 — uppercase applies to every segment (active, button, deferred)", () => {
+    render(<GalaxyChrome count={3} tier="galaxy" galaxyId="home" />);
+    const nav = navOf();
+    const segments = nav.querySelectorAll("[data-breadcrumb-segment]");
+    expect(segments.length).toBe(3);
+    for (const seg of segments) {
+      expect(seg.className).toContain("uppercase");
+    }
+  });
+
+  // AC3 — the active segment differs from its siblings by COLOUR ONLY: same
+  // font-size token (`text-eyebrow`), same family (`font-mono`), same case
+  // (`uppercase`); only the colour class flips (`text-accent` vs `text-dim-3`),
+  // and no segment carries an `underline` the others lack.
+  it("AC3 — active differs by colour only (same size/family/case, no underline)", () => {
+    render(<GalaxyChrome count={3} tier="galaxy" galaxyId="home" />);
+    const active = screen.getByText(en.lore.milkyWay.name); // tier === galaxy
+    const lg = screen.getByText(en.chrome.breadcrumb.localGroup); // navigable
+    const sol = screen.getByText(en.chrome.breadcrumb.solarSystem); // deferred
+    const classesOf = (el: Element) => el.className.split(/\s+/);
+    for (const el of [active, lg, sol]) {
+      const cls = classesOf(el);
+      expect(cls).toContain("font-mono"); // same family
+      expect(cls).toContain("text-eyebrow"); // same size token
+      expect(cls).toContain("uppercase"); // same case
+      // No segment carries an underline the others lack (AC3).
+      expect(cls.some((c) => c.includes("underline"))).toBe(false);
+    }
+    // Colour is the one salient difference (Von Restorff): the REST-state colour
+    // token (a bare `text-*`, not a `hover:`/`focus-visible:` variant) — active is
+    // accent, the siblings are dim.
+    const restColour = (el: Element) =>
+      classesOf(el).find((c) => /^text-(accent|dim-\d)$/.test(c));
+    expect(restColour(active)).toBe("text-accent");
+    expect(restColour(lg)).toBe("text-dim-3");
+    expect(restColour(sol)).toBe("text-dim-3");
+  });
+
+  // AC1 — the breadcrumb nav is no longer top-right: it is left-anchored (no
+  // `right-*`) and lives inside the same top-left wayfinding block as the brand.
+  it("AC1 — breadcrumb is left-anchored, stacked under the brand/count block", () => {
+    const { container } = render(
+      <GalaxyChrome count={3} tier="galaxy" galaxyId="home" />,
+    );
+    const nav = navOf();
+    // No top-right anchoring survives.
+    expect(nav.className).not.toMatch(/(^|\s)right-/);
+    // The nav shares the single top-left container with the brand wordmark.
+    const block = container.querySelector("[data-wayfinding-block]");
+    expect(block).not.toBeNull();
+    expect(block?.contains(nav)).toBe(true);
+    expect(block?.contains(screen.getByText(en.chrome.brand))).toBe(true);
+  });
+
+  // AC4 — the trail is a left-anchored row: segments flow left→right so the SOL
+  // crumb is the rightmost (last) child and the leftmost crumbs never reorder.
+  // 3-tier home: LOCAL GROUP › MILKY WAY › SOL, SOL last.
+  it("AC4 — SOL is the rightmost (last) segment; leftmost stays LOCAL GROUP", () => {
+    render(<GalaxyChrome count={3} tier="galaxy" galaxyId="home" />);
+    const nav = navOf();
+    const segments = [...nav.querySelectorAll("[data-breadcrumb-segment]")];
+    expect(segments[0]?.textContent).toBe(en.chrome.breadcrumb.localGroup);
+    expect(segments.at(-1)?.textContent).toBe(en.chrome.breadcrumb.solarSystem);
+  });
+
+  // AC4 — dropping to 2 tiers (a neighbour) removes SOL from the right; the
+  // leftmost segment is STILL LOCAL GROUP (no horizontal shift of existing crumbs).
+  it("AC4 — 2-tier trail keeps LOCAL GROUP leftmost, no SOL on the right", () => {
+    render(<GalaxyChrome count={3} tier="galaxy" galaxyId="andromeda" />);
+    const nav = navOf();
+    const segments = [...nav.querySelectorAll("[data-breadcrumb-segment]")];
+    expect(segments).toHaveLength(2);
+    expect(segments[0]?.textContent).toBe(en.chrome.breadcrumb.localGroup);
+    expect(screen.queryByText(en.chrome.breadcrumb.solarSystem)).toBeNull();
+  });
+
+  // AC5 — the trail is capped at 3 segments; even a hypothetical 4-tier source
+  // can never render a 4th crumb. `toBe(3)` (not `<= 3`) so a regression that
+  // DROPS the SOL crumb (rendering only 2) also fails the cap gate.
+  it("AC5 — renders exactly 3 segments at the deepest (home) trail", () => {
+    // home is the deepest real trail (3 tiers); assert the hard cap holds.
+    render(<GalaxyChrome count={3} tier="galaxy" galaxyId="home" />);
+    const nav = navOf();
+    const segments = nav.querySelectorAll("[data-breadcrumb-segment]");
+    expect(segments.length).toBe(3);
+  });
+
+  // AC6 — the <620px hide is preserved (Tailwind `max-[620px]:hidden` on the nav).
+  it("AC6 — preserves the <620px hide", () => {
+    render(<GalaxyChrome count={3} tier="galaxy" galaxyId="home" />);
+    expect(navOf().className).toContain("max-[620px]:hidden");
+  });
+});
