@@ -60,6 +60,7 @@ import { DeepStarfield } from "./DeepStarfield";
 import { GalaxyBackdrop } from "./GalaxyBackdrop";
 import { LgGalaxyLabels } from "./LgGalaxyLabels";
 import { MemoryStarLayer } from "./MemoryStarLayer";
+import { SolarSystemLayer } from "./SolarSystemLayer";
 import { StarSearch } from "./StarSearch";
 import { useGalaxyCamera } from "./useGalaxyCamera";
 import { useObjectClick } from "./useObjectClick";
@@ -512,6 +513,20 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                   lore={m.lore}
                   onActiveChange={setLgHovered}
                   onNarrate={onNarrate}
+                />
+              )}
+              {/* S2+S3: HD-2D planet spheres + pulsing Sol + orbital motion (#266).
+                  Layered OVER the canvas (which draws the ring ladder + void field)
+                  but inside L2 so it moves with the camera. Pointer-events-none on the
+                  wrapper; each planet button opts back in (the L4 plane pattern).
+                  Only mounts at the solarSystem tier so every other tier is untouched. */}
+              {solarView && solarSystem && (
+                <SolarSystemLayer
+                  bodies={solarSystem}
+                  ariaLabelFor={(id) => {
+                    const lk = solarSystem.find((o) => o.id === id)?.loreKey;
+                    return lk ? (m.lore[lk]?.name ?? id) : id;
+                  }}
                 />
               )}
             </div>
