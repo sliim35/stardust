@@ -129,17 +129,18 @@ describe("ZoomHint — the scroll-to-zoom discoverability signifier (#251)", () 
   });
 
   // Any motion the hint shows is opt-in: every `animate-*` token must be
-  // `motion-safe:`-prefixed (so reduced-motion disables it), never raw.
-  it("AC4 — every animate-* token is motion-safe:-prefixed (no raw animation)", () => {
+  // `motion-safe:`-prefixed (so reduced-motion disables it), never raw. The glyph
+  // carries the scroll-suggesting tilt/bob token specifically (owner #255 feedback).
+  it("AC4 — the tilt token is present and motion-safe:-gated (no raw animation)", () => {
     render(<ZoomHint label={LABEL} />);
     const hint = screen.getByTestId("zoom-hint");
     const tokens = [hint, ...hint.querySelectorAll("*")].flatMap((el) => [
       ...el.classList,
     ]);
     const animTokens = tokens.filter((t) => t.includes("animate-"));
-    // There IS at least one ambient animation token (the glyph breathes)…
-    expect(animTokens.length).toBeGreaterThan(0);
-    // …and every one of them is gated behind motion-safe:.
+    // The scroll-suggesting tilt/bob is applied, motion-safe:-gated.
+    expect(animTokens).toContain("motion-safe:animate-zoom-hint-tilt");
+    // And EVERY animate-* token is gated behind motion-safe: (none ever raw).
     for (const t of animTokens) {
       expect(t.startsWith("motion-safe:")).toBe(true);
     }

@@ -120,22 +120,23 @@ export const ZoomHint = ({ label, dwellMs = ZOOM_HINT_DWELL_MS }: Props) => {
       // (no z above the palette's z-[6] — it never needs to sit over chrome). It is
       // a passive signifier: `pointer-events-none` so every click/scroll passes
       // through to the canvas + chrome (AC5). It carries no entrance animation —
-      // the only motion is the glyph's motion-safe: breathing, off under
+      // the only motion is the glyph's motion-safe: tilt/bob, off under
       // reduced-motion (AC4).
       className="pointer-events-none absolute bottom-[max(22px,env(safe-area-inset-bottom))] left-1/2 z-0 flex -translate-x-1/2 select-none items-center gap-2"
       role="note"
       aria-label={label}
     >
       {/* The wheel glyph — a quiet mouse outline with a scroll wheel. Its gentle
-          breathing is the ambient draw, gated behind motion-safe: so reduced-motion
-          gets a static glyph (AC4). Decorative (the copy carries the meaning). */}
+          up→down tilt/bob (the `zoom-hint-tilt` @theme animation) suggests the
+          scroll gesture; gated behind motion-safe: so reduced-motion gets a static
+          glyph (AC4). Decorative (the copy carries the meaning). */}
       <svg
         width={16}
         height={22}
         viewBox="0 0 16 22"
         fill="none"
         aria-hidden="true"
-        className="text-dim-2 motion-safe:animate-pulse"
+        className="text-dim-2 motion-safe:animate-zoom-hint-tilt"
       >
         <rect
           x={1}
