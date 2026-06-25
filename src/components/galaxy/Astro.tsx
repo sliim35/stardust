@@ -210,9 +210,18 @@ export const Astro = ({
             ) : null}
           </AstroBubble>
         )}
-        {/* 2. Interaction hub — divider + pill rail + full-width search, inside the
-            same panel. Its spoken responses route through the bubble's aria-live
-            region via `onSpeak` (wired to `showNarration`) — no second a11y surface (#72). */}
+        {/* Divider — only when a bubble sits ABOVE the hub, so dismissing the bubble
+            (× ) doesn't strand an orphaned line atop an empty panel (#250 × bug). */}
+        {hub && (text != null || composing) && (
+          <div
+            aria-hidden="true"
+            className="h-px w-full bg-accent-soft"
+            data-hub-divider
+          />
+        )}
+        {/* 2. Interaction hub — pill rail + full-width search, inside the same panel.
+            Its spoken responses route through the bubble's aria-live region via
+            `onSpeak` (wired to `showNarration`) — no second a11y surface (#72). */}
         {hub && <AstroHub {...hub} />}
       </div>
       {/* The pixel ASTRO sprite — at the panel's bottom-right edge; the panel's

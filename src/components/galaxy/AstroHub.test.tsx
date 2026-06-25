@@ -318,7 +318,11 @@ describe("AstroHub — wide-panel composition (Companion HUD design)", () => {
     expect(hub?.className).toContain("w-full");
   });
 
-  it("renders a divider separating the speech bubble from the actions", () => {
+  it("does NOT render the bubble divider itself — the panel owns it (#250 × bug fix)", () => {
+    // The divider that separates the speech bubble from the actions moved to Astro.tsx,
+    // rendered ONLY when a bubble sits above the hub — so dismissing the bubble (×) no
+    // longer strands an orphaned line atop an empty panel. The hub renders just its
+    // actions (pill rail + search), never the divider.
     const { container } = render(
       <AstroHub
         stars={STARS}
@@ -330,7 +334,9 @@ describe("AstroHub — wide-panel composition (Companion HUD design)", () => {
         narrate={vi.fn().mockResolvedValue(null)}
       />,
     );
-    expect(container.querySelector("[data-hub-divider]")).not.toBeNull();
+    expect(container.querySelector("[data-hub-divider]")).toBeNull();
+    // …but the pill rail (its real first surface) is present.
+    expect(container.querySelector("[data-pill-rail]")).not.toBeNull();
   });
 });
 

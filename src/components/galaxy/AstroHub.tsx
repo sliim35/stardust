@@ -315,12 +315,9 @@ export const AstroHub = ({
   // renders empty (no options). The status/count only renders when search is open.
   return (
     <div data-astro-hub className="flex w-full flex-col gap-row">
-      {/* Thin divider separating the speech bubble above from the actions below. */}
-      <div
-        aria-hidden="true"
-        className="h-px w-full bg-accent-soft"
-        data-hub-divider
-      />
+      {/* The divider that separates the speech bubble from the actions lives in
+          Astro.tsx now — rendered only WITH the bubble, so dismissing the bubble
+          (× ) doesn't leave an orphaned line atop an empty panel (#250 bug fix). */}
       {pillRailEl}
       {showSearch && (
         <>
