@@ -192,28 +192,23 @@ const paintSolarRings = (
 };
 
 /**
- * The tier-3 Solar-System scene (ADR-0016 §3, the imported design): a quiet void
- * — a faint cool starfield + the faint tilted ring ladder — with Sol's white-hot
- * gold bloom at the centre and the 8 cool planet spheres on the ladder. Planets
- * paint with the theme palette sprites (cool); Sol paints with the reserved gold
- * sprite (never theme-tinted, like `goldDust`). No galaxy disks, no deep-field
- * stipple — the emptiness is the mood.
+ * The tier-3 Solar-System scene (ADR-0016 §3, the imported HD-2D design): a quiet
+ * void — a faint cool starfield + the faint tilted ring ladder. The Sun + the 8
+ * planets are NO LONGER painted here: they are the HD-2D **DOM overlay**
+ * (`SolarSystemLayer`, #266) — sleek gradient spheres + a pulsing Sol that ORBIT.
+ * The canvas paints only the static void + rings, so the orbiting spheres are never
+ * doubled by the old static point-cloud bodies. No galaxy disks, no deep-field.
  */
 const drawSolarSystem = (
   ctx: CanvasRenderingContext2D,
   bodies: readonly RealObject[],
   seed: number,
   sprites: Sprites,
-  goldSprite: HTMLCanvasElement,
-): readonly BackdropPoint[] => {
+): void => {
   ctx.clearRect(0, 0, STAGE_W, STAGE_H);
   const scene = buildSolarSystemScene(bodies);
   paintSolarField(ctx, seed, sprites);
   paintSolarRings(ctx, scene.rings);
-  paintGlow(ctx, scene.cool, sprites);
-  paintGlow(ctx, scene.gold, [goldSprite, goldSprite, goldSprite]);
-  // The brighter points (Sol's core + the lit planet limbs) drive the live twinkle.
-  return [...scene.gold, ...scene.cool].filter((p) => p.alpha > 0.5);
 };
 
 export const GalaxyBackdrop = ({
@@ -291,40 +286,14 @@ export const GalaxyBackdrop = ({
     ];
     const goldSprite = makeGlowSprite(LG_GOLD);
 
-    // The tier-3 Solar System (ADR-0016 §3): paint the quiet void + Sol's bloom +
-    // the 8 planet spheres instead of the galaxy disk(s). The brighter points feed
-    // the same twinkle overlay; no galaxy disk / neighbour / deep-field draw.
+    // The tier-3 Solar System (ADR-0016 §3): the canvas paints ONLY the quiet void
+    // + the ring ladder. The Sun + planets are the HD-2D DOM overlay
+    // (SolarSystemLayer, #266) — they orbit + the Sun pulses there, so the canvas
+    // neither paints nor twinkles them (no double render). No galaxy disk / neighbour
+    // / deep-field draw, and no live overlay (the void + rings are static).
     if (solarSystem) {
-      const bright = drawSolarSystem(
-        bctx,
-        solarSystem,
-        backdrop.seed,
-        sprites,
-        goldSprite,
-      );
-      const reduceMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-      if (reduceMotion) return;
-      const solTwinklers = toTwinklers(bright);
-      const hotS = sprites[2];
-      let rafS = 0;
-      const drawS = (ms: number): void => {
-        const t = ms * 0.001;
-        lctx.clearRect(0, 0, STAGE_W, STAGE_H);
-        lctx.globalCompositeOperation = "lighter";
-        for (const s of solTwinklers) {
-          const tw = 0.5 + 0.5 * Math.sin(t * s.speed + s.phase * 6.283);
-          const d = s.size === 2 ? 6.5 : 4.5;
-          lctx.globalAlpha = s.alpha * tw * 0.5;
-          lctx.drawImage(hotS, s.x - d / 2, s.y - d / 2, d, d);
-        }
-        lctx.globalAlpha = 1;
-        lctx.globalCompositeOperation = "source-over";
-        rafS = requestAnimationFrame(drawS);
-      };
-      rafS = requestAnimationFrame(drawS);
-      return () => cancelAnimationFrame(rafS);
+      drawSolarSystem(bctx, solarSystem, backdrop.seed, sprites);
+      return;
     }
 
     // #226: an entered neighbour paints ITS own shape-dispatched disk + deep field;

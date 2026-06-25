@@ -486,6 +486,21 @@ body {
   }
 }
 
+/* ── Solar-System tier HD-2D layer (S2+S3, #266) ───────────────────────────
+   Sol's photosphere disc + corona halo pulse via RAF in SolarSystemLayer.tsx
+   (GSAP drives `t`; the pulse math lives in solar-orbit.ts, SSR-safe).
+   These CSS focus-ring rules complete the keyboard affordance (#75 boundary
+   for DOM chrome). Reduced-motion disables the pulse (bodies stay static). */
+
+/* Planet focus ring — 2px accent with dark offset (spec: "never colour alone"). */
+.sol-planet-btn:focus-visible {
+  box-shadow:
+    0 0 0 2px #04050d,
+    0 0 0 4px #f5d6a0;
+  border-radius: 50%;
+  outline: none;
+}
+
 /* L2 — the disk (static base + live overlay canvases). */
 .galaxy-l2 {
   position: absolute;
@@ -868,8 +883,29 @@ body {
   }
 }
 
+/* The Sol gateway bloom (#262) gently breathes so it draws the eye on the arm
+   (owner: "make it more noticeable") — a soft scale+opacity pulse, not a hard ring. */
+@keyframes solGatewayPulse {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+.sol-gateway-bloom {
+  transform-origin: center;
+  animation: solGatewayPulse 3.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .galaxy__core {
+    animation: none;
+  }
+  .sol-gateway-bloom {
     animation: none;
   }
   .mem-star__body,
