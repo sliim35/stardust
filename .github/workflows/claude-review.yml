@@ -21,6 +21,7 @@ concurrency:
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # hard cap so a hung/runaway review can't burn a full job slot
     permissions:
       contents: read
       pull-requests: write # post inline review comments
@@ -37,6 +38,9 @@ jobs:
           # default ("Workflow initiated by non-human actor"). Allowlist exactly that bot.
           # NOT "*": on a public repo "*" would let external Apps invoke the action.
           allowed_bots: "reviewer-stardust-project[bot]"
+          # Deliver each round's summary as ONE comment that updates in place, instead of a
+          # fresh top-level comment on every push — keeps the PR readable across rounds.
+          use_sticky_comment: true
           prompt: |
             You are the `reviewer` agent for this repo (stardust / Memory Galaxy). An additive
             first-pass CI gate; the in-repo `reviewer` (md-review-pr) owns anything nuanced.
@@ -96,6 +100,10 @@ jobs:
             that leaves the PR blocked forever, which is the exact bug this section prevents.
           # --model sonnet keeps routine reviews cheap; switch the line below to
           # --model opus for deeper reasoning on complex or critical PRs.
+          # --max-turns bounds the agent loop (cost / runaway guard); 30 leaves ample
+          # headroom for the read-prior-threads -> resolve-fixed -> submit-verdict flow.
+          # (No `#` comments inside claude_args: it is shlex-split into CLI args.)
           claude_args: |
             --model sonnet
+            --max-turns 30
             --allowedTools "Read,Bash(git:*),Bash(gh:*)"
