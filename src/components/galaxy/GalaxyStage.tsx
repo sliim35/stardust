@@ -31,7 +31,7 @@ import {
   lgLabels,
 } from "#/lib/galaxy/lg-composition";
 import { paletteAccentVars } from "#/lib/galaxy/palette";
-import { DISK_TILT } from "#/lib/galaxy/place";
+import { DISK_TILT, polarToXY } from "#/lib/galaxy/place";
 import {
   HOME_MILKY_WAY_ID,
   REAL_OBJECTS,
@@ -561,6 +561,21 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 moodLabels={m.moods}
                 tilt={displayTilt}
               />
+              {/* Sol gateway marker (#262 scope-gap): the clickable sun-bloom that
+                  lets the visitor dive into the Solar System directly from the MW
+                  interior. Only renders for the HOME Milky Way at the galaxy tier
+                  (neighbours have no Sol; LG + solarSystem tiers hide it). Pointer-safe:
+                  the outer wrapper is `pointer-events-none`; only the button opts back in.
+                  Rides L3 (same plane as free stars) so it scales + parallaxes with the
+                  disk — NOT a fixed overlay. */}
+              {!lgView && !solarView && displayedGalaxyId === null && (
+                <SolGatewayMarker
+                  diveTo={nav.diveTo}
+                  available={available}
+                  lore={m.lore}
+                  tilt={displayTilt}
+                />
+              )}
             </div>
             {/* L4 — the foreground figure plane (#243): the emotion figures + their
                 member stars, promoted to a near depth tier so they float above the
@@ -785,5 +800,120 @@ const LgInteractiveLabels = ({
       onSelect={onSelect}
       onActiveChange={onActiveChange}
     />
+  );
+};
+
+/**
+ * The Sol gateway marker (#262 scope-gap) — the clickable sun-bloom that lets the
+ * visitor dive into the Solar System directly from the MW-interior view, without
+ * going via the breadcrumb.
+ *
+ * Visually distinct from Mom's gold memory star (also gold): Sol renders as a
+ * REAL-object gateway marker — a larger warm amber bloom with a sun-ray ring glyph
+ * and a reveal-on-hover/focus label reading "Sol · her home · one of ~200 billion".
+ * Mom's star is a memory-star jewel on the L5 dedication plane; Sol is a real object
+ * on the L3 interior plane, sized and colored per the `realdata` spec.
+ *
+ * Must live inside a `<CardHost>` (reads the card context via `useObjectClick`).
+ * Pointer-safe: the outer wrapper is `pointer-events-none`; only the `<button>` opts
+ * back in, so the full-bleed marker never swallows clicks on memory stars beneath it.
+ *
+ * Position: `polarToXY(sol.placement.r=0.5, sol.placement.angle=0.42, tilt)` —
+ * the same projection the memory star layer uses, so Sol sits on the MW disk exactly
+ * where the realdata places it (#/lib/galaxy/realdata, SOL_ID).
+ */
+const SolGatewayMarker = ({
+  diveTo,
+  available,
+  lore,
+  tilt,
+}: {
+  diveTo: (id: string, tier: Tier) => void;
+  /** The focused galaxy's built tier set (#248) — drives the dive resolution. */
+  available: readonly Tier[];
+  lore: Messages["lore"];
+  /** The displayed galaxy's interior disk tilt (#234) — Sol projects at this angle. */
+  tilt: number;
+}) => {
+  const sol = REAL_OBJECTS.find((o) => o.id === SOL_ID);
+  const objectClick = useObjectClick(diveTo, available);
+  const [active, setActive] = useState(false);
+  if (!sol) return null;
+  const { x, y } = polarToXY(sol.placement.r, sol.placement.angle, tilt);
+  return (
+    // The outer wrapper is pointer-events-none so the full-bleed absolute container
+    // never eats clicks on memory stars beneath (the button opts back in below).
+    <div data-sol-gateway className="pointer-events-none absolute inset-0">
+      {/* The Sol bloom button — pointer-events-auto so ONLY this button is interactive. */}
+      <button
+        type="button"
+        aria-label={`${lore.sol.name} · ${lore.sol.sublabel}`}
+        className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f5d6a0]/40"
+        style={{
+          left: `${Math.round(x)}px`,
+          top: `${Math.round(y)}px`,
+          // Hit-target: generous 48×48 px so it's comfortably clickable.
+          width: "48px",
+          height: "48px",
+        }}
+        onPointerEnter={() => setActive(true)}
+        onPointerLeave={() => setActive(false)}
+        onFocus={() => setActive(true)}
+        onBlur={() => setActive(false)}
+        onClick={() => objectClick(sol)}
+      >
+        {/* The sun-bloom glyph: a warm gold radial soft-glow ring that reads as
+            the Sun / a gateway, distinct from Mom's jewel (a solid filled circle).
+            Two concentric circles: outer (the ray ring) + inner (the core). */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          {/* Outer halo / bloom ring */}
+          <span
+            className="absolute rounded-full"
+            style={{
+              width: "28px",
+              height: "28px",
+              background:
+                "radial-gradient(circle, #f5d6a0 0%, #f5d6a080 40%, transparent 70%)",
+              boxShadow: "0 0 12px 4px #f5d6a060, 0 0 24px 8px #f5d6a030",
+            }}
+          />
+          {/* Inner core: the warm white-gold centre */}
+          <span
+            className="absolute rounded-full"
+            style={{
+              width: "8px",
+              height: "8px",
+              background: "#fff8e8",
+              boxShadow: "0 0 6px 2px #f5d6a0",
+            }}
+          />
+        </span>
+      </button>
+      {/* The reveal label — hover/focus-driven, same pattern as LgGalaxyLabels.
+          `data-sol-label` lets the test query it without coupling to class names. */}
+      <div
+        aria-hidden="true"
+        data-sol-label
+        className={`pointer-events-none absolute -translate-x-1/2 text-center transition-opacity duration-200 motion-reduce:transition-none ${
+          active ? "opacity-100" : "opacity-0"
+        }`}
+        style={{
+          left: `${Math.round(x)}px`,
+          // Label floats above the bloom.
+          top: `${Math.round(y) - 32}px`,
+          transform: "translateX(-50%) translateY(-100%)",
+        }}
+      >
+        <em className="block font-serif text-[18px] lowercase italic leading-tight text-[#f5d6a0]">
+          {lore.sol.name}
+        </em>
+        <span className="mt-[3px] block whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.2em] text-[#f5d6a0]/70">
+          {lore.sol.sublabel}
+        </span>
+      </div>
+    </div>
   );
 };

@@ -548,6 +548,118 @@ describe("GalaxyStage — Sol gateway + dive into the Solar-System tier (#248)",
   });
 });
 
+describe("GalaxyStage — Sol gateway visible + clickable in the MW interior (#262 scope-gap)", () => {
+  // The Sol gateway must appear ONLY when displayedTier === 'galaxy' AND the home MW
+  // is showing — neighbours have no Sol, and the LG/solarSystem tiers must not show it.
+  const solMarker = () =>
+    document.querySelector("[data-sol-gateway]") as HTMLElement | null;
+
+  it("Sol gateway marker is absent at the Local-Group landing (LG tier)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    // Still at the LG tier: no Sol marker.
+    expect(solMarker()).toBeNull();
+  });
+
+  it("Sol gateway marker renders when inside the home Milky Way (galaxy tier)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy (home MW)
+    // The marker must be present as an interactive button.
+    expect(solMarker()).not.toBeNull();
+    expect(
+      solMarker()?.querySelector("button") ??
+        (solMarker()?.tagName === "BUTTON" ? solMarker() : null),
+    ).not.toBeNull();
+  });
+
+  it("Sol gateway marker is absent at the Solar-System tier (already inside Sol)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // LG → galaxy
+    fireEvent.wheel(stage, { deltaY: -12 }); // galaxy → solarSystem
+    expect(screen.getByText("1 AU")).toBeTruthy(); // confirm tier-3
+    // Inside the Solar System: Sol marker is gone (you're already there).
+    expect(solMarker()).toBeNull();
+  });
+
+  it("Sol gateway marker is absent inside a neighbour galaxy (Andromeda has no Sol)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    // Dive into Andromeda (a neighbour, no solarSystem tier).
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${en.lore.andromeda.name} · ${en.lore.andromeda.sublabel}`,
+      }),
+    );
+    expect(screen.getByText("100k ly")).toBeTruthy(); // at the galaxy tier
+    // Andromeda has no Sol → marker absent.
+    expect(solMarker()).toBeNull();
+  });
+
+  it("clicking the Sol gateway dives to the Solar-System tier — no card opens", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // into the MW
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    // Find and click the Sol gateway button.
+    const btn =
+      solMarker()?.querySelector("button") ??
+      (solMarker()?.tagName === "BUTTON" ? (solMarker() as HTMLElement) : null);
+    expect(btn).not.toBeNull();
+    fireEvent.click(btn as HTMLElement);
+    // The click dives into the Solar System (scale net relabels to AU).
+    expect(screen.getByText("1 AU")).toBeTruthy();
+    // A gateway dive does NOT open a card.
+    expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
+  });
+
+  it("Sol gateway label appears on hover/focus and hides on leave/blur", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // into the MW
+    const marker = solMarker();
+    expect(marker).not.toBeNull();
+    const btn =
+      marker?.querySelector("button") ??
+      (marker?.tagName === "BUTTON" ? marker : null);
+    expect(btn).not.toBeNull();
+    // The Sol name is in the label; it's hidden at rest (opacity-0 / data-active=false).
+    const label = marker?.querySelector(
+      "[data-sol-label]",
+    ) as HTMLElement | null;
+    expect(label).not.toBeNull();
+    // At rest: label is visually hidden (opacity-0 class or aria-hidden state).
+    expect(label?.className).toContain("opacity-0");
+    // Hover/focus reveals the label.
+    fireEvent.pointerEnter(btn as HTMLElement);
+    expect(label?.className).toContain("opacity-100");
+    fireEvent.pointerLeave(btn as HTMLElement);
+    expect(label?.className).toContain("opacity-0");
+    // Same with keyboard focus.
+    fireEvent.focus(btn as HTMLElement);
+    expect(label?.className).toContain("opacity-100");
+    fireEvent.blur(btn as HTMLElement);
+    expect(label?.className).toContain("opacity-0");
+  });
+
+  it("Sol gateway does not interfere with clicking a memory star on the same plane", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage />);
+    const stage = document.querySelector(".galaxy-stage") as HTMLElement;
+    fireEvent.wheel(stage, { deltaY: -12 }); // into the MW
+    // Memory stars remain clickable → the Sol marker's container must be pointer-safe.
+    const star = document.querySelector<HTMLButtonElement>(".mem-star button");
+    expect(star).not.toBeNull();
+    fireEvent.click(star as HTMLElement);
+    expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
+  });
+});
+
 describe("GalaxyStage — emotion figures render ambiently (owner Claude Design #232)", () => {
   // Figures are AMBIENT (no hover reveal): an authored figure with ≥2 members of an
   // emotion shows a dashed ghost + hollow open-slot rings + solid lines between filled
