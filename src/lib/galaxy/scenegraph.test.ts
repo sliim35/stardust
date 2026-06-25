@@ -399,13 +399,13 @@ describe("Mom's dedication star lives at the Solar-System tier (owner 2026-06-25
   it("Mom's solar placement r/angle are well clear of every planet orbit", () => {
     const mom = buildSeedSky().stars.find((s) => s.id === MOM_ID);
     expect(mom?.placement?.tier).toBe("solarSystem");
-    // Mom is between Saturn (r≈0.755) and Uranus (r≈0.858) in the radial.
-    expect(mom?.r).toBeGreaterThan(0.75);
-    expect(mom?.r).toBeLessThan(0.9);
-    // Her angle (≈250°) is between Neptune (≈216°) and Jupiter (≈284°) — the outer void.
+    // Owner 2026-06-25: Mom sits in the UPPER-RIGHT void, OUTSIDE every planet orbit
+    // (r > the outer ring ~1) — a singular star clear of the whole ring ladder.
+    expect(mom?.r).toBeGreaterThan(1);
+    // Her angle (≈328°) is in the upper-right quadrant (4th: +x right, −y up).
     const angleDeg = ((mom?.angle ?? 0) * 180) / Math.PI;
-    expect(angleDeg).toBeGreaterThan(215);
-    expect(angleDeg).toBeLessThan(285);
+    expect(angleDeg).toBeGreaterThan(300);
+    expect(angleDeg).toBeLessThan(345);
   });
 });
 

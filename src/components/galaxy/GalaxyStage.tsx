@@ -612,7 +612,10 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                     available={available}
                     a11yLabel={m.a11y.memoryStar}
                     moodLabels={m.moods}
-                    tilt={0}
+                    // tilt 1 = a plain polar→cartesian map (no foreshortening), so Mom
+                    // can sit anywhere on the stage — she's a singular star in the
+                    // upper-right void, not a body on the ecliptic ring plane.
+                    tilt={1}
                   />
                 </div>
               )}

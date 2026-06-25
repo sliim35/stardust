@@ -157,7 +157,12 @@ describe("buildSeedSky", () => {
     for (const s of buildSeedSky().stars) {
       expect(s.color).toMatch(/^#[0-9a-f]{6}$/i);
       expect(s.r).toBeGreaterThanOrEqual(0);
-      expect(s.r).toBeLessThanOrEqual(1);
+      // Disk-tier stars are normalised to the disk radius (r ≤ 1). A Solar-System
+      // star may sit in the void BEYOND the ring ladder (Mom, upper-right corner —
+      // r > 1; owner 2026-06-25), so only the disk normalisation is capped here.
+      if (s.placement?.tier !== "solarSystem") {
+        expect(s.r).toBeLessThanOrEqual(1);
+      }
       expect(Number.isFinite(s.angle)).toBe(true);
       expect(s.brightness).toBeGreaterThanOrEqual(0);
       expect(s.brightness).toBeLessThanOrEqual(1);

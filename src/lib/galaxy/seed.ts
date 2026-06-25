@@ -558,10 +558,12 @@ export const CONSTELLATIONS = Object.fromEntries(
 // `(r, angle)` mirror the placement so any legacy flat-read stays consistent.
 //
 // Previous position: MW interior, r 0.92, angle ≈ π/2 (bottom-centre of the disk).
-// New position: Solar System, r 0.82, angle ≈ 4.363 rad (250° — between Neptune and
-// Jupiter, outer void).
-const DEEP_STAR_SOLAR_R = 0.82;
-const DEEP_STAR_SOLAR_ANGLE = (250 * Math.PI) / 180; // ≈ 4.363 rad
+// New position (owner 2026-06-25): the Solar System's UPPER-RIGHT void, clear of Sol's
+// glow. The solar memory layer renders face-on (tilt 1), so `polarToXY` is a plain
+// polar→cartesian map: angle 328° (4th quadrant → +x right, −y up) + r 1.33 lands Mom
+// at ≈(1049, 151) — the upper-right corner, well outside Sol.
+const DEEP_STAR_SOLAR_R = 1.33;
+const DEEP_STAR_SOLAR_ANGLE = (328 * Math.PI) / 180; // ≈ 5.726 rad
 const DEEP_STAR = {
   id: "irina",
   copyKey: "irina",
