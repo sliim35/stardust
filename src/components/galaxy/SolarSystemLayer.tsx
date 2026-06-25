@@ -62,6 +62,9 @@ export const SOLAR_SUN_DISC_PX = 34;
 /** Sol's wide warm-gold halo diameter (px). */
 export const SOLAR_SUN_HALO_PX = 300;
 
+/** Shared text-shadow for the hover labels — keeps them legible over the glow. */
+const LABEL_SHADOW = "[text-shadow:0_1px_3px_rgba(2,4,12,0.9)]";
+
 // ── Pure sphere-shading helpers ───────────────────────────────────────────────
 
 const hexToRgb = (h: string): [number, number, number] => {
@@ -268,8 +271,6 @@ type PlanetNodeProps = {
   initialX: number;
   initialY: number;
   ariaLabel: string;
-  /** Display name (i18n) for the hover/focus brief-info label. */
-  name: string;
   /** Ref callback so the parent's GSAP ticker can move this node without a React re-render. */
   nodeRef: (el: HTMLButtonElement | null) => void;
   onHoverChange: (id: string | null) => void;
@@ -282,7 +283,6 @@ const PlanetNode = ({
   initialX,
   initialY,
   ariaLabel,
-  name,
   nodeRef,
   onHoverChange,
   onSelect,
@@ -345,9 +345,9 @@ const PlanetNode = ({
           (pausedRef) holds the planet still while you read it + aim a click. */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute top-full left-1/2 mt-1.5 -translate-x-1/2 whitespace-nowrap text-center font-mono text-[10px] uppercase tracking-[0.18em] text-[#d6dae6] opacity-0 transition-opacity duration-150 [text-shadow:0_1px_3px_rgba(2,4,12,0.9)] group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+        className={`pointer-events-none absolute top-full left-1/2 mt-1.5 -translate-x-1/2 whitespace-nowrap text-center font-mono text-[10px] uppercase tracking-[0.18em] text-[#d6dae6] opacity-0 transition-opacity duration-150 ${LABEL_SHADOW} group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none`}
       >
-        {name}
+        {ariaLabel}
       </span>
       {/* Generous invisible hit pad per Fitts's law (min 44×44 touch target) */}
       <span
@@ -372,7 +372,6 @@ type SolProps = {
   x: number;
   y: number;
   ariaLabel: string;
-  name: string;
   tRef: React.RefObject<number>;
   reducedMotion: boolean;
   onHoverChange: (id: string | null) => void;
@@ -383,7 +382,6 @@ const SolElement = ({
   x,
   y,
   ariaLabel,
-  name,
   tRef,
   reducedMotion,
   onHoverChange,
@@ -497,8 +495,10 @@ const SolElement = ({
         className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
         style={{ top: SOLAR_SUN_DISC_PX + 18 }}
       >
-        <span className="block font-mono text-[11px] uppercase tracking-[0.2em] text-[#f5d6a0] [text-shadow:0_1px_3px_rgba(2,4,12,0.9)]">
-          {name}
+        <span
+          className={`block font-mono text-[11px] uppercase tracking-[0.2em] text-[#f5d6a0] ${LABEL_SHADOW}`}
+        >
+          {ariaLabel}
         </span>
       </span>
       {/* Outer warm glow (farthest layer) */}
@@ -535,8 +535,6 @@ export type SolarSystemLayerProps = {
    * Called with `body.id` → the translated accessible label.
    */
   ariaLabelFor: (id: string) => string;
-  /** Per-body display name (i18n, from the lore catalog) for the hover label. */
-  nameFor: (id: string) => string;
   /**
    * ASTRO narration on select (#184, ADR-0013) — opening a body's lore card also
    * asks the cached-fact server fn for an interesting line, routed through ASTRO's
@@ -559,7 +557,6 @@ export type SolarSystemLayerProps = {
 export const SolarSystemLayer = ({
   bodies,
   ariaLabelFor,
-  nameFor,
   onNarrate,
 }: SolarSystemLayerProps) => {
   const useGSAP = useGalaxyGsap();
@@ -678,7 +675,6 @@ export const SolarSystemLayer = ({
             x={solX}
             y={solY}
             ariaLabel={ariaLabelFor(sol.id)}
-            name={nameFor(sol.id)}
             tRef={tRef}
             reducedMotion={reducedMotion}
             onHoverChange={handleHoverChange}
@@ -696,7 +692,6 @@ export const SolarSystemLayer = ({
             initialX={initialPos[p.id].x}
             initialY={initialPos[p.id].y}
             ariaLabel={ariaLabelFor(p.id)}
-            name={nameFor(p.id)}
             nodeRef={(el) => {
               planetEls.current[p.id] = el;
             }}

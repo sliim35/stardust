@@ -571,10 +571,6 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                     const lk = solarSystem.find((o) => o.id === id)?.loreKey;
                     return lk ? (m.lore[lk]?.name ?? id) : id;
                   }}
-                  nameFor={(id) => {
-                    const lk = solarSystem.find((o) => o.id === id)?.loreKey;
-                    return lk ? (m.lore[lk]?.name ?? id) : id;
-                  }}
                   onNarrate={onNarrate}
                 />
               )}
@@ -898,26 +894,26 @@ const SolGatewayMarker = ({
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 flex items-center justify-center"
         >
-          {/* A soft warm-gold bloom — SUBTLE: reads as a slightly-brighter star
-              sitting in the arm, not a hard ringed disk. Smooth falloff to
-              transparent, no concentric box-shadow rings (owner: "looked odd"). */}
+          {/* A warm-gold bloom that gently PULSES so it draws the eye on the arm
+              (owner: "make it more noticeable") — still a soft glow, NOT a hard ringed
+              disk. The `sol-gateway-bloom` class breathes it (motion-reduce: static). */}
           <span
-            className="absolute rounded-full"
+            className="sol-gateway-bloom absolute rounded-full"
             style={{
-              width: "18px",
-              height: "18px",
+              width: "26px",
+              height: "26px",
               background:
-                "radial-gradient(circle, #f5d6a0cc 0%, #f5d6a038 36%, transparent 72%)",
+                "radial-gradient(circle, #f5d6a0 0%, #f5d6a066 34%, transparent 72%)",
             }}
           />
-          {/* The warm core: a small soft point, a touch brighter than its neighbours. */}
+          {/* The warm white-gold core — a touch brighter + larger than its neighbours. */}
           <span
             className="absolute rounded-full"
             style={{
-              width: "4px",
-              height: "4px",
-              background: "#fff8e8",
-              boxShadow: "0 0 4px 1px #f5d6a080",
+              width: "6px",
+              height: "6px",
+              background: "#fffaf0",
+              boxShadow: "0 0 6px 2px #f5d6a0aa",
             }}
           />
         </span>
@@ -932,9 +928,10 @@ const SolGatewayMarker = ({
         }`}
         style={{
           left: `${Math.round(x)}px`,
-          // Label floats above the bloom.
-          top: `${Math.round(y) - 32}px`,
-          transform: "translateX(-50%) translateY(-100%)",
+          // Label sits BELOW the bloom (owner: it was on the wrong side) — same side
+          // as the planet labels, and clear of the arm dust above.
+          top: `${Math.round(y) + 20}px`,
+          transform: "translateX(-50%)",
         }}
       >
         <em className="block font-serif text-[18px] lowercase italic leading-tight text-[#f5d6a0]">
