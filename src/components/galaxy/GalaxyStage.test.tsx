@@ -704,6 +704,22 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
     await waitFor(() => expect(camEl.style.transform).toBe(framingOf(starId)));
   });
 
+  // ADR-0018 §3 — the deep-link arrival also HIGHLIGHTS the target star: the
+  // `highlightId` seam threads GalaxyStage → MemoryStarLayer → MemoryStarView,
+  // which renders `data-highlighted` so the CSS ring cue fires. Pin the wiring
+  // (the pure seam is covered in highlight.test.ts; this proves the prop reaches
+  // the DOM on arrival).
+  it("?star=<id> marks the arrived star with data-highlighted for the ring cue", async () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ star: starId }} />);
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll(".mem-star[data-highlighted]"),
+      ).toHaveLength(1),
+    );
+  });
+
   // `at` + `star` compose: the place owns the dive, the star rides the arrival.
   it("?at=galaxy:home&star=<id> dives and the star focus rides the arrival", async () => {
     stubReducedMotion(true);

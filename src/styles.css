@@ -122,6 +122,11 @@
   --astro-boot: #404048; /* boots */
   --astro-visor: #1a2238; /* visor dark band — fixed navy, all skies */
   --astro-eye-cream: #fff6d0; /* warm cream the eye-hotspot mixes toward — sky-independent (#71) */
+
+  /* Deep-link arrival highlight ring (ADR-0018 §3) — owner-tunable knobs; the
+     ring CSS lives near the `memHighlight` keyframe below. */
+  --mem-highlight-duration: 2.4s;
+  --mem-highlight-ring-scale: 2.4; /* how far the ring expands (× bloom) */
 }
 
 * {
@@ -827,12 +832,8 @@ body {
    - Count: one-shot (default — animation-iteration-count: 1)
    The ring uses the star's own --star-color so it matches the star's palette.
    `motion-reduce:` variant at the bottom of this block holds a static ring then
-   fades — no pulse animation. */
-
-:root {
-  --mem-highlight-duration: 2.4s;
-  --mem-highlight-ring-scale: 2.4; /* how far the ring expands (× bloom) */
-}
+   fades — no pulse animation. The `--mem-highlight-*` knobs live in the main
+   `:root` block above (one consolidated `:root`). */
 
 /* The highlight ring: a ::before pseudo-element on the star body so it sits in
    the same layer as the bloom without affecting the hit target or DOM tab order.

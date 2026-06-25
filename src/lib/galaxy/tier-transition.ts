@@ -126,19 +126,16 @@ export const planTierTransition = (
   const bBase = to === "localGroup" ? lgFraming : framingForTier(to);
   if (!aBase || !bBase) return null;
 
-  const a = aBase;
-  const b = bBase;
-
   return {
     from,
     to,
     direction,
     threshold: {
-      cx: (a.cx + b.cx) / 2,
-      cy: (a.cy + b.cy) / 2,
-      zoom: Math.sqrt(a.zoom * b.zoom),
+      cx: (aBase.cx + bBase.cx) / 2,
+      cy: (aBase.cy + bBase.cy) / 2,
+      zoom: Math.sqrt(aBase.zoom * bBase.zoom),
     },
-    rest: { ...b },
+    rest: { ...bBase },
   };
 };
 

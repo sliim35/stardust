@@ -277,9 +277,9 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
       if (clearTimer !== null) clearTimeout(clearTimer);
       if (req.kind === "highlight") {
         setHighlightedId(req.id);
-        clearTimer = setTimeout(() => {
-          setHighlightedId(null);
-        }, HIGHLIGHT_MS);
+        // Route the auto-clear back through the controller so the single
+        // `clear` path (this handler's else-branch) owns the state mutation.
+        clearTimer = setTimeout(() => highlight.clear(), HIGHLIGHT_MS);
       } else {
         setHighlightedId(null);
       }
