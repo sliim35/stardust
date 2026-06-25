@@ -210,7 +210,9 @@ const REAL_OBJECTS_DATA = [
     tier: "galaxy",
     parentId: HOME_MILKY_WAY_ID,
     realDistance: { value: 26000, unit: "ly" },
-    placement: { r: 0.5, angle: 0.42 },
+    // On a primary spiral arm — the log-spiral passes ~theta 2.57 at r 0.5 (armBase 0
+    // + ln(0.5/0.12)·1.8), so Sol sits IN the arm, not floating in a gap (#262 owner).
+    placement: { r: 0.5, angle: 2.57 },
     shape: "star",
     size: 0.34,
     brightness: 1,
