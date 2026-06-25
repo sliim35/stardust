@@ -29,21 +29,8 @@ export type AtKind = "galaxy" | "system";
 /** A parsed `?at=<kind>:<id>` value. */
 export type AtTarget = { kind: AtKind; id: string };
 
-/**
- * The hub composition variant (#250, ADR-0017 §1) — the `?hub=a|b|c` query param
- * that switches the ASTRO interaction-hub layout the owner picks between. Default
- * `a` (the app works with no param). Kept here with the other URL params so the one
- * permissive validator owns the whole search shape.
- */
-export type HubVariant = "a" | "b" | "c";
-
-const HUB_VARIANTS = ["a", "b", "c"] as const satisfies readonly HubVariant[];
-
-const isHubVariant = (s: unknown): s is HubVariant =>
-  typeof s === "string" && (HUB_VARIANTS as readonly string[]).includes(s);
-
 /** The route's deep-link search params (a permissive subset of the URL query). */
-export type DeepLinkSearch = { at?: string; star?: string; hub?: HubVariant };
+export type DeepLinkSearch = { at?: string; star?: string };
 
 /** A resolved dive: enter `id` at `tier` (drives `nav.diveTo`). */
 export type DiveTarget = { id: string; tier: Tier };
@@ -100,9 +87,6 @@ export const validateDeepLinkSearch = (
   const out: DeepLinkSearch = {};
   if (typeof search.at === "string") out.at = search.at;
   if (typeof search.star === "string") out.star = search.star;
-  // `?hub=` is validated to the known variants; an unknown value is dropped so the
-  // hub falls back to its `a` default (the app works with no/garbage param).
-  if (isHubVariant(search.hub)) out.hub = search.hub;
   return out;
 };
 

@@ -31,10 +31,12 @@ import type { NarrateInput } from "#/server/narrate";
  * via `onSpeak` (the `showNarration` seam, last-writer-wins through `Astro`) — no
  * second live region (the #72 invariant).
  *
- * **Variants (owner picks on screenshots, `?hub=a|b|c`, ADR-0017 §1):** the FIXED
- * contract (always-visible input, combobox semantics, real-button pills,
- * pointer-events discipline) is the same for all; the composition differs — see
- * `HubVariant` below.
+ * **Composition (owner pick, 2026-06-25):** the FIXED contract (always-visible
+ * input, combobox semantics, real-button pills, pointer-events discipline) plus the
+ * chosen layout — the **pill row on top**, then the search input, then a **compact
+ * count + first-result** (not the full browsable listbox). On `max-[620px]` the pill
+ * row scrolls horizontally. (ADR-0017 §1 spec'd a code-first composition bake-off;
+ * the owner picked this one and the toggle scaffold + the other layouts were removed.)
  *
  * SSR/Workers-safe (ADR-0003): no module-scope clock/random; ids via `useId`; the
  * `narrate` fetch fires only in a click handler (request scope). i18n (#103): all
@@ -44,25 +46,11 @@ import type { NarrateInput } from "#/server/narrate";
  * `pointer-events-auto` so they stay clickable under any `pointer-events:none` host.
  */
 
-/**
- * The hub composition variants (ADR-0017 §1) — genuinely different layouts the
- * owner chooses between, NOT cosmetic tweaks:
- * - `a` — input on top, the full inline results listbox (the browsable directory),
- *   the pill row wraps beneath. Mobile: the whole hub stacks.
- * - `b` — the pill row on top, then the input; results shown as a COMPACT count +
- *   first-result chip (not the full listbox). Mobile: the pill row scrolls.
- * - `c` — input + pills INLINE in one row (input grows, pills trail), the full
- *   inline listbox below. Mobile: the row stacks to input-over-pills.
- */
-export type HubVariant = "a" | "b" | "c";
-
 export type AstroHubProps = {
   /** The live sky's memory stars to index (filtered, never mutated). */
   stars: readonly MemoryStar[];
   /** The live nav slice — drives the tier-aware pill set (`pillsFor`). */
   ctx: PillContext;
-  /** The composition variant (`?hub=`); default `a`. */
-  variant?: HubVariant;
   /**
    * Show the search combobox (ADR-0017 §1) — true only where memory stars live
    * (the MW galaxy interior); false at the Local-Group / Solar-System tiers, where
@@ -89,7 +77,6 @@ export type AstroHubProps = {
 export const AstroHub = ({
   stars,
   ctx,
-  variant = "a",
   showSearch = true,
   onSelect,
   onTierSelect,
@@ -198,7 +185,7 @@ export const AstroHub = ({
     }
   };
 
-  // ── shared sub-trees (one a11y wiring, composed per variant) ──────────────────
+  // ── sub-trees (one a11y wiring, composed in the single return below) ──────────
 
   const inputEl = (
     <div className="relative">
@@ -242,19 +229,19 @@ export const AstroHub = ({
     </output>
   );
 
-  // The full browsable listbox (variants a + c). The roving cursor stays on the
-  // input via `aria-activedescendant`; options are real <button>s but out of the
-  // tab order (the ARIA 1.2 combobox pattern, extracted verbatim from #113).
-  const listEl = (compact: boolean) => (
+  // The compact result list — the count line above + the FIRST result only (the
+  // chosen "B" composition keeps the corner light). The listbox is always present
+  // (the combobox `aria-controls` target); the roving cursor stays on the input via
+  // `aria-activedescendant`, and the option is a real <button> out of the tab order
+  // (the ARIA 1.2 combobox pattern, extracted verbatim from #113).
+  const listEl = (
     <div
       id={listboxId}
       role="listbox"
       aria-label={m.results}
-      className={`m-0 flex list-none flex-col gap-px overflow-y-auto p-0 ${
-        compact ? "max-h-[24vh]" : "max-h-[40vh]"
-      }`}
+      className="m-0 flex max-h-[24vh] list-none flex-col gap-px overflow-y-auto p-0"
     >
-      {(compact ? results.slice(0, 1) : results).map((star, i) => {
+      {results.slice(0, 1).map((star, i) => {
         const isActive = i === active;
         return (
           <button
@@ -289,15 +276,10 @@ export const AstroHub = ({
   // A `<fieldset>` + sr-only `<legend>` is the semantic labelled-control group (it
   // carries the implicit `role="group"` the ADR §5 calls for, with the legend as its
   // accessible name) — the SAME native pattern `PaletteSwitcher` uses, and what
-  // Biome's `useSemanticElements` requires over a `role="group"` div.
-  const pillRow = (scroll: boolean) => (
-    <fieldset
-      className={`m-0 flex min-w-0 gap-1.5 border-0 p-0 ${
-        scroll
-          ? "flex-nowrap overflow-x-auto pb-0.5 [scrollbar-width:none]"
-          : "flex-wrap"
-      }`}
-    >
+  // Biome's `useSemanticElements` requires over a `role="group"` div. On `max-[620px]`
+  // the row scrolls horizontally so the pills never wrap/clip in the corner.
+  const pillRow = (
+    <fieldset className="m-0 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto border-0 p-0 pb-0.5 [scrollbar-width:none]">
       <legend className="sr-only">{hub.pillGroup}</legend>
       {pills.map((pill) => (
         <button
@@ -316,54 +298,18 @@ export const AstroHub = ({
     </fieldset>
   );
 
-  // ── compositions (ADR-0017 §1 — genuinely different layouts) ──────────────────
-
-  if (variant === "b") {
-    // Pills on top → input → compact count + first-result chip. Mobile: pills scroll.
-    return (
-      <div className="galaxy-astro__hub flex w-[min(320px,72vw)] flex-col gap-row">
-        {pillRow(true)}
-        {showSearch && (
-          <>
-            {inputEl}
-            {statusEl}
-            {listEl(true)}
-          </>
-        )}
-      </div>
-    );
-  }
-
-  if (variant === "c") {
-    // Input + pills INLINE in one row (input grows, pills trail), full listbox below.
-    // Mobile (max-[620px]): the row stacks to input-over-pills.
-    return (
-      <div className="galaxy-astro__hub flex w-[min(380px,82vw)] flex-col gap-row">
-        <div className="flex flex-col gap-1.5 min-[621px]:flex-row min-[621px]:items-center">
-          {showSearch && <div className="min-[621px]:flex-1">{inputEl}</div>}
-          {pillRow(false)}
-        </div>
-        {showSearch && (
-          <>
-            {statusEl}
-            {listEl(false)}
-          </>
-        )}
-      </div>
-    );
-  }
-
-  // Variant `a` (default) — input on top, full inline listbox, pills wrap beneath.
+  // The owner-picked composition: the pill row on top, then (where memory stars live)
+  // the search input → compact count → first result.
   return (
     <div className="galaxy-astro__hub flex w-[min(320px,72vw)] flex-col gap-row">
+      {pillRow}
       {showSearch && (
         <>
           {inputEl}
           {statusEl}
-          {listEl(false)}
+          {listEl}
         </>
       )}
-      {pillRow(false)}
     </div>
   );
 };

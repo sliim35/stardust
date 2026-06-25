@@ -632,7 +632,6 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
           hub={{
             stars: sky.stars,
             ctx: { tier: nav.state.tier, galaxyId: nav.state.galaxyId },
-            variant: deepLink?.hub,
             showSearch: !lgView && !solarView,
             onSelect: (id) => focus.focusStar(id),
             onTierSelect,

@@ -87,16 +87,6 @@ describe("validateDeepLinkSearch — the route's permissive search parser", () =
     expect(validateDeepLinkSearch({ foo: "bar" })).toEqual({});
     expect(validateDeepLinkSearch({})).toEqual({});
   });
-
-  it("passes through a valid `?hub=` variant (#250, ADR-0017)", () => {
-    expect(validateDeepLinkSearch({ hub: "b" })).toEqual({ hub: "b" });
-    expect(validateDeepLinkSearch({ hub: "c" })).toEqual({ hub: "c" });
-  });
-
-  it("drops an unknown/garbage `?hub=` so the hub falls back to its default", () => {
-    expect(validateDeepLinkSearch({ hub: "z" })).toEqual({});
-    expect(validateDeepLinkSearch({ hub: 5 })).toEqual({});
-  });
 });
 
 describe("resolveDeepLink — pure URL → camera target", () => {

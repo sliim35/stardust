@@ -52,7 +52,6 @@ const renderHub = (over: Partial<Handlers> = {}) => {
   const props: Handlers = {
     stars: STARS,
     ctx: HOME_GALAXY,
-    variant: "a",
     onSelect: vi.fn(),
     onTierSelect: vi.fn(),
     onDive: vi.fn(),
