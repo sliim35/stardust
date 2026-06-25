@@ -160,9 +160,12 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     ).not.toBeNull();
     // The first dive (scroll up) restores the memory layer and unmounts the
     // LG titles AND their hover targets (MW hover stays the mem-star affair)…
+    // The L3 wrap is ALWAYS pointer-events-none now (the plane-transparency
+    // pattern — stars opt in via their own buttons, and empty clicks pass through
+    // to the Sol gateway on the L2 disk plane, #262); show/hide is invisible/opacity.
     fireEvent.wheel(stage, { deltaY: -12 });
     expect(l3.className).not.toContain("invisible");
-    expect(l3.className).not.toContain("pointer-events-none");
+    expect(l3.className).not.toContain("opacity-0");
     expect(screen.queryByText(en.lore.andromeda.name)).toBeNull();
     expect(
       screen.queryByRole("button", {

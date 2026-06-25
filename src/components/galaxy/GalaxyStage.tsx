@@ -542,6 +542,22 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                   onNarrate={onNarrate}
                 />
               )}
+              {/* Sol gateway marker (#262): the clickable sun-bloom that dives into
+                  the Solar System from the MW interior. Rides L2 — the MILKY WAY DISK
+                  plane (with GalaxyBackdrop) — so it scales + parallaxes WITH the disk
+                  (Sol is a real MW star, NOT memory-star content; owner: "on the Milky
+                  Way layer, not the stars layer"). HOME MW + galaxy tier only. The
+                  marker's outer div is pointer-events-none with only its button opting
+                  in; the planes above (L3/L4/L5, all pointer-events-none) pass the
+                  click down to it. */}
+              {inHomeMilkyWay && (
+                <SolGatewayMarker
+                  diveTo={nav.diveTo}
+                  available={available}
+                  lore={m.lore}
+                  tilt={displayTilt}
+                />
+              )}
             </div>
             {/* The L3 memory layer is MW-interior content: at the Local-Group
                 tier it hides at the threshold (motion-reduce snaps). ADR-0018 §2:
@@ -552,10 +568,10 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 `mem-star-enter` fade-in still applies. `pointer-events` guards the
                 gap between hide commit and browser paint. */}
             <div
-              className={`galaxy-l3-wrap absolute inset-0 will-change-transform motion-reduce:transition-none ${
+              className={`galaxy-l3-wrap pointer-events-none absolute inset-0 will-change-transform motion-reduce:transition-none ${
                 interiorLayersVisible(displayedTier)
                   ? ""
-                  : "pointer-events-none invisible opacity-0"
+                  : "invisible opacity-0"
               }`}
               ref={cam.l3}
             >
@@ -569,21 +585,6 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                 moodLabels={m.moods}
                 tilt={displayTilt}
               />
-              {/* Sol gateway marker (#262 scope-gap): the clickable sun-bloom that
-                  lets the visitor dive into the Solar System directly from the MW
-                  interior. Only renders for the HOME Milky Way at the galaxy tier
-                  (neighbours have no Sol; LG + solarSystem tiers hide it). Pointer-safe:
-                  the outer wrapper is `pointer-events-none`; only the button opts back in.
-                  Rides L3 (same plane as free stars) so it scales + parallaxes with the
-                  disk — NOT a fixed overlay. */}
-              {inHomeMilkyWay && (
-                <SolGatewayMarker
-                  diveTo={nav.diveTo}
-                  available={available}
-                  lore={m.lore}
-                  tilt={displayTilt}
-                />
-              )}
             </div>
             {/* L4 — the foreground figure plane (#243): the emotion figures + their
                 member stars, promoted to a near depth tier so they float above the
