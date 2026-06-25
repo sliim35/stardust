@@ -22,10 +22,11 @@ const TAU = Math.PI * 2;
 
 /**
  * Base angular speed (rad/s) for the innermost ring (r = 0.24).
- * One full orbit every ~24 s for Mercury — gentle, clearly in motion.
+ * One full orbit every ~120 s for Mercury — a calm, barely-there ambient drift
+ * (owner: the orbits were "really fast"). Outer planets are far slower still.
  * The owner-tunable knob for overall orbit speed.
  */
-export const ORBIT_BASE_SPEED = TAU / 24;
+export const ORBIT_BASE_SPEED = TAU / 120;
 
 /**
  * Keplerian exponent for the speed fall-off with orbital radius.

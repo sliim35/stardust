@@ -968,6 +968,18 @@ describe("GalaxyStage — wayfinding deep-links (#129)", () => {
         .getAttribute("aria-current"),
     ).toBe("location");
   });
+
+  // S4 (#266): clicking a planet opens its LORE card (the same openCard seam
+  // galaxies use — RealObject → lore skin). Reduced motion renders the planets
+  // static, so the labelled button is findable + clickable.
+  it("clicking a planet in the Solar System opens its lore card (#266 S4)", () => {
+    stubReducedMotion(true);
+    render(<GalaxyStage deepLink={{ at: "system:sol" }} />);
+    expect(screen.getByText("1 AU")).toBeTruthy(); // on the Solar-System tier
+    fireEvent.click(screen.getByRole("button", { name: en.lore.earth.name }));
+    // The lore card overlay mounts its dismiss scrim (CardHost) — same as a star/galaxy.
+    expect(document.querySelector(".galaxy-card-backdrop")).not.toBeNull();
+  });
 });
 
 describe("GalaxyStage — discovery search → focus-on-star (#113)", () => {

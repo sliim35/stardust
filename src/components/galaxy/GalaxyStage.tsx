@@ -571,6 +571,11 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
                     const lk = solarSystem.find((o) => o.id === id)?.loreKey;
                     return lk ? (m.lore[lk]?.name ?? id) : id;
                   }}
+                  nameFor={(id) => {
+                    const lk = solarSystem.find((o) => o.id === id)?.loreKey;
+                    return lk ? (m.lore[lk]?.name ?? id) : id;
+                  }}
+                  onNarrate={onNarrate}
                 />
               )}
             </div>

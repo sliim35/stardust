@@ -48,6 +48,7 @@ import {
   SUN_PULSE_SCALE_AMPLITUDE,
 } from "#/lib/galaxy/solar-orbit";
 import type { RealObject } from "#/lib/galaxy/types";
+import { useCardContext } from "./CardHost";
 import { gsap, useGalaxyGsap } from "./gsap-setup";
 
 // ── Constants (tunable knobs — expose in PR body) ────────────────────────────
@@ -263,24 +264,34 @@ const NeptuneStorm = () => (
 
 type PlanetNodeProps = {
   planet: RealObject;
-  x: number;
-  y: number;
+  /** Initial (SSR / first-paint) stage position; the RAF then drives left/top imperatively. */
+  initialX: number;
+  initialY: number;
   ariaLabel: string;
+  /** Display name (i18n) for the hover/focus brief-info label. */
+  name: string;
+  /** Ref callback so the parent's GSAP ticker can move this node without a React re-render. */
+  nodeRef: (el: HTMLButtonElement | null) => void;
   onHoverChange: (id: string | null) => void;
+  /** Click / Enter → open the lore card + ASTRO narration. */
+  onSelect: () => void;
 };
 
 const PlanetNode = ({
   planet,
-  x,
-  y,
+  initialX,
+  initialY,
   ariaLabel,
+  name,
+  nodeRef,
   onHoverChange,
+  onSelect,
 }: PlanetNodeProps) => {
   const color = planet.color;
   const size = Math.round(planet.size * SOLAR_BODY_PX * 2); // diameter in px
   const cue = PLANET_CUES[planet.id as keyof typeof PLANET_CUES];
 
-  const bg = sphereBg(color, x, y);
+  const bg = sphereBg(color, initialX, initialY);
 
   // atmosphere glow drop-shadow (all planets have a soft edge glow)
   const atmosphereFilter = `drop-shadow(0 0 3px ${color}80) drop-shadow(0 0 8px ${color}40)`;
@@ -292,12 +303,16 @@ const PlanetNode = ({
 
   const style: CSSProperties = {
     position: "absolute",
-    left: Math.round(x),
-    top: Math.round(y),
+    left: 0,
+    top: 0,
     width: size,
     height: size,
     borderRadius: "50%",
-    transform: "translate(-50%, -50%)",
+    // Position rides `transform` (GPU-composited) — the ticker updates this. The
+    // translate3d places the centre at (x,y); the trailing translate(-50%,-50%) re-
+    // centres on the sphere. `willChange` hints the compositor for smooth motion.
+    transform: `translate3d(${Math.round(initialX)}px, ${Math.round(initialY)}px, 0) translate(-50%, -50%)`,
+    willChange: "transform",
     background: bg,
     filter,
     cursor: "pointer",
@@ -307,13 +322,16 @@ const PlanetNode = ({
 
   return (
     <button
+      ref={nodeRef}
       type="button"
+      className="group focus-visible:outline-none"
       aria-label={ariaLabel}
       style={style}
       onPointerEnter={() => onHoverChange(planet.id)}
       onPointerLeave={() => onHoverChange(null)}
       onFocus={() => onHoverChange(planet.id)}
       onBlur={() => onHoverChange(null)}
+      onClick={onSelect}
     >
       {/* Per-planet cue overlay */}
       {cue?.kind === "marble" && <EarthFeatures />}
@@ -321,6 +339,16 @@ const PlanetNode = ({
       {cue?.kind === "bands" && <JupiterBands size={size} color={color} />}
       {cue?.kind === "ring" && <SaturnRing size={size} color={color} />}
       {cue?.kind === "storm" && <NeptuneStorm />}
+      {/* Brief info on hover/focus — the planet NAME, like the galaxy labels (the
+          full facts — real distance + lore — live in the click card). CSS-only reveal
+          (group-hover/focus) so it never re-renders the orbiting node; the orbit pause
+          (pausedRef) holds the planet still while you read it + aim a click. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute top-full left-1/2 mt-1.5 -translate-x-1/2 whitespace-nowrap text-center font-mono text-[10px] uppercase tracking-[0.18em] text-[#d6dae6] opacity-0 transition-opacity duration-150 [text-shadow:0_1px_3px_rgba(2,4,12,0.9)] group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+      >
+        {name}
+      </span>
       {/* Generous invisible hit pad per Fitts's law (min 44×44 touch target) */}
       <span
         aria-hidden="true"
@@ -344,18 +372,22 @@ type SolProps = {
   x: number;
   y: number;
   ariaLabel: string;
+  name: string;
   tRef: React.RefObject<number>;
   reducedMotion: boolean;
   onHoverChange: (id: string | null) => void;
+  onSelect: () => void;
 };
 
 const SolElement = ({
   x,
   y,
   ariaLabel,
+  name,
   tRef,
   reducedMotion,
   onHoverChange,
+  onSelect,
 }: SolProps) => {
   const photoRef = useRef<HTMLDivElement>(null);
   const haloRef = useRef<HTMLDivElement>(null);
@@ -438,6 +470,7 @@ const SolElement = ({
   return (
     <button
       type="button"
+      className="group focus-visible:outline-none"
       aria-label={ariaLabel}
       style={{
         position: "absolute",
@@ -455,7 +488,19 @@ const SolElement = ({
       onPointerLeave={() => onHoverChange(null)}
       onFocus={() => onHoverChange("sol-star")}
       onBlur={() => onHoverChange(null)}
+      onClick={onSelect}
     >
+      {/* Brief info on hover/focus — Sol's name, gold (reserved). Click opens its
+          lore card ("her home" + the AI fact). CSS-only reveal (no re-render). */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+        style={{ top: SOLAR_SUN_DISC_PX + 18 }}
+      >
+        <span className="block font-mono text-[11px] uppercase tracking-[0.2em] text-[#f5d6a0] [text-shadow:0_1px_3px_rgba(2,4,12,0.9)]">
+          {name}
+        </span>
+      </span>
       {/* Outer warm glow (farthest layer) */}
       <div aria-hidden="true" style={outerGlowStyle} />
       {/* Corona halo — pulses in opacity + scale */}
@@ -490,6 +535,14 @@ export type SolarSystemLayerProps = {
    * Called with `body.id` → the translated accessible label.
    */
   ariaLabelFor: (id: string) => string;
+  /** Per-body display name (i18n, from the lore catalog) for the hover label. */
+  nameFor: (id: string) => string;
+  /**
+   * ASTRO narration on select (#184, ADR-0013) — opening a body's lore card also
+   * asks the cached-fact server fn for an interesting line, routed through ASTRO's
+   * narration seam (same wiring galaxies use). Optional; omitted in tests.
+   */
+  onNarrate?: (object: { loreKey: string }) => void;
 };
 
 /**
@@ -506,15 +559,22 @@ export type SolarSystemLayerProps = {
 export const SolarSystemLayer = ({
   bodies,
   ariaLabelFor,
+  nameFor,
+  onNarrate,
 }: SolarSystemLayerProps) => {
   const useGSAP = useGalaxyGsap();
+  // Card seam (interaction spec §4): SolarSystemLayer is a child of <CardHost>, so
+  // a body click opens its LORE card (RealObject → lore skin) just like a galaxy.
+  const { openCard } = useCardContext();
 
-  // `t` accumulates elapsed seconds for pure math — stored in a ref (no re-renders).
+  // `t` accumulates elapsed seconds for the pure orbit/pulse math — a ref, so the
+  // animation never costs a React re-render (ADR-0009: GSAP drives, refs hold the
+  // live values; the rest of the stage animates the same way — useGalaxyCamera).
   const tRef = useRef(0);
+  // Hover/focus pause lives in a REF, not state, so pausing never tears down +
+  // recreates the ticker (which churned the timing) — the ticker reads it live.
+  const pausedRef = useRef(false);
 
-  // Per-planet computed angles stored in a ref array, indexed by body order.
-  // The planet elements read `posRef.current[i]` each RAF tick via their own RAF.
-  // We keep these in state to trigger re-renders for planet positioning.
   const planets = useMemo(
     () => bodies.filter((b) => b.kind === "planet"),
     [bodies],
@@ -527,76 +587,78 @@ export const SolarSystemLayer = ({
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   });
 
-  // Hovered/focused planet id — pauses that planet's orbit AND all planets
-  // (owner decision: pause on any interaction, so the target holds still for S4).
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const isPaused = hoveredId !== null;
+  // The live planet button elements, keyed by id — the ticker moves these directly.
+  const planetEls = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  // Planet positions — updated by the RAF loop, triggers re-render.
-  const [planetPositions, setPlanetPositions] = useState<
-    Array<{ id: string; x: number; y: number; angle: number }>
-  >(() =>
-    planets.map((p) => {
-      const theta = p.placement.angle; // authored static angle for SSR
-      const pos = ringXY(
-        p.placement.r,
-        theta,
-        GALAXY_CENTER.x,
-        GALAXY_CENTER.y,
-      );
-      return {
-        id: p.id,
-        x: Math.round(pos.x),
-        y: Math.round(pos.y),
-        angle: theta,
-      };
-    }),
-  );
-
-  // GSAP RAF loop — drives `t` (elapsed seconds), updates planet positions.
-  // Only runs client-side (useGSAP is a useEffect wrapper).
-  useGSAP(() => {
-    if (reducedMotion) return;
-
-    let lastTime: number | null = null;
-
-    const ticker = (time: number) => {
-      if (lastTime === null) lastTime = time;
-      const dt = Math.min(0.05, time - lastTime); // cap to 50 ms to survive tab-switch
-      lastTime = time;
-
-      if (!isPaused) {
-        tRef.current += dt;
-      }
-
-      const t = tRef.current;
-
-      setPlanetPositions(
-        planets.map((p) => {
-          const theta = orbitAngle(p, t, false);
-          const pos = ringXY(
+  // Static SSR / first-paint positions (authored rest angle); the ticker takes over.
+  const initialPos = useMemo(
+    () =>
+      Object.fromEntries(
+        planets.map((p) => [
+          p.id,
+          ringXY(
             p.placement.r,
-            theta,
+            p.placement.angle,
             GALAXY_CENTER.x,
             GALAXY_CENTER.y,
-          );
-          return {
-            id: p.id,
-            x: Math.round(pos.x),
-            y: Math.round(pos.y),
-            angle: theta,
-          };
-        }),
-      );
-    };
+          ),
+        ]),
+      ),
+    [planets],
+  );
 
+  // Hover/focus pauses ALL orbits (owner decision) so the targeted planet holds
+  // still — sets up S4 (click → lore card + ASTRO narration). Imperative: flips a
+  // ref, so the ticker keeps running (just doesn't advance `t`) and isn't recreated.
+  const handleHoverChange = useCallback((id: string | null) => {
+    pausedRef.current = id !== null;
+  }, []);
+
+  // Select (click / Enter) → open the body's LORE card + fire ASTRO's narration,
+  // exactly like a galaxy/star selection (#169/#184). The body is a RealObject.
+  const onSelect = useCallback(
+    (body: RealObject) => {
+      openCard(body);
+      onNarrate?.(body);
+    },
+    [openCard, onNarrate],
+  );
+
+  // One stable GSAP ticker — drives `t` and writes each planet's left/top + lit-side
+  // gradient IMPERATIVELY (no per-frame setState → no render churn, no ticker stacking,
+  // no 0–5 s ramp). Deps exclude the pause (it's a ref), so hover never recreates it.
+  useGSAP(() => {
+    if (reducedMotion) return;
+    let lastTime: number | null = null;
+    let frame = 0;
+    const ticker = (time: number) => {
+      if (lastTime === null) lastTime = time;
+      const dt = Math.min(0.05, time - lastTime); // seconds; cap survives tab-switch
+      lastTime = time;
+      if (!pausedRef.current) tRef.current += dt;
+      const t = tRef.current;
+      frame++;
+      // Re-light the gradient only ~5×/s, not every frame: rebuilding a radial
+      // gradient + repainting 8 spheres each frame is what made motion feel laggy.
+      // Position rides `transform: translate3d` (GPU-composited, no layout/repaint).
+      const relight = frame % 12 === 0;
+      for (const p of planets) {
+        const el = planetEls.current[p.id];
+        if (!el) continue;
+        const theta = orbitAngle(p, t, false);
+        const pos = ringXY(
+          p.placement.r,
+          theta,
+          GALAXY_CENTER.x,
+          GALAXY_CENTER.y,
+        );
+        el.style.transform = `translate3d(${Math.round(pos.x)}px, ${Math.round(pos.y)}px, 0) translate(-50%, -50%)`;
+        if (relight) el.style.background = sphereBg(p.color, pos.x, pos.y);
+      }
+    };
     gsap.ticker.add(ticker);
     return () => gsap.ticker.remove(ticker);
-  }, [planets, reducedMotion, isPaused]);
-
-  const handleHoverChange = useCallback((id: string | null) => {
-    setHoveredId(id);
-  }, []);
+  }, [planets, reducedMotion]);
 
   // Sol's position is always the stage centre.
   const solX = GALAXY_CENTER.x;
@@ -605,8 +667,10 @@ export const SolarSystemLayer = ({
   return (
     // pointer-events:none on container; planet buttons opt back in individually.
     // This mirrors the L4 figure-plane pattern so the underlying canvas remains
-    // interactive for any future L2-level hit targets.
-    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+    // interactive for any future L2-level hit targets. NOT aria-hidden: the bodies
+    // are interactive (S4 — keyboard-focusable, labelled), so they must stay in the
+    // a11y tree; only the decorative glow/ring children are individually aria-hidden.
+    <div className="pointer-events-none absolute inset-0">
       {/* Sol — the pulsing hero at the stage centre */}
       {sol && (
         <div className="pointer-events-auto">
@@ -614,29 +678,33 @@ export const SolarSystemLayer = ({
             x={solX}
             y={solY}
             ariaLabel={ariaLabelFor(sol.id)}
+            name={nameFor(sol.id)}
             tRef={tRef}
             reducedMotion={reducedMotion}
             onHoverChange={handleHoverChange}
+            onSelect={() => onSelect(sol)}
           />
         </div>
       )}
 
-      {/* The 8 planets — gradient-lit spheres with per-planet cues */}
-      {planetPositions.map((pos) => {
-        const p = planets.find((pl) => pl.id === pos.id);
-        if (!p) return null;
-        return (
-          <div key={p.id} className="pointer-events-auto">
-            <PlanetNode
-              planet={p}
-              x={pos.x}
-              y={pos.y}
-              ariaLabel={ariaLabelFor(p.id)}
-              onHoverChange={handleHoverChange}
-            />
-          </div>
-        );
-      })}
+      {/* The 8 planets — gradient-lit spheres with per-planet cues. Rendered once at
+          their static angle; the ticker moves them imperatively (no re-render). */}
+      {planets.map((p) => (
+        <div key={p.id} className="pointer-events-auto">
+          <PlanetNode
+            planet={p}
+            initialX={initialPos[p.id].x}
+            initialY={initialPos[p.id].y}
+            ariaLabel={ariaLabelFor(p.id)}
+            name={nameFor(p.id)}
+            nodeRef={(el) => {
+              planetEls.current[p.id] = el;
+            }}
+            onHoverChange={handleHoverChange}
+            onSelect={() => onSelect(p)}
+          />
+        </div>
+      ))}
     </div>
   );
 };
