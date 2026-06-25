@@ -35,9 +35,9 @@ import { useAstroFace } from "./useAstroFace";
  *       (2) a thin divider;
  *       (3) the horizontal pill rail (with its right-edge overflow fade);
  *       (4) the full-width search/ask input (Enter affordance at its right).
- *     The ASTRO tag sits at the panel's TOP-RIGHT; a small ▽ tail there points DOWN
- *     at the sprite, so ASTRO visibly speaks the panel (static tail, SSR-safe — no
- *     per-frame tracking; ADR-0003).
+ *     The ASTRO nameplate (● status dot + label) floats just above the panel's
+ *     TOP-RIGHT edge with a downward ▽ notch tucking it onto the panel (static,
+ *     SSR-safe — no per-frame tracking; ADR-0003). No manual dismiss control.
  *   - `.galaxy-astro__hit` — the pixel sprite, at the panel's bottom-right edge.
  * The bubble + hub are borderless content sections WITHIN the one glass panel (the
  * panel owns the glass chrome), so the three jobs read as one HUD rather than a
@@ -67,11 +67,11 @@ type Props = {
   message?: string;
   /**
    * #125 — the active tier-transition narration line (already localized by the
-   * owner of the transition state). While set it takes the bubble over — even a
-   * dismissed bubble reopens for it; `null`/absent restores the spoken flow.
+   * owner of the transition state). While set it takes the bubble over;
+   * `null`/absent restores the spoken flow.
    */
   narration?: string | null;
-  /** Clears the narration upstream (dismiss ×, or a click advancing the line). */
+  /** Clears the narration upstream (a sprite click advances the line; also timed). */
   onNarrationDismiss?: () => void;
   /**
    * #183 (dir. A) — ignite a saved star in the live sky (the store's `addStar`).
@@ -146,16 +146,12 @@ export const Astro = ({
           : m.astro.clickLines[spoken.index];
   const text = narration ?? spokenText;
 
-  // Dismissing a narration clears it upstream AND quiets the spoken line under
-  // it, so the × closes the bubble instead of "revealing" a stale greeting.
-  const onDismiss = () => {
-    // While composing, × cancels the form back to ASTRO's line (it doesn't close ASTRO).
-    if (composing) {
-      setComposing(false);
-      return;
-    }
+  // Exit the composer without saving (the form's Cancel — the bubble's old ▾ dismiss
+  // was removed, owner 2026-06-25). Clears any active tier narration so ASTRO's
+  // ambient line shows again, then closes the form back to his speech.
+  const onCancelCompose = () => {
     if (narration != null) onNarrationDismiss?.();
-    setSpoken(null);
+    setComposing(false);
   };
 
   // Open the composer IN the bubble; let it take over any active tier narration.
@@ -195,14 +191,21 @@ export const Astro = ({
         {/* 1. Speech bubble — speech-only; the panel tag + tail mark him as the
             speaker. Borderless inside the panel. */}
         {(text != null || composing) && (
-          <AstroBubble message={composing ? null : text} onDismiss={onDismiss}>
+          <AstroBubble message={composing ? null : text}>
             {/* The "Add your star" CTA moved OUT of the bubble into the pill rail
-                (#250 owner) — the bubble hosts ONLY ASTRO's line (or the composer). */}
-            {composing ? <AstroComposer onSuccess={onComposed} /> : null}
+                (#250 owner) — the bubble hosts ONLY ASTRO's line (or the composer).
+                The composer carries its own Cancel (the bubble's ▾ dismiss was
+                removed, owner 2026-06-25). */}
+            {composing ? (
+              <AstroComposer
+                onSuccess={onComposed}
+                onCancel={onCancelCompose}
+              />
+            ) : null}
           </AstroBubble>
         )}
-        {/* Divider — only when a bubble sits ABOVE the hub, so dismissing the bubble
-            (× ) doesn't strand an orphaned line atop an empty panel (#250 × bug). */}
+        {/* Divider — only when a bubble (a spoken line or the composer) sits ABOVE the
+            hub, so an empty panel never shows an orphaned divider over nothing (#250). */}
         {hub && (text != null || composing) && (
           <div
             aria-hidden="true"

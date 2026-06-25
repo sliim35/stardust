@@ -107,13 +107,15 @@ export const ZoomHint = ({ label }: Props) => {
   return (
     <div
       data-testid="zoom-hint"
-      // Pinned bottom-centre at fixed px + safe-area, below the interactive chrome
-      // (no z above the palette's z-[6] — it never needs to sit over chrome). It is
-      // a passive signifier: `pointer-events-none` so every click/scroll passes
-      // through to the canvas + chrome (AC5). It carries no entrance animation —
-      // the only motion is the glyph's motion-safe: tilt/bob, off under
+      // Pinned to the bottom band, but centred over the LEFT-of-dock gap (left-1/4)
+      // rather than dead-centre: the bottom-right ASTRO dock (≤58% wide, z-4) and the
+      // bottom-left scale net would otherwise occlude a centred hint (fix #1
+      // 2026-06-25). Still below the interactive chrome (no z above the palette's
+      // z-[6]). A passive signifier: `pointer-events-none` so every click/scroll
+      // passes through to the canvas + chrome (AC5). It carries no entrance animation
+      // — the only motion is the glyph's motion-safe: tilt/bob, off under
       // reduced-motion (AC4).
-      className="pointer-events-none absolute bottom-[max(22px,env(safe-area-inset-bottom))] left-1/2 z-0 flex -translate-x-1/2 select-none items-center gap-2"
+      className="pointer-events-none absolute bottom-[max(22px,env(safe-area-inset-bottom))] left-1/4 z-0 flex -translate-x-1/2 select-none items-center gap-2"
       role="note"
       aria-label={label}
     >

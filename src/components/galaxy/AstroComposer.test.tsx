@@ -48,16 +48,23 @@ const submitMemory = (value: string) => {
 
 describe("AstroComposer — write step", () => {
   it("renders the prompt, textarea, and submit from the en catalog", () => {
-    render(<AstroComposer onSuccess={vi.fn()} />);
+    render(<AstroComposer onSuccess={vi.fn()} onCancel={vi.fn()} />);
     const field = screen.getByLabelText(en.chat.label) as HTMLTextAreaElement;
     expect(field.placeholder).toBe(en.chat.placeholder);
     expect(screen.getByRole("button", { name: en.chat.submit })).toBeTruthy();
   });
 
+  it("the Cancel button exits the form via onCancel (the composer's own exit)", () => {
+    const onCancel = vi.fn();
+    render(<AstroComposer onSuccess={vi.fn()} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("button", { name: en.chat.cancel }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   it("a rejected proposal shows the authored chat.error message and stays on the form", async () => {
     proposeStarFn.mockResolvedValueOnce({ ok: false, errorKey: "flagged" });
     const onSuccess = vi.fn();
-    render(<AstroComposer onSuccess={onSuccess} />);
+    render(<AstroComposer onSuccess={onSuccess} onCancel={vi.fn()} />);
     submitMemory("spam");
 
     await waitFor(() =>
@@ -69,7 +76,7 @@ describe("AstroComposer — write step", () => {
 
   it("a thrown propose fn maps to the authored failed message", async () => {
     proposeStarFn.mockRejectedValueOnce(new Error("network"));
-    render(<AstroComposer onSuccess={vi.fn()} />);
+    render(<AstroComposer onSuccess={vi.fn()} onCancel={vi.fn()} />);
     submitMemory("a memory");
 
     await waitFor(() =>
@@ -85,7 +92,7 @@ describe("AstroComposer — confirm-first routing step (#219 AC2)", () => {
       star: proposed,
       hostGalaxyId: "andromeda",
     });
-    render(<AstroComposer onSuccess={vi.fn()} />);
+    render(<AstroComposer onSuccess={vi.fn()} onCancel={vi.fn()} />);
     submitMemory("the rings of saturn");
 
     const expected = interpolate(en.chat.confirm.prompt, {
@@ -105,7 +112,7 @@ describe("AstroComposer — confirm-first routing step (#219 AC2)", () => {
     });
     commitStarFn.mockResolvedValueOnce({ ok: true, star: proposed });
     const onSuccess = vi.fn();
-    render(<AstroComposer onSuccess={onSuccess} />);
+    render(<AstroComposer onSuccess={onSuccess} onCancel={vi.fn()} />);
     submitMemory("the rings of saturn");
 
     await screen.findByRole("button", { name: en.chat.confirm.confirm });
@@ -125,7 +132,7 @@ describe("AstroComposer — confirm-first routing step (#219 AC2)", () => {
       star: proposed,
       hostGalaxyId: "andromeda",
     });
-    render(<AstroComposer onSuccess={vi.fn()} />);
+    render(<AstroComposer onSuccess={vi.fn()} onCancel={vi.fn()} />);
     submitMemory("the rings of saturn");
 
     await screen.findByRole("button", { name: en.chat.confirm.back });
@@ -147,7 +154,7 @@ describe("AstroComposer — confirm-first routing step (#219 AC2)", () => {
     });
     commitStarFn.mockResolvedValueOnce({ ok: false, errorKey: "failed" });
     const onSuccess = vi.fn();
-    render(<AstroComposer onSuccess={onSuccess} />);
+    render(<AstroComposer onSuccess={onSuccess} onCancel={vi.fn()} />);
     submitMemory("the rings of saturn");
 
     await screen.findByRole("button", { name: en.chat.confirm.confirm });

@@ -276,6 +276,7 @@ export const en = {
     label: "Write a memory",
     placeholder: "A memory you want to keep — in a sentence or two…",
     submit: "Add to the sky",
+    cancel: "Cancel",
     submitting: "Finding its place…",
     success:
       "Your star is in the sky now — I found it a place among the others. Thank you for sharing it.",

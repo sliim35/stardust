@@ -226,6 +226,8 @@ export type Messages = {
     placeholder: string;
     /** Submit-button copy. */
     submit: string;
+    /** The composer's Cancel button — exits the write form without saving. */
+    cancel: string;
     /** Submit-button copy while the request is in flight (client-only state). */
     submitting: string;
     /** ASTRO's confirmation line after a star is saved (spoken in its bubble). */

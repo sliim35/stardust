@@ -33,30 +33,16 @@ describe("Astro — tier-transition narration takes the bubble (#125)", () => {
     expect(screen.queryByText(en.astro.greeting)).toBeNull();
   });
 
-  it("shows the narration even after the bubble was dismissed", () => {
+  it("has no manual dismiss control on the bubble (owner 2026-06-25 — the line is ambient)", () => {
+    // The ▾ collapse/dismiss button was removed: ASTRO's line just stays until a new
+    // line replaces it (a timed tier narration auto-clears, or a sprite click clears
+    // it — covered below). No "dismiss" button exists in either bubble state.
     const { rerender } = render(<Astro />);
-    fireEvent.click(screen.getByRole("button", { name: "dismiss" }));
-    expect(screen.queryByText(en.astro.greeting)).toBeNull();
+    expect(screen.getByText(en.astro.greeting)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "dismiss" })).toBeNull();
     rerender(<Astro narration="narration line" />);
     expect(screen.getByText("narration line")).toBeTruthy();
-  });
-
-  it("dismissing a narration clears it via the owner's callback and closes the bubble", () => {
-    const onNarrationDismiss = vi.fn();
-    const { rerender } = render(
-      <Astro
-        narration="narration line"
-        onNarrationDismiss={onNarrationDismiss}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "dismiss" }));
-    expect(onNarrationDismiss).toHaveBeenCalledTimes(1);
-    // The owner clears its state; the bubble is gone (not fallen back to the greeting).
-    rerender(
-      <Astro narration={null} onNarrationDismiss={onNarrationDismiss} />,
-    );
-    expect(screen.queryByText(en.astro.greeting)).toBeNull();
-    expect(screen.queryByText("narration line")).toBeNull();
+    expect(screen.queryByRole("button", { name: "dismiss" })).toBeNull();
   });
 
   it("clicking ASTRO during a narration clears it and speaks the next click line", () => {
@@ -134,11 +120,11 @@ describe("Astro — add-star is a pill in the hub rail (#250 owner; #183 dir. A)
     expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
   });
 
-  it("the × cancels composing back to ASTRO's line (without closing ASTRO)", () => {
+  it("the composer's Cancel exits back to ASTRO's line (without closing ASTRO)", () => {
     render(<Astro hub={HUB} onStarAdded={vi.fn()} canAddStar />);
     fireEvent.click(screen.getByRole("button", { name: en.chat.open }));
     expect(screen.getByLabelText(en.chat.label)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "dismiss" }));
+    fireEvent.click(screen.getByRole("button", { name: en.chat.cancel }));
     expect(screen.queryByLabelText(en.chat.label)).toBeNull();
     expect(screen.getByText(en.astro.greeting)).toBeTruthy();
     expect(screen.getByRole("button", { name: en.chat.open })).toBeTruthy();
