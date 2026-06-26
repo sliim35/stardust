@@ -86,12 +86,12 @@ writing-plans, verification, code-review, worktrees) rather than re-implementing
 
 ### The loop
 
-`orchestrator` routes → `researcher`/`md-research` → `architect`/`md-write-prd` +
+The **`/md-workflow`** mediator skill routes + drives → `researcher`/`md-research` → `architect`/`md-write-prd` +
 `md-plan-architecture` → `ui-designer`/`md-design-ui` (if visual) →
 `task-creator`/`md-create-story` (+ GitHub issue) → `backlog-analyzer`/`md-groom-backlog`
 → `developer`/`md-implement` (TDD) → `reviewer`/`md-review-pr` (conventions + learning) →
 `qa`/`md-qa-review` (gate) → `devops`/`md-deploy` (close issue) →
-`orchestrator`/`md-learn` (retro: distill the session → route to docs/memory/skills).
+`/md-workflow`/`md-learn` (retro: distill the session → route to docs/memory/skills).
 Full diagram + gates: `.claude/skills/references/sdlc-loop.md`.
 
 **CI auto-reviewer (additive — not a phase).** `.github/workflows/claude-review.yml` runs
@@ -131,9 +131,9 @@ an undocumented result is treated as not done.
   screenshots.** A design pick — including one made in chat (e.g. an owner choice) — gets a
   comment on the **issue** stating the decision, the alternatives rejected, links to the
   PR/commits/preview, and the evidence images. Not just the PR; not just chat.
-- **Subagents do NOT inherit the orchestrator's memory.** The dispatcher MUST state this
+- **Subagents do NOT inherit the mediator's memory.** The dispatcher MUST state this
   traceability requirement in every task prompt, and the subagent MUST honor it — return
-  findings/decisions in a form the orchestrator can post to the issue/PR, and never treat a
+  findings/decisions in a form the mediator can post to the issue/PR, and never treat a
   chat-only summary as "done."
 
 All agent GitHub writes route through the review bot (ADR-0005).
@@ -142,7 +142,7 @@ All agent GitHub writes route through the review bot (ADR-0005).
 
 | Agent | Invoke when… | Primary skill | Owns in docs/ |
 |---|---|---|---|
-| `orchestrator` | starting work / unsure what's next; post-merge → run the retro | — (routes) · `md-learn` | `memory`, `decisions/` |
+| `/md-workflow` (mediator skill) | starting work / driving any task(s) end-to-end; post-merge → run the retro | routes + drives · `md-learn` | `memory`, `decisions/` |
 | `researcher` | there's an unknown to de-risk | `md-research` | `research/` |
 | `architect` | design/stack/ADR decisions, or a PRD | `md-plan-architecture`, `md-write-prd` | `architecture/`, `product/` |
 | `ui-designer` | a visual feature needs a spec | `md-design-ui` | `design/` |
@@ -152,6 +152,10 @@ All agent GitHub writes route through the review bot (ADR-0005).
 | `reviewer` | a PR is open at `in-review` (before QA) | `md-review-pr` | `conventions/code-style.md`, story Code-review |
 | `qa` | a story is at `in-review` | `md-qa-review` | story QA verdict, bug issues |
 | `devops` | QA signed off; deploy/wrangler/CI | `md-deploy` | deploy config/notes |
+
+> `/md-workflow` is a **skill the main session runs**, not a dispatchable agent — it both keeps
+> cross-phase context and dispatches the phase agents listed above. It is the **default entry
+> point** for any unit of work and accepts one **or more** tasks at once.
 
 ### Backlog conventions (GitHub Issues)
 

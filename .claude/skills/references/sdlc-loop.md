@@ -1,12 +1,12 @@
 # The SDLC loop
 
 The canonical path a unit of work travels. Each step names the **agent** / `skill` and the
-artifact it touches. Not every step runs for every item — the **orchestrator** picks the
+artifact it touches. Not every step runs for every item — the **`md-workflow` mediator** picks the
 entry point and skips phases that aren't needed (a typo fix may jump straight to developer).
 
 ```
                  ┌──────────────┐
-   idea  ───────▶│ orchestrator │  routes, never builds
+   idea  ───────▶│  md-workflow │  routes + drives
                  └──────┬───────┘
                         ▼
   1. researcher   · md-research        → docs/research/*.md         (if unknowns)
@@ -19,8 +19,8 @@ entry point and skips phases that aren't needed (a typo fix may jump straight to
   8. reviewer     · md-review-pr       → code-review verdict + learned rules → docs/conventions/code-style.md
   9. qa           · md-qa-review       → QA verdict + bug issues     (gate)
  10. devops       · md-deploy          → pnpm deploy + close issue
- 11. orchestrator · md-learn           → retro: distill the session → docs/ · memory · skill gaps  (after merge)
- 12. orchestrator → next prioritized story
+ 11. md-workflow  · md-learn           → retro: distill the session → docs/ · memory · skill gaps  (after merge)
+ 12. md-workflow  → next prioritized story
 ```
 
 ## Gates (don't skip)
