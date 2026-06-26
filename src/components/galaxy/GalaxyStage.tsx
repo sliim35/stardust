@@ -876,7 +876,7 @@ const LgInteractiveLabels = ({
  * Pointer-safe: the outer wrapper is `pointer-events-none`; only the `<button>` opts
  * back in, so the full-bleed marker never swallows clicks on memory stars beneath it.
  *
- * Position: `polarToXY(sol.placement.r=0.5, sol.placement.angle=0.42, tilt)` —
+ * Position: `polarToXY(sol.placement.r=0.5, sol.placement.angle=2.57, tilt)` —
  * the same projection the memory star layer uses, so Sol sits on the MW disk exactly
  * where the realdata places it (#/lib/galaxy/realdata, SOL_ID).
  */
@@ -906,7 +906,7 @@ const SolGatewayMarker = ({
       <button
         type="button"
         aria-label={`${lore.sol.name} · ${lore.sol.sublabel}`}
-        className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f5d6a0]/40"
+        className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent/40"
         style={{
           left: `${Math.round(x)}px`,
           top: `${Math.round(y)}px`,
@@ -952,7 +952,15 @@ const SolGatewayMarker = ({
         </span>
       </button>
       {/* The reveal label — hover/focus-driven, same pattern as LgGalaxyLabels.
-          `data-sol-label` lets the test query it without coupling to class names. */}
+          `data-sol-label` lets the test query it without coupling to class names.
+          Sits BELOW the bloom (owner) — same side as the planet labels, clear of the
+          arm dust above. Centring is the Tailwind `translate` utility (`-translate-x-1/2`)
+          ONLY: an inline `transform: translateX(-50%)` would STACK with it (Tailwind v4
+          compiles that utility to the CSS `translate` property, which applies *in
+          addition to* `transform`) → net translateX(-100%), shoving the label half its
+          width off the star. Colour tracks the live sky via `text-accent` (the
+          `--color-accent` @theme var on `.galaxy-stage`) like the rest of the chrome —
+          not a palette-blind hardcoded gold. */}
       <div
         aria-hidden="true"
         data-sol-label
@@ -961,16 +969,15 @@ const SolGatewayMarker = ({
         }`}
         style={{
           left: `${Math.round(x)}px`,
-          // Label sits BELOW the bloom (owner: it was on the wrong side) — same side
-          // as the planet labels, and clear of the arm dust above.
+          // Below the bloom: clear the (pulsing) glow + a small gap. Scale-independent —
+          // both the offset and the bloom ride the same camera zoom.
           top: `${Math.round(y) + 20}px`,
-          transform: "translateX(-50%)",
         }}
       >
-        <em className="block font-serif text-[18px] lowercase italic leading-tight text-[#f5d6a0]">
+        <em className="block font-serif text-[18px] lowercase italic leading-tight text-accent">
           {lore.sol.name}
         </em>
-        <span className="mt-[3px] block whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.2em] text-[#f5d6a0]/70">
+        <span className="mt-[3px] block whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.2em] text-accent/70">
           {lore.sol.sublabel}
         </span>
       </div>
