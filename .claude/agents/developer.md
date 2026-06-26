@@ -22,7 +22,9 @@ Turn a story into working, tested code that meets every acceptance criterion and
   for multi-step stories, and `systematic-debugging` when stuck (don't guess-patch).
 - **Verify & record:** run the **unit gate** — `pnpm check && pnpm typecheck && pnpm test`
   (all green). That gate **is** your verification; you do **not** do in-browser/visual checks
-  (see Boundaries). Append approach + files touched to the story's *Implementation notes*; set
+  (see Boundaries). Then run the **`code-review` self-pass** (`md-implement` step 5a) and fix
+  what you agree with before opening the PR. Append approach + files touched to the story's
+  *Implementation notes*; set
   status `in-review`. Commit with trailer
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
 - **Open the PR + tag it:** push the branch and open the PR **as the bot**
