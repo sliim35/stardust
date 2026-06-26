@@ -30,6 +30,12 @@ import { commitStarFn, proposeStarFn } from "#/server/add-star";
 type Props = {
   /** A saved star: ignite it (parent) + the line ASTRO should speak next. */
   onSuccess: (star: MemoryStar, confirmation: string) => void;
+  /**
+   * Exit the composer without saving (the write-view "Cancel"). The bubble's old ▾
+   * dismiss was removed (owner 2026-06-25 — it read as non-functional), so the form
+   * carries its own explicit exit; `Astro` wires this to `setComposing(false)`.
+   */
+  onCancel: () => void;
 };
 
 // The single seam between partition ids (`hostGalaxyFor`) and the `lore.*` catalog
@@ -52,7 +58,17 @@ type Status =
   | { kind: "confirm"; star: MemoryStar; hostGalaxyId: string }
   | { kind: "error"; errorKey: AddMemoryErrorKey };
 
-export const AstroComposer = ({ onSuccess }: Props) => {
+// The composer's two button recipes (filled primary / ghost secondary) — each used by
+// BOTH the write step and the confirm step. Hoisted to a const (the repo's pattern for a
+// repeated className, cf. GalaxyStage `dimClass`) rather than a <Button> component;
+// clsx/cva are unused in src. The `disabled:*` utilities are inert on the confirm-step
+// buttons (no `disabled` prop), so all four buttons share these verbatim.
+const PRIMARY_BTN =
+  "cursor-pointer rounded-snug border border-accent bg-accent-soft px-4 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none";
+const SECONDARY_BTN =
+  "cursor-pointer rounded-snug border border-accent-soft bg-transparent px-3 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none";
+
+export const AstroComposer = ({ onSuccess, onCancel }: Props) => {
   const m = getMessages(useLocale());
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "write" });
@@ -117,22 +133,18 @@ export const AstroComposer = ({ onSuccess }: Props) => {
       galaxy: galaxyName(m, status.hostGalaxyId),
     });
     return (
-      <div className="mt-3 flex w-[min(280px,62vw)] flex-col gap-3">
+      <div className="mt-3 flex w-full flex-col gap-3">
         <p className="m-0 font-sans text-base text-text leading-normal">
           {prompt}
         </p>
         <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            className="cursor-pointer rounded-snug border border-accent-soft bg-transparent px-3 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
-          >
+          <button type="button" onClick={onBack} className={SECONDARY_BTN}>
             {m.chat.confirm.back}
           </button>
           <button
             type="button"
             onClick={() => onConfirm(status.star)}
-            className="cursor-pointer rounded-snug border border-accent bg-accent-soft px-4 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+            className={PRIMARY_BTN}
           >
             {m.chat.confirm.confirm}
           </button>
@@ -142,7 +154,7 @@ export const AstroComposer = ({ onSuccess }: Props) => {
   }
 
   return (
-    <div className="mt-3 flex w-[min(280px,62vw)] flex-col gap-3">
+    <div className="mt-3 flex w-full flex-col gap-3">
       <label htmlFor={fieldId} className="font-sans text-base text-text">
         {m.chat.label}
       </label>
@@ -166,14 +178,24 @@ export const AstroComposer = ({ onSuccess }: Props) => {
           {m.chat.error[status.errorKey]}
         </p>
       )}
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={submitting}
-        className="cursor-pointer self-end rounded-snug border border-accent bg-accent-soft px-4 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none"
-      >
-        {submitting ? m.chat.submitting : m.chat.submit}
-      </button>
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={submitting}
+          className={SECONDARY_BTN}
+        >
+          {m.chat.cancel}
+        </button>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={submitting}
+          className={PRIMARY_BTN}
+        >
+          {submitting ? m.chat.submitting : m.chat.submit}
+        </button>
+      </div>
     </div>
   );
 };

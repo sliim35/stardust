@@ -276,6 +276,7 @@ export const en = {
     label: "Write a memory",
     placeholder: "A memory you want to keep — in a sentence or two…",
     submit: "Add to the sky",
+    cancel: "Cancel",
     submitting: "Finding its place…",
     success:
       "Your star is in the sky now — I found it a place among the others. Thank you for sharing it.",
@@ -303,5 +304,26 @@ export const en = {
     option: "Go to {name}",
     count: "{count} memories found",
     empty: "No memories match that search.",
+  },
+  // ASTRO interaction hub (#250, ADR-0017) — pill labels + canned spoken lines +
+  // the search-result framing. Input copy reuses `search.*` above.
+  astroHub: {
+    pills: {
+      milkyWay: "Milky Way",
+      sol: "Sol",
+      back: "Back out",
+      earth: "Tell me about Earth",
+      whoAreYou: "Who are you?",
+      whatIsThis: "What is this place?",
+    },
+    pillGroup: "ASTRO actions",
+    lines: {
+      whoAreYou:
+        "I'm ASTRO — I keep this sky, and the memories left among its stars. I've been here a long while.",
+      whatIsThis:
+        "This is a memory galaxy. Every star is something someone wanted to keep — and the brightest one is hers.",
+    },
+    found: "Flying you to {name}.",
+    notFound: "I can't find that one up here. Try another word.",
   },
 } as const satisfies Messages;

@@ -5,15 +5,16 @@ import type { MemoryStar } from "#/lib/galaxy/types";
 import { getMessages, useLocale } from "#/lib/i18n";
 import { AstroBubble } from "./AstroBubble";
 import { AstroComposer } from "./AstroComposer";
+import { AstroHub, type AstroHubProps } from "./AstroHub";
 import { PixelAstronaut } from "./PixelAstronaut";
 import { useAstroFace } from "./useAstroFace";
 
 /**
- * ASTRO (#70 + #72) — the galaxy's quiet host, pinned in the reserved bottom-right
- * slot. A sibling of `<GalaxyChrome />` in the viewport-fixed `.galaxy-chrome-overlay`
- * (#76 lifted it out of `.galaxy-stage__fit` so it holds a fixed readable size in the
- * corner like the title, rather than shrinking with the stage; it never took the
- * camera/parallax).
+ * ASTRO (#70 + #72 + redesign 2026-06-25) — the galaxy's quiet host, pinned in the
+ * reserved bottom-right slot. A sibling of `<GalaxyChrome />` in the viewport-fixed
+ * `.galaxy-chrome-overlay` (#76 lifted it out of `.galaxy-stage__fit` so it holds a
+ * fixed readable size in the corner like the title, rather than shrinking with the
+ * stage; it never took the camera/parallax).
  *
  * The sprite is decorative pixel-art chrome: `aria-hidden`, gently bobbing — never a
  * tab stop. The *words* carry meaning (#72), so the speech bubble — not the figure —
@@ -25,11 +26,24 @@ import { useAstroFace } from "./useAstroFace";
  * `message` prop, else the greeting), so the bubble renders identically server- and
  * client-side on first paint — no `useEffect` visibility flip, no hydration mismatch.
  *
- * The sprite wrapper stays `pointer-events: none` (clicks pass through to the stars);
- * only the click hit-area opts back in (`pointer-events: auto`) as a focusable,
- * keyboard-activatable `<button aria-label>` — the unified click trigger. Placement,
- * the bob/drift, the small-screen hide, and the reduced-motion gate all live in
- * `.galaxy-astro*` CSS (src/styles.css).
+ * **Wide-panel recomposition (redesign 2026-06-25, owner-approved `Companion HUD`
+ * generated design).** The `.galaxy-astro` frame is a **wide bottom HUD** — a single
+ * rounded glass panel spanning the bottom from the left safe-area margin to ~85%
+ * width, with the pixel ASTRO sprite standing at its bottom-right edge:
+ *   - `.galaxy-astro__panel` — the wide glass surface. Inside, top→bottom:
+ *       (1) the speech-bubble text (left-aligned, generous);
+ *       (2) a thin divider;
+ *       (3) the horizontal pill rail (with its right-edge overflow fade);
+ *       (4) the full-width search/ask input (Enter affordance at its right).
+ *     The ASTRO nameplate (● status dot + label) floats just above the panel's
+ *     TOP-RIGHT edge with a downward ▽ notch tucking it onto the panel (static,
+ *     SSR-safe — no per-frame tracking; ADR-0003). No manual dismiss control.
+ *   - `.galaxy-astro__hit` — the pixel sprite, at the panel's bottom-right edge.
+ * The bubble + hub are borderless content sections WITHIN the one glass panel (the
+ * panel owns the glass chrome), so the three jobs read as one HUD rather than a
+ * stack of separate boxes. Search is a disclosed mode (`aria-expanded` tracks real
+ * state); the pill rail never clips (the overflow fade signals "more →").
+ * The upper ~two-thirds of the canvas stays empty (deliberate negative space).
  *
  * #71 — expressions: `useAstroFace` drives the ambient idle-blink + the
  * click → emotion change. The single `onClick` is the shared trigger seam: it
@@ -37,11 +51,11 @@ import { useAstroFace } from "./useAstroFace";
  * two layers stay one interaction. The face mood feeds `PixelAstronaut`'s `mood`
  * prop; the figure never shifts — only the glowing pixel-eyes change.
  *
- * Layout: `.galaxy-astro` is the **stable, un-animated corner frame** — the bubble
- * is a direct child anchored to that frame, so the reading position stays steady
- * while only the sprite bobs/drifts beneath it (`__bob` carries `astro-bob`, `__drift`
- * the secondary wander). The sprite is rendered at `GALAXY_ASTRO_SCALE` (the single
- * size knob), bigger than the prototype default so it sits with the bubble.
+ * The sprite wrapper stays `pointer-events: none` (clicks pass through to the stars);
+ * only the click hit-area opts back in (`pointer-events: auto`) as a focusable,
+ * keyboard-activatable `<button aria-label>` — the unified click trigger. Placement,
+ * the bob/drift, the small-screen hide, and the reduced-motion gate all live in
+ * `.galaxy-astro*` CSS (src/styles.css).
  */
 
 type Props = {
@@ -53,11 +67,11 @@ type Props = {
   message?: string;
   /**
    * #125 — the active tier-transition narration line (already localized by the
-   * owner of the transition state). While set it takes the bubble over — even a
-   * dismissed bubble reopens for it; `null`/absent restores the spoken flow.
+   * owner of the transition state). While set it takes the bubble over;
+   * `null`/absent restores the spoken flow.
    */
   narration?: string | null;
-  /** Clears the narration upstream (dismiss ×, or a click advancing the line). */
+  /** Clears the narration upstream (a sprite click advances the line; also timed). */
   onNarrationDismiss?: () => void;
   /**
    * #183 (dir. A) — ignite a saved star in the live sky (the store's `addStar`).
@@ -67,6 +81,13 @@ type Props = {
   onStarAdded?: (star: MemoryStar) => void;
   /** Show the add-star CTA — true at the Milky-Way tier, where memory stars live (#183). */
   canAddStar?: boolean;
+  /**
+   * #250 (ADR-0017) — the ASTRO interaction hub (always-visible compact search +
+   * fast-action pill row) hosted inside this frame. Absent (tests of the bare
+   * mascot) → no hub renders. The hub's spoken responses route through this same
+   * frame's `narration` bubble via its `onSpeak` sink (wired to `showNarration`).
+   */
+  hub?: AstroHubProps;
 };
 
 /**
@@ -86,6 +107,7 @@ export const Astro = ({
   onNarrationDismiss,
   onStarAdded,
   canAddStar = false,
+  hub,
 }: Props) => {
   const m = getMessages(useLocale());
   // Seed deterministically so SSR + the client agree on first paint (auto-greet
@@ -96,11 +118,17 @@ export const Astro = ({
   const [composing, setComposing] = useState(false);
   const { mood, emote } = useAstroFace();
 
+  // Clear any active tier narration (#125) before a user action takes the bubble over,
+  // so a fresh click line / composer isn't masked by a stale transition line.
+  const clearNarration = () => {
+    if (narration != null) onNarrationDismiss?.();
+  };
+
   // The shared click trigger: speak the next line (#72) AND emote (#71) together.
   // A click during a tier narration (#125) also clears it, so the fresh click
   // line is what actually shows — the trigger never appears dead.
   const onClick = () => {
-    if (narration != null) onNarrationDismiss?.();
+    clearNarration();
     setSpoken((prev) => ({
       kind: "line",
       index: nextClickIndex(
@@ -124,21 +152,17 @@ export const Astro = ({
           : m.astro.clickLines[spoken.index];
   const text = narration ?? spokenText;
 
-  // Dismissing a narration clears it upstream AND quiets the spoken line under
-  // it, so the × closes the bubble instead of "revealing" a stale greeting.
-  const onDismiss = () => {
-    // While composing, × cancels the form back to ASTRO's line (it doesn't close ASTRO).
-    if (composing) {
-      setComposing(false);
-      return;
-    }
-    if (narration != null) onNarrationDismiss?.();
-    setSpoken(null);
+  // Exit the composer without saving (the form's Cancel — the bubble's old ▾ dismiss
+  // was removed, owner 2026-06-25). Clears any active tier narration so ASTRO's
+  // ambient line shows again, then closes the form back to his speech.
+  const onCancelCompose = () => {
+    clearNarration();
+    setComposing(false);
   };
 
   // Open the composer IN the bubble; let it take over any active tier narration.
   const onAdd = () => {
-    if (narration != null) onNarrationDismiss?.();
+    clearNarration();
     setComposing(true);
   };
 
@@ -147,7 +171,7 @@ export const Astro = ({
   const onComposed = (star: MemoryStar, confirmation: string) => {
     onStarAdded?.(star);
     setComposing(false);
-    if (narration != null) onNarrationDismiss?.();
+    clearNarration();
     setSpoken({ kind: "said", text: confirmation });
   };
 
@@ -155,24 +179,53 @@ export const Astro = ({
   // not already composing.
   const showAdd = canAddStar && onStarAdded != null && !composing;
 
+  // Wide-panel layout (redesign 2026-06-25): the frame is a wide bottom HUD —
+  // one glass panel (bubble text → divider → pill rail → search) with the pixel
+  // ASTRO sprite standing at the panel's bottom-right edge. The panel's ▽ tail
+  // (top-right, in CSS) points DOWN at the sprite, so ASTRO visibly speaks it.
   return (
     <div className="galaxy-astro">
-      {(text != null || composing) && (
-        <AstroBubble message={composing ? null : text} onDismiss={onDismiss}>
-          {composing ? (
-            <AstroComposer onSuccess={onComposed} />
-          ) : showAdd ? (
-            <button
-              type="button"
-              className="galaxy-astro__add pointer-events-auto mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-snug border border-accent-soft bg-transparent px-3 py-1.5 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
-              onClick={onAdd}
-            >
-              <span aria-hidden="true">✦</span>
-              {m.chat.open}
-            </button>
-          ) : null}
-        </AstroBubble>
-      )}
+      {/* The wide glass panel — owns the soft-glow chrome (bg/blur/border/glow);
+          the bubble + hub render as borderless content sections inside it. */}
+      <div className="galaxy-astro__panel pointer-events-auto">
+        {/* Speaker tag (panel top-right) — marks ASTRO as the author; the ▽ tail
+            in CSS originates here and points down at the sprite. aria-hidden (the
+            spoken text, not the tag, is the live region). */}
+        <span className="galaxy-astro__panel-tag" aria-hidden="true">
+          ASTRO
+        </span>
+        {/* 1. Speech bubble — speech-only; the panel tag + tail mark him as the
+            speaker. Borderless inside the panel. */}
+        {(text != null || composing) && (
+          <AstroBubble message={composing ? null : text}>
+            {/* The "Add your star" CTA moved OUT of the bubble into the pill rail
+                (#250 owner) — the bubble hosts ONLY ASTRO's line (or the composer).
+                The composer carries its own Cancel (the bubble's ▾ dismiss was
+                removed, owner 2026-06-25). */}
+            {composing ? (
+              <AstroComposer
+                onSuccess={onComposed}
+                onCancel={onCancelCompose}
+              />
+            ) : null}
+          </AstroBubble>
+        )}
+        {/* Divider — only when a bubble (a spoken line or the composer) sits ABOVE the
+            hub, so an empty panel never shows an orphaned divider over nothing (#250). */}
+        {hub && (text != null || composing) && (
+          <div
+            aria-hidden="true"
+            className="h-px w-full bg-accent-soft"
+            data-hub-divider
+          />
+        )}
+        {/* 2. Interaction hub — pill rail + full-width search, inside the same panel.
+            Its spoken responses route through the bubble's aria-live region via
+            `onSpeak` (wired to `showNarration`) — no second a11y surface (#72). */}
+        {hub && <AstroHub {...hub} onAddStar={showAdd ? onAdd : undefined} />}
+      </div>
+      {/* The pixel ASTRO sprite — at the panel's bottom-right edge; the panel's
+          ▽ tail (top-right, in CSS) points down toward his head. */}
       <button
         type="button"
         className="galaxy-astro__hit"

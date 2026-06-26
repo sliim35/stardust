@@ -1075,7 +1075,10 @@ describe("GalaxyStage — discovery search → focus-on-star (#113)", () => {
     // so the MW sky has a searchable star. MW_USER_STAR has text "a test memory".
     renderDivedIntoMilkyWay();
     const input = screen.getByRole("combobox", { name: en.search.label });
-    // The injected MW star's text is "a test memory" (MW_USER_STAR).
+    // Focus first — the redesigned search is disclosed (collapsed until focus, #250).
+    fireEvent.focus(input);
+    // Mom moved to the Solar System (#266), so the MW interior has no seeded star —
+    // `renderDivedIntoMilkyWay` injects MW_USER_STAR ("a test memory") to find here.
     fireEvent.change(input, { target: { value: "a test memory" } });
     fireEvent.click(
       screen.getByRole("option", { name: "Go to a test memory" }),

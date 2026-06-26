@@ -297,26 +297,108 @@ body {
   will-change: transform;
 }
 
-/* ASTRO (#70 + #72) — the mascot in the reserved bottom-right slot. A sibling of
-   .galaxy-chrome in the viewport-fixed .galaxy-chrome-overlay: #76 lifted it out
-   of .galaxy-stage__fit so it holds a fixed readable size like the title rather
-   than shrinking with the stage (the offsets below are now viewport px, not
-   stage px). Decorative chrome: clicks pass through.
+/* ASTRO (#70 + #72 + redesign 2026-06-25) — the mascot's WIDE BOTTOM HUD. A sibling
+   of .galaxy-chrome in the viewport-fixed .galaxy-chrome-overlay: #76 lifted it out
+   of .galaxy-stage__fit so it holds a fixed readable size like the title rather than
+   shrinking with the stage.
 
-   #71/#72 — the bubble is DECOUPLED from the bob: .galaxy-astro is a STABLE,
-   un-animated corner frame so the speech bubble (its direct child) holds a steady
-   reading position while only the sprite moves beneath it. The bob lives on
-   .galaxy-astro__bob and the secondary drift on .galaxy-astro__drift (nested, they
-   compose without fighting — the prototype technique). The bigger sprite
-   (GALAXY_ASTRO_SCALE = 112px) sits in the corner; offsets give it + the bubble room. */
+   WIDE-PANEL LAYOUT (redesign 2026-06-25, owner-approved `Companion HUD` design):
+   .galaxy-astro spans the BOTTOM from the left safe-area margin to ~85% width — a
+   single wide glass panel (.galaxy-astro__panel) with the pixel sprite standing at
+   the panel's bottom-right edge. The panel holds, top→bottom: the speech-bubble text,
+   a thin divider, the horizontal pill rail (overflow fade), and the full-width
+   search/ask input. The "ASTRO" tag at the panel's TOP-RIGHT carries a small ▽ tail
+   that points DOWN at the sprite, so ASTRO visibly speaks the panel (static tail,
+   SSR-safe — no per-frame tracking; ADR-0003). The upper ~⅔ of the canvas stays
+   empty (deliberate negative space); the breadcrumb stays top-left. */
 .galaxy-astro {
   position: absolute;
-  right: max(48px, env(safe-area-inset-right)); /* offset from the viewport right edge */
-  /* Border-hugging (owner relayout 2026-06-10): the bottom-center count is gone,
-     so ASTRO drops toward the edge — close, but with bob/shadow room. */
+  /* A compact BOTTOM-RIGHT dock (owner 2026-06-25: the goal corner is down-right):
+     the sprite sits in the corner, the panel extends LEFT from him. The dock stays
+     ≤ ~58% of the viewport so the canvas + the left side stay breathing room. */
+  right: max(24px, env(safe-area-inset-right));
   bottom: max(24px, env(safe-area-inset-bottom));
+  width: min(58%, 760px);
   z-index: 4; /* above stars/captions, below the palette switcher (6) + panels */
   pointer-events: none; /* decorative; never captures mouse/touch */
+  /* Flex row: the panel on the left, the sprite at the bottom-right corner. The
+     hub inherits the ACTIVE SKY PALETTE accent (owner: colour must match the theme)
+     — no fixed accent override here. */
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0;
+}
+
+/* The wide glass panel — owns the soft-glow chrome (the bubble + hub are borderless
+   sections inside it). It spans the available width up to a comfortable maximum so
+   it stops at ~85% on wide viewports (the sprite sits in the remaining right gutter).
+   Spacious padding; the bubble text is left-aligned and larger. */
+.galaxy-astro__panel {
+  position: relative;
+  flex: 1 1 auto;
+  max-width: 1080px; /* caps the panel so very wide screens keep negative space */
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-row);
+  padding: 18px 22px;
+  background: var(--color-surface);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--color-accent);
+  border-radius: 14px;
+  box-shadow: 0 0 28px var(--color-accent-soft);
+  animation: astro-bubble-in 0.32s ease-out both;
+}
+/* The ASTRO nameplate (Companion HUD design — fix #2/#3 2026-06-25) — a small
+   floating tag flush to the panel's TOP-RIGHT edge (top:-15px overhangs the panel),
+   carrying a ● status dot, the "ASTRO" label, and a downward diamond NOTCH that
+   connects the tag to the panel below (replacing the old bottom ▽ tail, which sat
+   on the wrong edge). Palette-matched (var(--color-accent) re-tints per sky).
+   aria-hidden (the spoken text is the live region, not the tag). */
+.galaxy-astro__panel-tag {
+  position: absolute;
+  top: -15px;
+  right: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 6px;
+  padding: 5px 13px;
+  box-shadow: 0 5px 18px color-mix(in srgb, black 50%, transparent);
+}
+/* ● — the accent status dot before the label (a glowing pixel of the active sky). */
+.galaxy-astro__panel-tag::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 6px 1px var(--color-accent-soft);
+}
+/* ▽ — the downward diamond notch under the nameplate's right side; a rotated square
+   showing only its right+bottom borders so it reads as a small pointer toward the
+   panel. Solid surface fill tucks under the nameplate's bottom border (no seam). */
+.galaxy-astro__panel-tag::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: -6px;
+  width: 11px;
+  height: 11px;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-accent);
+  border-bottom: 1px solid var(--color-accent);
+  transform: rotate(45deg);
 }
 .galaxy-astro__bob {
   display: block;
@@ -335,10 +417,12 @@ body {
 /* The click hit-area (#72): a focusable, keyboard-activatable button that opts
    pointer events back in (the only interactive part of the inert wrapper). It is
    a bare button — no chrome of its own; the sprite inside carries the look. The
-   unified click trigger #71 hooks here too. */
+   unified click trigger #71 hooks here too. The 10px LEFT margin tucks the sprite
+   just past the panel's right edge — kept in this single block so the `margin`
+   shorthand can't reset it (a split `.galaxy-astro__hit` rule did; CI review F1). */
 .galaxy-astro__hit {
   display: block;
-  margin: 0;
+  margin: 0 0 0 10px;
   padding: 0;
   border: 0;
   background: none;
@@ -351,83 +435,25 @@ body {
   border-radius: var(--radius);
 }
 
-/* ASTRO's speech bubble (#72) — soft-glow glass chrome (NOT pixel-art). DECOUPLED
-   from the bob (#71/#72): it is a direct child of the STABLE .galaxy-astro frame
-   (not the bobbing sprite), so the reading position stays steady while ASTRO bobs
-   beneath it. Anchored top-right to that fixed frame (`right:0`), it no longer
-   shifts with the sprite's drift or message length relative to the figure. Mirrors
-   the read-panel surface: dark translucent bg, backdrop blur, 1px accent border,
-   serif italic body. It still rides inside .galaxy-astro, so it inherits the
-   z-index and the ≤720px hide (the bubble is tied to ASTRO's visibility). */
+/* ASTRO's speech bubble (wide-panel redesign 2026-06-25) — a BORDERLESS TEXT SECTION
+   inside .galaxy-astro__panel (the panel owns the glass chrome). It holds the
+   left-aligned, generous spoken line; the ASTRO nameplate (● + ▽ notch) lives on the
+   panel top-right. No own bg/border/blur, and no manual dismiss control (owner
+   2026-06-25 — the line is ambient; the composer carries its own Cancel). */
 .galaxy-astro__bubble {
-  position: absolute;
-  /* Sit well clear above the (un-bobbing) sprite frame — a roomier gap so the
-     bigger panel + the longer connector breathe over the mascot (Fix 2). The
-     anchor is the STABLE .galaxy-astro frame, so it never bobs with the sprite. */
-  bottom: calc(100% + 34px);
-  right: 0;
-  width: max-content;
-  /* A more substantial panel for the larger ≥16px body — the future AI-chat
-     surface (Fix 1): wider + more padding so the bigger text breathes. */
-  max-width: 340px;
-  padding: 16px 38px 16px 20px; /* extra right padding clears the dismiss × */
-  background: var(--color-surface);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius);
-  box-shadow: 0 0 22px var(--color-accent-soft);
-  animation: astro-bubble-in 0.32s ease-out both;
-}
-/* A subtle connector — a short soft-glow stem dropping from the bubble toward the
-   corner, NOT a literal ▽ tail (the sprite now bobs under a fixed bubble, so a tail
-   that points at an exact figure position would drift off-target). It reads as a
-   gentle tether to ASTRO's corner without tracking the bob. */
-.galaxy-astro__bubble::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  right: 22px;
-  width: 2px;
-  height: 26px; /* longer stem to span the wider bubble↔sprite gap (Fix 2) */
-  background: linear-gradient(var(--color-accent), transparent);
-  opacity: 0.7;
+  position: relative;
+  width: 100%;
+  padding: 4px 2px 0;
 }
 .galaxy-astro__bubble-text {
   display: block;
   margin: 0;
   font-family: var(--font-sans);
   font-style: normal;
-  font-size: 16px; /* readable body for the AI-chat surface (Fix 1, ≥16px) */
+  font-size: 17px; /* generous, left-aligned body (the panel is spacious) */
   line-height: 1.5;
   color: var(--color-text);
-}
-.galaxy-astro__bubble-dismiss {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  width: 18px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: 1;
-  color: var(--color-dim-2);
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-.galaxy-astro__bubble-dismiss:hover {
-  color: var(--color-text);
-}
-.galaxy-astro__bubble-dismiss:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-  border-radius: var(--radius-snug);
+  text-align: left;
 }
 
 @keyframes astro-bubble-in {
@@ -951,14 +977,11 @@ body {
     animation: none;
   }
   /* ASTRO holds a single static idle frame at rest — bob + drift disabled.
-     The speech bubble (#72) appears instantly — no entrance fade/slide (AC7). */
+     The HUD panel (#72) appears instantly — no entrance fade/slide (AC7). */
   .galaxy-astro__bob,
   .galaxy-astro__drift,
-  .galaxy-astro__bubble {
+  .galaxy-astro__panel {
     animation: none;
-  }
-  .galaxy-astro__bubble-dismiss {
-    transition: none;
   }
   /* Cards (#146/#5) open instantly — no scrim fade or panel slide/scale (spec §4).
      Belt-and-braces with the JS `data-reduced-motion` flag so it's instant from the

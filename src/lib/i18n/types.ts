@@ -226,6 +226,8 @@ export type Messages = {
     placeholder: string;
     /** Submit-button copy. */
     submit: string;
+    /** The composer's Cancel button — exits the write form without saving. */
+    cancel: string;
     /** Submit-button copy while the request is in flight (client-only state). */
     submitting: string;
     /** ASTRO's confirmation line after a star is saved (spoken in its bubble). */
@@ -283,6 +285,55 @@ export type Messages = {
     count: string;
     /** Shown (and announced) when a query matches no stars. */
     empty: string;
+  };
+  /**
+   * The ASTRO interaction hub (#250, ADR-0017) — the always-visible compact
+   * search input + the fast-action pill row hosted in ASTRO's frame. The input
+   * copy reuses the `search.*` catalog (above); this block adds the surfaces the
+   * hub introduces:
+   *
+   * - `pills` — one key per shipped pill label. `PillLabelKey =
+   *   keyof Messages["astroHub"]["pills"]` compile-locks every pill (`astro-pills.ts`)
+   *   to its copy, so a pill can never reference a missing label.
+   * - `pillGroup` — the accessible name of the `role="group"` wrapping the pills,
+   *   announced before the buttons ("ASTRO actions").
+   * - `lines` — the canned spoken responses a `sayLine` prompt pill speaks straight
+   *   into the bubble (subject-less prompts: "Who are you?", "What is this place?").
+   * - `found` / `notFound` — the result-framing lines ASTRO speaks on a search
+   *   select / a zero-result search (BR37). `found` carries `{name}`.
+   *
+   * en authored, ru stubbed (BR-i18n) — present so `as const satisfies Messages`
+   * holds; Russian content is not authored (the standing ru-stub policy).
+   */
+  astroHub: {
+    /** One label per shipped pill — the `PillLabelKey` source of truth. */
+    pills: {
+      /** Nav: dive home into the Milky Way (from the Local-Group overview). */
+      milkyWay: string;
+      /** Nav: dive into the home Solar System (Sol gateway). */
+      sol: string;
+      /** Nav: ascend one tier wider ("Back out"). */
+      back: string;
+      /** Prompt (speakLore): "Tell me about Earth". */
+      earth: string;
+      /** Prompt (sayLine): "Who are you?". */
+      whoAreYou: string;
+      /** Prompt (sayLine): "What is this place?". */
+      whatIsThis: string;
+    };
+    /** Accessible name of the pill `role="group"` (announced before the buttons). */
+    pillGroup: string;
+    /** Canned spoken lines a `sayLine` prompt pill routes into the bubble. */
+    lines: {
+      /** Spoken for the "Who are you?" prompt. */
+      whoAreYou: string;
+      /** Spoken for the "What is this place?" prompt. */
+      whatIsThis: string;
+    };
+    /** Spoken when a search result is selected — carries `{name}` ("Flying you to …"). */
+    found: string;
+    /** Spoken when a search matches nothing ("nothing found"). */
+    notFound: string;
   };
 };
 
