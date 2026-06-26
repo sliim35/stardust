@@ -38,6 +38,10 @@ prioritized item. No story → don't start (loop back to `md-create-story`).
     `reviewer` phase — it does **not** replace it. **Simplification is a downstream mediator
     phase** (`code-simplifier`, run by `md-workflow`); if you are running `md-implement`
     **standalone** (no mediator), invoke the `simplify` skill yourself before opening the PR.
+5b. **Rebase onto `main`**: before opening the PR, `git fetch origin` and confirm the branch is
+    **cleanly rebased onto the latest `origin/main`** — `git rebase origin/main` (rebase; don't
+    merge `main` in). If `origin/main` moved, rebase, **resolve any conflicts**, and **re-run the
+    unit gate**. A branch that won't rebase cleanly onto `main` is **not** ready to hand off.
 6. **Record**: append approach + files touched to the story's *Implementation notes*; set
    status `in-review`. Commit with the trailer
    `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
@@ -61,6 +65,7 @@ Source + tests; story at `in-review`; clean `pnpm check && pnpm test`.
 
 ## Done when
 Every AC has a passing test, `pnpm check && pnpm test` are green, the **step-5a `code-review`
-self-pass** ran and its agreed findings are fixed, and notes are recorded.
+self-pass** ran and its agreed findings are fixed, the branch **rebases cleanly onto `origin/main`**,
+and notes are recorded.
 Hand to `md-review-pr` (reviewer), then `md-qa-review` — do NOT self-mark done. After review,
 **every** thread is answered (accept/reject with why) **and** resolved before merge.
