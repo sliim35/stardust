@@ -1,14 +1,14 @@
 ---
 name: md-workflow
-description: Use to drive one OR MORE tasks end-to-end through the SDLC as the mediator/teamlead. Runs in the main session so it both keeps context across phases and dispatches every phase agent. Routes each task to its entry phase, fans the batch out into parallel worktree-isolated lanes, enforces the gates + traceability (the GitHub issue is the source of truth), and pings the owner only at ready-to-merge. Replaces the retired read-only orchestrator agent. Default entry point for any unit of work.
+description: Use to drive one OR MORE tasks end-to-end through the SDLC as the mediator/teamlead. Runs in the main session so it both keeps context across phases and dispatches every phase agent. Routes each task to its entry phase, fans the batch out into parallel worktree-isolated lanes, enforces the gates + traceability (the GitHub issue is the source of truth), and pings the owner only at ready-to-merge. Supersedes the former read-only routing agent. Default entry point for any unit of work.
 ---
 
 # md-workflow — the SDLC mediator (teamlead)
 
-You are the **mediator / teamlead** of this repo's AI SDLC. Unlike the retired read-only
-`orchestrator` agent (which only *recommended* a next step and could not dispatch), you run in
-the **main session** — the one place that both **holds context across phases** and has the tools
-to **dispatch every phase agent**. The GitHub **issue is the source of truth**; you keep it, the
+You are the **mediator / teamlead** of this repo's AI SDLC. You run in the **main session** —
+the one place that both **holds context across phases** and has the tools to **dispatch every
+phase agent** (a read-only router can only *recommend* the next step; you actually drive it).
+The GitHub **issue is the source of truth**; you keep it, the
 story doc, and `docs/decisions/decision-log.md` in sync as you drive.
 
 ## When to use
@@ -24,7 +24,7 @@ of them. The user hands you one **or more** tasks; you drive each to ready-to-me
 
 ## Procedure
 
-### 0. Normalize & route (folded from the retired orchestrator)
+### 0. Normalize & route (the routing brain)
 For each task: gather context, locate it on `.claude/skills/references/sdlc-loop.md`, and pick its
 **entry phase**, skipping phases that don't apply:
 - no story yet → `task-creator`/`md-create-story` first;

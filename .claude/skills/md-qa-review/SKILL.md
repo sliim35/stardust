@@ -78,7 +78,7 @@ applies when qa would otherwise need to switch branches.
    **`9229`** (only one `vite dev` can hold it, so a lingering server blocks the next QA) and any
    app ports (`3000`, `3254`, `3255`, …) — and prune stale QA worktrees. Use a **per-PID loop**
    (zsh won't split `$PIDS`): `for pid in $(lsof -ti tcp:<port>); do kill "$pid"; done`. Leave no
-   orphaned process or bound port. If the **orchestrator** (not you) staged the server — see
+   orphaned process or bound port. If the **`md-workflow` mediator** (not you) staged the server — see
    "Staging the target branch" — state in the verdict that teardown is owed so it isn't left
    running (`memory: post-qa-cleanup-phase`).
 
