@@ -1,7 +1,7 @@
 ---
 title: Code-style & conventions guide
 updated: 2026-06-14
-last_learned: "#257 (2026-06-24)"  # watermark — guide is a tracked/public file for the CI auto-reviewer (PR #203). #217: codified the code-comments rule. #232/#234: code-comments rule re-scoped from length → content (it was mass-false-flagging WHY-comments by line count); rescued the stranded #232 dev/ops-script i18n exemption. #254: 0 threads. #255: CI bot flagged listener-self-teardown pattern; no human reply — no new rule codified yet. #257: 0 human review threads; no new rules distilled.
+last_learned: "#265 (2026-06-25)"  # watermark — guide is a tracked/public file for the CI auto-reviewer (PR #203). #217: codified the code-comments rule. #232/#234: code-comments rule re-scoped from length → content (it was mass-false-flagging WHY-comments by line count); rescued the stranded #232 dev/ops-script i18n exemption. #254: 0 threads. #255: CI bot flagged listener-self-teardown pattern; no human reply — no new rule codified yet. #257: 0 human review threads; no new rules distilled. #262: 0 human review threads; no new rules distilled. #265: `as const satisfies` exemption for tables with function members.
 maintained_by: reviewer (md-review-pr)
 ---
 
@@ -315,6 +315,12 @@ hand-written one. A learned signal that contradicts a hand-written rule lands in
 - **Why:** The i18n rule targets the hydration-safe, locale-switching UI surface. A CLI/Node script has no locale, no hydration, and no SSR constraint; requiring catalog entries for fixture text would inflate the typed contract with dead keys (YAGNI) and violate the dead-i18n-keys rule.
 - **Example:** `scripts/prefill-stars.ts` embeds English fixture memory text inline — that is correct and should NOT be moved to the catalog.
 - **Source:** PR #232 review analysis, 2026-06-22 (stranded uncommitted in the #232 retro; rescued into #235).
+
+### `as const satisfies` — exempt for tables with function members
+- **Rule:** The `as const satisfies T` rule applies to pure-data constants (maps, config, tuples, fixed records). A module-level constant whose members include function values (e.g. `available?: (ctx) => boolean` predicates in a descriptor table) is exempt — `as const` narrows each function to its literal call signature and breaks `satisfies` for union-typed arrays. Use `readonly T[]` and document the exemption with a comment.
+- **Why:** `as const` over a function-bearing table makes the optional `available?` field unreadable on union-typed array members (each function is narrowed to its literal signature, defeating the `satisfies` check). `readonly T[]` preserves immutability and the shape-checking contract without the narrowing side-effect. DRY/KISS: the `as const` rule exists to catch accidental mutation and typos in data constants, not to constrain function-bearing descriptor tables.
+- **Example:** `const PILLS: readonly AstroPill[] = […]` (with `// as const omitted — available?: (ctx) => boolean members`) rather than `const PILLS = […] as const satisfies AstroPill[]`.
+- **Source:** PR #265 `astro-pills.ts` (developer note + reviewer analysis), learned 2026-06-25.
 
 ## Conflicts to resolve (human)
 <!-- A learned signal that contradicts a hand-written rule lands here, not above. -->

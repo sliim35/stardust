@@ -1,6 +1,6 @@
 ---
 name: md-write-prd
-description: Use to capture a product brief / PRD — the problem, users, goals, scope, and success metrics for a feature or product before architecture and stories. Produces a dated doc in docs/product/. Used by the architect and orchestrator agents.
+description: Use to capture a product brief / PRD — the problem, users, goals, scope, and success metrics for a feature or product before architecture and stories. Produces a dated doc in docs/product/. Used by the architect agent and the `md-workflow` mediator.
 ---
 
 # md-write-prd — SDLC product-definition phase

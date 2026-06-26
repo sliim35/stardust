@@ -1,6 +1,6 @@
 ---
 name: md-learn
-description: Use after a story merges (or at the end of a meaty session) to distill what the work *taught* — corrections, decisions, recurring workflows, preferences, gotchas — and route each finding to its sink (docs/, memory, a flagged convention, or a new-skill gap), writing nothing until the human ratifies. The deliberate, routed counterpart to the automatic `dream` hook; the loop's final retro step. Used by the orchestrator.
+description: Use after a story merges (or at the end of a meaty session) to distill what the work *taught* — corrections, decisions, recurring workflows, preferences, gotchas — and route each finding to its sink (docs/, memory, a flagged convention, or a new-skill gap), writing nothing until the human ratifies. The deliberate, routed counterpart to the automatic `dream` hook; the loop's final retro step. Used by the `md-workflow` mediator.
 ---
 
 # md-learn — SDLC learning / retro phase

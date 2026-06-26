@@ -478,16 +478,20 @@ export const GalaxyStage = ({ deepLink, userStars }: GalaxyStageProps = {}) => {
     const deep: MemoryStar[] = [];
     const members: MemoryStar[] = [];
     const free: MemoryStar[] = [];
-    // Only consider galaxy-tier stars for the MW interior planes (L3/L4/L5).
-    // Stars with solarSystem placement (e.g. Mom) are handled separately below.
-    const galaxyStars = starsForView(sky.stars, "galaxy", HOME_GALAXY_ID);
+    // Only consider galaxy-tier stars of the CURRENTLY-DISPLAYED galaxy for its
+    // interior planes (L3/L4/L5). Must scope to `galaxyForSky`, NOT the hardcoded
+    // home id — a neighbour galaxy's stars carry its OWN parentId, so filtering by
+    // HOME_GALAXY_ID dropped every member/free star for Andromeda/Triangulum/LMC
+    // (their figures drew their lines but no star dots). Stars with solarSystem
+    // placement (e.g. Mom) carry a non-galaxy tier and are handled separately below.
+    const galaxyStars = starsForView(sky.stars, "galaxy", galaxyForSky);
     for (const star of galaxyStars) {
       if (star.deep) deep.push(star);
       else if (memberIds.has(star.id)) members.push(star);
       else free.push(star);
     }
     return { deepStars: deep, memberStars: members, freeStars: free };
-  }, [sky.stars]);
+  }, [sky.stars, galaxyForSky]);
   // Solar-System memory stars (owner 2026-06-25): Mom's dedication star now lives here.
   // Computed from getSky() (ALL tiers) because sky.stars is scoped to galaxy-tier
   // stars only (skyFor/filterStarsForView), which excludes Mom's solarSystem placement.
