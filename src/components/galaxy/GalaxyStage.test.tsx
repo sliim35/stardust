@@ -281,6 +281,34 @@ describe("GalaxyStage — tier transitions swap the scene + narrate (#125)", () 
     expect(document.querySelector(".galaxy-card-backdrop")).toBeNull();
   });
 
+  // Regression: a NEIGHBOUR galaxy's OWN galaxy-tier memory stars must render in its
+  // interior. The L3/L4/L5 member/free split filtered `sky.stars` by the hardcoded
+  // HOME_GALAXY_ID, so every non-home galaxy dropped ALL its stars — the figures drew
+  // their lines but no star dots ("all other galaxies but Milky Way lost their
+  // constellation stars", #268 regression). The split must scope to the displayed
+  // galaxy (`galaxyForSky`), not the home id.
+  it("a neighbour galaxy renders its OWN galaxy-tier memory stars (not filtered out by the home id)", () => {
+    stubReducedMotion(true);
+    const ANDROMEDA_STAR = {
+      ...MW_USER_STAR,
+      id: "test-andromeda-star",
+      mood: "wonder" as const,
+      placement: {
+        tier: "galaxy" as const,
+        parentId: "andromeda",
+        r: 0.5,
+        angle: 1.0,
+      },
+    };
+    render(<GalaxyStage userStars={[ANDROMEDA_STAR]} />);
+    fireEvent.click(lgTarget("andromeda"));
+    // Reached Andromeda's galaxy tier…
+    expect(screen.getByText("100k ly")).toBeTruthy();
+    // …and its own star renders. With the bug this was 0 (the Andromeda star was
+    // filtered out by HOME_GALAXY_ID); the fix scopes the split to the displayed galaxy.
+    expect(memStars().length).toBeGreaterThan(0);
+  });
+
   it("entering LMC and Triangulum each speak their own lore + render an empty disk (AC2)", () => {
     for (const key of ["lmc", "triangulum"] as const) {
       stubReducedMotion(true);
