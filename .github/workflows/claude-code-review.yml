@@ -1,44 +1,109 @@
-name: Claude Code Review
+name: Claude Auto Review
+
+# Auto-reviews every pull request with Claude Code (anthropics/claude-code-action),
+# running on the owner's Claude *subscription* via CLAUDE_CODE_OAUTH_TOKEN — NOT the
+# pay-as-you-go ANTHROPIC_API_KEY. One-time setup: add CLAUDE_CODE_OAUTH_TOKEN as a
+# repository secret (Settings -> Secrets and variables -> Actions). Story: #195.
+#
+# This is an additive, fast first-pass CI gate. It echoes the in-repo `reviewer` agent
+# (md-review-pr) conventions; it does NOT replace it — the full reviewer loop still owns
+# anything nuanced or convention-growing.
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    types: [opened, synchronize]
+
+# Supersede an in-flight review when the PR gets new commits.
+concurrency:
+  group: claude-review-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
+  review:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # hard cap so a hung/runaway review can't burn a full job slot
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
-      id-token: write
-
+      pull-requests: write # post inline review comments
+      id-token: write # OIDC token the action needs to authenticate
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0 # full history so the PR diff resolves cleanly
 
-      - name: Run Claude Code Review
-        id: claude-review
-        uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          # Our SDLC opens every PR as the dev bot, which claude-code-action blocks by
+          # default ("Workflow initiated by non-human actor"). Allowlist exactly that bot.
+          # NOT "*": on a public repo "*" would let external Apps invoke the action.
+          allowed_bots: "reviewer-stardust-project[bot]"
+          # Deliver each round's summary as ONE comment that updates in place, instead of a
+          # fresh top-level comment on every push — keeps the PR readable across rounds.
+          use_sticky_comment: true
+          prompt: |
+            You are the `reviewer` agent for this repo (stardust / Memory Galaxy). An additive
+            first-pass CI gate; the in-repo `reviewer` (md-review-pr) owns anything nuanced.
 
+            ## Review ONLY what changed in THIS round — not the whole PR
+            - On `synchronize`: review only the new commits' diff —
+              `git diff ${{ github.event.before }} ${{ github.event.pull_request.head.sha }}`.
+            - On `opened`: review the full PR diff vs the base branch.
+            - Do NOT re-read or re-review files unchanged in this round.
+
+            ## Carry context between rounds — never re-litigate
+            - FIRST read the PR's existing review threads (resolved AND open) and their replies
+              via `gh api` (reviewThreads GraphQL, or pulls/<n>/comments).
+            - Do NOT raise any point already raised in a prior round (resolved or open).
+            - HONOR prior `reviewer-stardust-project[bot]` replies: if a nit was rejected there
+              (e.g. "not codified"), do NOT raise it again.
+
+            ## Close the loop on YOUR OWN prior review — clear what's been fixed
+            Your past reviews post as `claude[bot]`. Each round, BEFORE posting anything new,
+            reconcile your previous round against the new commits:
+            - List your prior `claude[bot]` reviews + inline threads
+              (`gh api repos/${{ github.repository }}/pulls/<n>/reviews`; reviewThreads GraphQL).
+            - For every prior finding the new commits ADDRESS: reply "Addressed in <sha>" and
+              resolve that thread (GraphQL `resolveReviewThread`). Do not silently drop it.
+            - Leave open ONLY the prior findings that are still genuinely unaddressed.
+            Never leave a stale change-request standing once its concern is resolved — clearing
+            your own prior verdict is part of the job, not optional.
+
+            ## What to flag
+            1. Correctness bugs / edge cases.
+            2. Security issues.
+            3. Reuse / simplification / efficiency.
+            4. Convention violations — ONLY rules explicitly codified in
+               docs/conventions/code-style.md or AGENTS.md § Conventions (read them first).
+               Do NOT apply general best-practices, personal style preferences, or
+               comment-formatting opinions NOT recorded in those files. If unsure whether
+               something is codified, do NOT flag it.
+
+            Be concise. Skip praise. Post findings as inline review comments on the changed
+            lines.
+
+            ## End the round with the RIGHT review event — a bare comment never clears a block
+            GitHub treats your standing verdict as your most recent APPROVE or CHANGES_REQUESTED
+            review; a COMMENTED review (a bare "LGTM") is ignored for the decision and does NOT
+            supersede an earlier CHANGES_REQUESTED. So finish every round with exactly ONE review
+            submitted via `gh api repos/${{ github.repository }}/pulls/<n>/reviews`, event chosen
+            to match the live state:
+            - Blocking findings still unresolved this round  → `-f event=REQUEST_CHANGES`.
+            - No blocking findings remain (incl. after the owner addressed a prior round)
+              → `-f event=APPROVE -f body="LGTM — prior changes addressed."` This APPROVE is the
+              ONLY thing that clears your earlier CHANGES_REQUESTED. If GitHub rejects the APPROVE,
+              fall back to dismissing the stale review:
+              `gh api -X PUT repos/${{ github.repository }}/pulls/<n>/reviews/<review_id>/dismissals
+              -f message="Addressed in <sha>" -f event=DISMISS`.
+            - Only non-blocking nits remain → `-f event=APPROVE`, nits as inline comments.
+            Never close a round on a COMMENTED "LGTM" while a CHANGES_REQUESTED of yours is open —
+            that leaves the PR blocked forever, which is the exact bug this section prevents.
+          # --model sonnet keeps routine reviews cheap; switch the line below to
+          # --model opus for deeper reasoning on complex or critical PRs.
+          # --max-turns bounds the agent loop (cost / runaway guard); 30 leaves ample
+          # headroom for the read-prior-threads -> resolve-fixed -> submit-verdict flow.
+          # (No `#` comments inside claude_args: it is shlex-split into CLI args.)
+          claude_args: |
+            --model sonnet
+            --max-turns 30
+            --allowedTools "Read,Bash(git:*),Bash(gh:*)"
