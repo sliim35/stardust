@@ -15,6 +15,6 @@ pixel-art starfield backdrop.
 This repo runs a lightweight multi-agent SDLC (AAMAD/BMAD-style). Roles live in
 `.claude/agents/`, phase procedures in `.claude/skills/md-*`, the shared knowledge
 base in `docs/` (gitignored, local), and the backlog in **GitHub Issues**. Default
-entry point: the **`orchestrator`** agent. **Before non-trivial work, read
+entry point: the **`/md-workflow`** skill (the mediator). **Before non-trivial work, read
 [AGENTS.md](./AGENTS.md) § "AI SDLC" and `docs/README.md`** — read the relevant
 `docs/` artifacts before acting, write your artifact after you decide.

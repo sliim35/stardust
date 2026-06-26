@@ -5,7 +5,7 @@ description: Use to groom the backlog — prioritize, dedupe, re-label, and reco
 
 # md-groom-backlog — SDLC backlog-grooming phase
 
-Keep the backlog honest and tell the orchestrator what to do next.
+Keep the backlog honest and tell the `md-workflow` mediator what to do next.
 
 ## When to use
 On a planning pass, when the backlog drifts, or when asked "what's next?".

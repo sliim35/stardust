@@ -112,7 +112,7 @@ which verifies the acceptance criteria actually pass with evidence.
      silently re-post under the owner's default `gh` auth — that lands as the human
      ([[bot-token-expires-mid-session]]). Instead emit the full ready-to-post payload — the
      review **body** + each inline comment's **`{path, line, side, body}`** — in your final
-     report, so the orchestrator posts it verbatim as the bot. An unposted review is a
+     report, so the `md-workflow` mediator posts it verbatim as the bot. An unposted review is a
      **failed review, not a pass**.
    Always also emit the markdown verdict in chat. Pass **`--no-comment`** to skip the GitHub
    write (dry run, or a PR you don't own). Bot setup: `scripts/sdlc/README.md`.

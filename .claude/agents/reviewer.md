@@ -44,7 +44,7 @@ green checks.
     ([[bot-token-expires-mid-session]]).
   - **If the write is blocked or fails, do NOT silently drop it** — return the
     ready-to-post review **body + each inline comment's `{path, line, side, body}`** in your
-    final report so the orchestrator posts it verbatim. A review that never reaches the PR
+    final report so the `md-workflow` mediator posts it verbatim. A review that never reaches the PR
     is a failed review, not a pass.
   - Pass `--no-comment` to skip the GitHub write entirely.
 
