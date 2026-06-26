@@ -118,11 +118,17 @@ export const Astro = ({
   const [composing, setComposing] = useState(false);
   const { mood, emote } = useAstroFace();
 
+  // Clear any active tier narration (#125) before a user action takes the bubble over,
+  // so a fresh click line / composer isn't masked by a stale transition line.
+  const clearNarration = () => {
+    if (narration != null) onNarrationDismiss?.();
+  };
+
   // The shared click trigger: speak the next line (#72) AND emote (#71) together.
   // A click during a tier narration (#125) also clears it, so the fresh click
   // line is what actually shows — the trigger never appears dead.
   const onClick = () => {
-    if (narration != null) onNarrationDismiss?.();
+    clearNarration();
     setSpoken((prev) => ({
       kind: "line",
       index: nextClickIndex(
@@ -150,13 +156,13 @@ export const Astro = ({
   // was removed, owner 2026-06-25). Clears any active tier narration so ASTRO's
   // ambient line shows again, then closes the form back to his speech.
   const onCancelCompose = () => {
-    if (narration != null) onNarrationDismiss?.();
+    clearNarration();
     setComposing(false);
   };
 
   // Open the composer IN the bubble; let it take over any active tier narration.
   const onAdd = () => {
-    if (narration != null) onNarrationDismiss?.();
+    clearNarration();
     setComposing(true);
   };
 
@@ -165,7 +171,7 @@ export const Astro = ({
   const onComposed = (star: MemoryStar, confirmation: string) => {
     onStarAdded?.(star);
     setComposing(false);
-    if (narration != null) onNarrationDismiss?.();
+    clearNarration();
     setSpoken({ kind: "said", text: confirmation });
   };
 

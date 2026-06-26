@@ -374,7 +374,7 @@ body {
   border: 1px solid var(--color-accent);
   border-radius: 6px;
   padding: 5px 13px;
-  box-shadow: 0 5px 18px rgb(0 0 0 / 0.5);
+  box-shadow: 0 5px 18px color-mix(in srgb, black 50%, transparent);
 }
 /* ● — the accent status dot before the label (a glowing pixel of the active sky). */
 .galaxy-astro__panel-tag::before {
@@ -400,11 +400,6 @@ body {
   border-bottom: 1px solid var(--color-accent);
   transform: rotate(45deg);
 }
-/* The sprite sits at the panel's bottom-right edge — a small left margin tucks it
-   just past the panel's right border so the tail above lands on his head. */
-.galaxy-astro__hit {
-  margin-left: 10px;
-}
 .galaxy-astro__bob {
   display: block;
   animation: astro-bob 4s ease-in-out infinite; /* = BOB_CYCLE_MS (lib/galaxy/astro.ts), pinned by astro.test.ts */
@@ -422,10 +417,12 @@ body {
 /* The click hit-area (#72): a focusable, keyboard-activatable button that opts
    pointer events back in (the only interactive part of the inert wrapper). It is
    a bare button — no chrome of its own; the sprite inside carries the look. The
-   unified click trigger #71 hooks here too. */
+   unified click trigger #71 hooks here too. The 10px LEFT margin tucks the sprite
+   just past the panel's right edge — kept in this single block so the `margin`
+   shorthand can't reset it (a split `.galaxy-astro__hit` rule did; CI review F1). */
 .galaxy-astro__hit {
   display: block;
-  margin: 0;
+  margin: 0 0 0 10px;
   padding: 0;
   border: 0;
   background: none;

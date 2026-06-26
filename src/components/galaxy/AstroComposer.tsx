@@ -58,6 +58,16 @@ type Status =
   | { kind: "confirm"; star: MemoryStar; hostGalaxyId: string }
   | { kind: "error"; errorKey: AddMemoryErrorKey };
 
+// The composer's two button recipes (filled primary / ghost secondary) — each used by
+// BOTH the write step and the confirm step. Hoisted to a const (the repo's pattern for a
+// repeated className, cf. GalaxyStage `dimClass`) rather than a <Button> component;
+// clsx/cva are unused in src. The `disabled:*` utilities are inert on the confirm-step
+// buttons (no `disabled` prop), so all four buttons share these verbatim.
+const PRIMARY_BTN =
+  "cursor-pointer rounded-snug border border-accent bg-accent-soft px-4 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none";
+const SECONDARY_BTN =
+  "cursor-pointer rounded-snug border border-accent-soft bg-transparent px-3 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none";
+
 export const AstroComposer = ({ onSuccess, onCancel }: Props) => {
   const m = getMessages(useLocale());
   const [text, setText] = useState("");
@@ -128,17 +138,13 @@ export const AstroComposer = ({ onSuccess, onCancel }: Props) => {
           {prompt}
         </p>
         <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            className="cursor-pointer rounded-snug border border-accent-soft bg-transparent px-3 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
-          >
+          <button type="button" onClick={onBack} className={SECONDARY_BTN}>
             {m.chat.confirm.back}
           </button>
           <button
             type="button"
             onClick={() => onConfirm(status.star)}
-            className="cursor-pointer rounded-snug border border-accent bg-accent-soft px-4 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+            className={PRIMARY_BTN}
           >
             {m.chat.confirm.confirm}
           </button>
@@ -177,7 +183,7 @@ export const AstroComposer = ({ onSuccess, onCancel }: Props) => {
           type="button"
           onClick={onCancel}
           disabled={submitting}
-          className="cursor-pointer rounded-snug border border-accent-soft bg-transparent px-3 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none"
+          className={SECONDARY_BTN}
         >
           {m.chat.cancel}
         </button>
@@ -185,7 +191,7 @@ export const AstroComposer = ({ onSuccess, onCancel }: Props) => {
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="cursor-pointer rounded-snug border border-accent bg-accent-soft px-4 py-2 font-sans text-sm font-semibold text-accent transition-colors duration-200 hover:bg-accent hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none"
+          className={PRIMARY_BTN}
         >
           {submitting ? m.chat.submitting : m.chat.submit}
         </button>
