@@ -46,7 +46,7 @@ research? → prd? → architecture/ADR? → design? → story/groom
    → develop  (developer · md-implement, incl. the inline self-review pre-pass)
    → simplify (code-simplifier agent — applies cleanups, commits to the PR branch, re-runs the gate)
    → review   (reviewer · md-review-pr)   [runs before QA; advisory, not the gate]
-   → qa       (qa · md-qa-review)          [the correctness gate]
+   → qa       (qa · md-qa-review — verifies ACs on the **preview URL**, never localhost; screenshots → PR)   [the gate]
    → ready-to-merge
 ```
 
@@ -71,6 +71,9 @@ append targets that collide. So:
 - No story → `task-creator` first.
 - No green `pnpm check && pnpm typecheck && pnpm test` → no QA.
 - No QA sign-off → no deploy.
+- **QA verifies on the deployed PREVIEW URL, never localhost**, and **attaches screenshots to the PR**
+  (commit PNGs to a `qa-shots-*` branch + embed raw URLs — there is no image-upload API). A QA pass
+  without preview-URL evidence is **not** a pass.
 - `reviewer` runs **before** QA — advisory, not the correctness gate (QA's sign-off is required).
 - **You cannot merge** (the classifier blocks agent merge) — the **owner merges**.
 
@@ -80,10 +83,15 @@ reviewer + QA green; every thread answered **and** resolved; screenshots attache
 it. **Ping the owner once** with a consolidated list of ready PRs (task · PR# · preview URL · verdict).
 Do **not** ping at intermediate phases. The owner merges.
 
-### 6. After the owner merges — deploy, housekeeping, retro
-- **Deploy (owner-gated):** `devops`/`md-deploy` if the change ships.
-- **Housekeeping (per task):** close the issue, reconcile labels/status, **reflect delivered scope**
-  on the issue (scope + ADR/spec/decision/commit links).
+### 6. Cleanup, deploy, housekeeping, retro
+- **Post-QA cleanup (each lane, as QA finishes):** kill any dev/preview servers the lane started and
+  free their ports — a **per-PID loop** (`for pid in $(lsof -ti tcp:<port>); do kill "$pid"; done`;
+  zsh won't split `$PIDS`), including the Node inspector **`9229`** and app ports (`3000`/`3254`/…).
+  Leave no orphaned process or bound port.
+- **Deploy (owner-gated, after merge):** `devops`/`md-deploy` if the change ships.
+- **Housekeeping (per task, after merge):** close the issue, reconcile labels/status, **reflect
+  delivered scope** on the issue (scope + ADR/spec/decision/commit links), and **prune the lane's
+  worktree** (`git worktree remove <path>` — non-destructive once the branch is pushed/merged).
 - **Retro (session-level):** run `md-learn` **once** over the whole batch — distill learnings, route
   to docs/memory/skill-gaps, **propose before writing**, append **one** decision-log line.
 

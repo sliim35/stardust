@@ -29,7 +29,8 @@ prioritized item. No story → don't start (loop back to `md-create-story`).
    acceptance criterion first, then the minimum code to pass, then refactor. For a
    multi-step story, follow the plan via `executing-plans` / `subagent-driven-development`.
 4. **When stuck**, use `systematic-debugging` — don't guess-patch.
-5. **Verify locally**: `pnpm check` (Biome) and `pnpm test` (Vitest) must pass.
+5. **Verify locally**: the unit gate — `pnpm check` (Biome), `pnpm typecheck`, and `pnpm test`
+   (Vitest) — must pass.
 5a. **Self-review (inline, fast pre-pass)**: before handing off, invoke the `code-review` skill
     (low/medium effort — it runs inline, no sub-agent) on your working diff. **Fix** the findings
     you agree with; push back on the rest via `receiving-code-review`. Re-run the unit gate
